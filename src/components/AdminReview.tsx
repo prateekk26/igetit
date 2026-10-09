@@ -12,20 +12,27 @@ const when = (t: number) => new Date(t).toLocaleString('en-IN', { day: 'numeric'
 export default function AdminReview() {
   const rows = useQuery(api.library.reviewQueue, {})
   const decide = useMutation(api.library.decide)
+  const destroy = useMutation(api.library.destroy)
+  const [gone, setGone] = useState<string | null>(null)
   const [reason, setReason] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   if (!rows) return null
-  const pending = rows.filter((r) => r.review === 'pending'), rejected = rows.filter((r) => r.review === 'rejected')
+  const pending = rows.filter((r) => r.review === 'pending')
+  // D39 (Prateek: "It doesn't tell me which one was rejected by me or automatically"): two lists, each with its reason.
+  const byMe = rows.filter((r) => r.review === 'rejected' && r.reviewedBy && !/^dc \(D3/.test(r.reviewedBy)), auto = rows.filter((r) => r.review === 'rejected' && !byMe.includes(r))
   const act = async (id: Id<'library'>, approve: boolean) => { setError(null); try { await decide({ id, approve, why: reason[id] }) } catch (e: any) { setError(String(e?.message ?? e).replace(/^.*Error: /, '').slice(0, 200)) } }
   const Row = ({ r, auto }: { r: (typeof rows)[number]; auto?: boolean }) => (
     <li className="adm-review-row">
       <p><strong>{r.topic}</strong> <small>· {r.level === 'new' ? 'new to this' : 'knows some'}{r.goal ? ` · for: ${r.goal}` : ''}{r.mode ? ` · ${r.mode}` : ''} · {when(r.createdAt)}</small></p>
-      {auto && <p className="note">Rejected: {r.reviewWhy}{r.reviewedBy ? ` (by ${r.reviewedBy})` : ' (automatic)'}</p>}
+      {auto && <p className="note">Rejected {r.reviewedAt ? when(r.reviewedAt) : ''}: {r.reviewWhy}{r.reviewedBy ? ` · by ${r.reviewedBy}` : ' · automatic filter'}</p>}
       <p><em>Chapter 1: {r.title ?? '(no title)'}</em></p>
       {r.text.map((t, i) => <p key={i} className="serif" style={{ margin: '4px 0' }}>{t}</p>)}
       <p className="note">Judge: {r.judge ? (r.judge.error ? `failed (${r.judge.error})` : `${r.judge.score} of 12${r.judge.weakest ? `, weakest: ${r.judge.weakest}` : ''}`) : 'not run'} · {r.starts} started, {r.passes} passed chapter 1{r.why ? ` · privacy check: ${r.why}` : ''}</p>
       <div className="adm-review-actions">
         <button type="button" className="btn" onClick={() => act(r.id, true)}>Approve · put it on the Shelf</button>
+        {gone === r.id
+          ? <><span className="note">Delete the shared copy for good? Its reader keeps their own handbook.</span><button type="button" className="btn btn-ghost" onClick={() => { destroy({ id: r.id }); setGone(null) }}>Yes, delete forever</button><button type="button" className="quiet" onClick={() => setGone(null)}>Keep</button></>
+          : <button type="button" className="quiet" onClick={() => setGone(r.id)}>Delete forever</button>}
         {!auto && (
           <>
             <input className="input" placeholder="Why not (optional)" value={reason[r.id] ?? ''} onChange={(e) => setReason((x) => ({ ...x, [r.id]: e.target.value }))} />
@@ -41,10 +48,16 @@ export default function AdminReview() {
       <p className="note">A typed topic reaches here once its own reader passed chapter 1 and it cleared the automatic filter (privacy check, judge 9 of 12 or more, a real topic, not one of our phones). Nothing is shared until you tap Approve.</p>
       {error && <p className="error">{error}</p>}
       {pending.length === 0 ? <p className="note">Nothing waiting.</p> : <ul className="adm-review">{pending.map((r) => <Row key={r.id} r={r} />)}</ul>}
-      {rejected.length > 0 && (
+      {byMe.length > 0 && (
         <details style={{ marginTop: 12 }}>
-          <summary>Rejected, automatically or by you ({rejected.length})</summary>
-          <ul className="adm-review">{rejected.map((r) => <Row key={r.id} r={r} auto />)}</ul>
+          <summary>Rejected by you ({byMe.length})</summary>
+          <ul className="adm-review">{byMe.map((r) => <Row key={r.id} r={r} auto />)}</ul>
+        </details>
+      )}
+      {auto.length > 0 && (
+        <details style={{ marginTop: 12 }}>
+          <summary>Rejected automatically ({auto.length}): approve to override, or delete forever</summary>
+          <ul className="adm-review">{auto.map((r) => <Row key={r.id} r={r} auto />)}</ul>
         </details>
       )}
     </section>

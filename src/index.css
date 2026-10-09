@@ -695,6 +695,12 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 @media (max-width: 600px) { .adm-frow { grid-template-columns: 1fr 70px 34px; } .adm-frow .adm-fbar { display: none; } .adm-frow.small { grid-template-columns: 1fr 60px; } }
 
 /* D37: the metrics that matter, at the top of /admin; the rest folded under details. */
+.adm-nav { margin: 0 0 4px; }
+.adm-nav button { min-height: 40px; }
+.adm-tall { max-height: 70vh; }   /* D39: long tables scroll inside their card */
+.adm-inline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.adm-inline select { min-height: 36px; font-size: var(--small); max-width: 100%; }
+
 .adm-metrics h2 small { font-weight: 500; color: var(--ink-2); font-size: var(--small); }
 .adm-metrics h3 { display: flex; align-items: center; gap: 12px; }
 .adm-metrics h3 .quiet { text-transform: none; letter-spacing: 0; min-height: 32px; font-size: var(--small); }
