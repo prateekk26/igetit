@@ -81,6 +81,17 @@ What the two reels share, and what the wait stories and Prateek's own reels take
 - **On screen:** the storyteller to camera in a warm study, a 2-to-4-word caption in a heavy serif on a marigold card at each beat, an illustrated scene inset under it. That is the wait card: picture, printed beat label, serif text, one frame per beat.
 - Pace: about 560 words in 3 minutes, sentences of 8 to 14 words with beats of 2 to 5 between. Our frames at 40 to 60 words are one beat each.
 
+## 2d. Teardown: three story reels by Ray William Johnson, sent by Prateek (9 Oct)
+Eight to nine minutes each, true stories with a villain. Different register from 2c, same craft underneath (D29e):
+- **Present tense, spoken.** "So he records a few takes… and he leaves the tape at school." Every sentence is one a person says across a table. "So", "and", "but here's the thing" carry the listener; nothing reads as written.
+- **Tag, then act.** A person arrives as one clause: "this guy, Mark. Mark is a big-deal eye doctor." Then they do something. Never a paragraph of background.
+- **The ladder with a refrain.** Flyers, the superintendent, the state board, a police report, a lawsuit: each attempt bigger than the last, and after each one the same line, "and Kelly still doesn't get fired." The repetition is the comedy and the tension at once.
+- **The cliff before the reveal.** "So police open up her car, and guess what they find?" One beat of air, then the answer as the first words of the next line.
+- **One dry aside.** "An aspiring actress, which I think means she's unemployed." One per story; it buys the teller trust for the serious parts.
+- **The verdict.** The last line is the teller's own judgment in five words: "Good for him." "Couldn't have happened to a nicer couple." The story ends when the teller takes a side.
+- **On screen:** fast cuts between the teller and full-bleed illustrated scenes of each beat (a boy locked out of a school door, drawn), with real photos where they exist ("here's her mugshot"). No caption cards; the picture is the caption. For the wait card, a frame's picture should be the scene of that beat, which the handbook's chapter pictures rarely are; drawn-per-story pictures are an open cost question.
+- What we keep out: the swearing, the body jokes, the mental-illness jokes. The craft works without them.
+
 ## 3. Type and colour
 Font: two. Bricolage Grotesque (already loaded) for the headline, headings, chapter numbers, buttons and labels. Newsreader (Google Fonts, optical size 16) for the teaching body, examples, the mistake card, the feedback sheet's re-teach text and the exercise prompt.
 Sizes: display 34 (clamp 28 to 38) for the headline and the chapter title · heading 22 · body 17.5 (serif) · ui 16 (sans, buttons, options) · small 13.5 (labels, "Chapter 1 of 7", timings). No other sizes without asking.
