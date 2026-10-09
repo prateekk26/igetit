@@ -39,6 +39,8 @@ type Props = {
   freeChapters?: number   // chapters a visitor reads without an account: membership.ts LIMITS.visitorChapters, read from the server (2 since 9 Oct, D26)
   priceLine?: string | null   // the early-bird price, as information on the wall, never a gate (Shaktimaan, 8 Oct)
   quick?: boolean   // D23 (9 Oct): a recipe or one-off task; read in one sitting, no wall, no reminder, no tomorrow
+  isMember?: boolean   // members never get the membership pitch (UX review 9 Oct: the last chapter pitched it to paying members)
+  nextWriting?: boolean   // the next chapter is being written right now: its button waits here instead of dropping the reader on the plan
 }
 
 // Reminder moments (7 Oct, Prateek: "more casual and witty"): a moment in the day, the clock underneath. Copy (agent).
@@ -75,7 +77,7 @@ function cheer(n: number, s?: { minutes: number; right: number; total: number } 
   return `You took your time, and it stuck. That's the whole point.`
 }
 
-export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, adapts, whatsNext, freeChapters = 2, priceLine, onShelf, quick = false }: Props) {
+export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, adapts, whatsNext, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
   const line = cheer(n, stats)
   const [stay, setStay] = useState(false)
@@ -84,6 +86,13 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
   // with a free account. The server refuses the chapter without one (membership.ts tryOpen); this screen only says so.
   const wall = !signedIn && !last && n >= freeChapters && !quick   // a quick handbook is one sitting (D23): no wall between its chapters
   useEffect(() => { if (wall) track('wall', { n }, `wall:${handbookId ?? ''}:${n}`) }, [wall, n, handbookId])
+  // The last chapter of a handbook entered part-way (a post link to chapter 7) is not "seven chapters, done" (UX review 9 Oct).
+  const left = Math.max(0, total - new Set([...passed, n]).size)
+  // While the next chapter is still being written, its button waits here, busy, and turns live when it lands (UX review
+  // 9 Oct: it dropped the reader on the handbook page to wait).
+  const nextBtn = (label: string, ghost = false) => nextWriting && !nextReady && !nextFailed
+    ? <button className="btn" disabled aria-busy="true">{`Writing chapter ${n + 1}… about a minute`}</button>
+    : <button className={ghost ? 'btn btn-ghost' : 'btn'} onClick={onNext}>{nextFailed ? `Chapter ${n + 1} didn't write. Try again` : label}</button>
   return (
     <>
       <Confetti fire />
@@ -102,7 +111,7 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
             <p className="upnext-kicker">Up next: {nextTitle}</p>
             <h2 className="upnext-title">Chapter {n + 1} is free with an account.</h2>
             {nextHook && <p className="upnext-hook">{nextHook}</p>}
-            <p className="serif">Your email and a 6-digit code, no card. Chapter {n} stays on this phone whatever you choose, and your place is kept on any phone or laptop.</p>
+            <p className="serif">Your email and a 6-digit code, no card. What you've read stays on this phone whatever you choose, and your place is kept on any phone or laptop.</p>
           </div>
         </section>
       )}
@@ -132,14 +141,14 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
             <h2 className="upnext-title">{nextTitle}</h2>
             {nextHook && <p className="upnext-hook">{nextHook}</p>}
             {/* No button in the card (D26, 9 Oct): the one main action sits in the bar, within thumb reach; the card only says what's next. */}
-            {!nextReady && !nextFailed && !quick && onNext && <p className="note" style={{ margin: '8px 0 0' }}>Being written for you now, about two minutes.</p>}
+            {!nextReady && !nextFailed && !quick && onNext && <p className="note" style={{ margin: '8px 0 0' }}>Being written for you now, about a minute.</p>}
           </div>
         </section>
       )}
-      {last && <p className="lede" style={{ marginTop: 'var(--l)' }}>{total === 7 ? "That's the whole handbook. Seven chapters, done." : "That's all of it. Quick and done."}</p>}
+      {last && <p className="lede" style={{ marginTop: 'var(--l)' }}>{left > 0 ? `That's the last chapter. ${left === 1 ? 'One earlier chapter is' : `${left} earlier chapters are`} still yours to read, on the handbook page.` : total === 7 ? "That's the whole handbook. Seven chapters, done." : "That's all of it. Quick and done."}</p>}
       {last && whatsNext}
 
-      {last && (
+      {last && !isMember && (
         <div className="nudge" style={{ marginTop: 'var(--l)' }}>
           <p className="nudge-lead">That's the summit.</p>
           <p className="serif">Want more? Members keep 3 topics of their own on the go, read up to 7 chapters a day, get 30 web-checked answers a month, and can save any handbook as a PDF.</p>
@@ -157,16 +166,17 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
             <button className="btn" onClick={() => { track('wall_tap', { n }); onKeep() }}>Make a free account</button>
             <button type="button" className="quiet" onClick={onContinue}>Back to the handbook</button>
           </>
+        ) : quick && !last && onNext ? (
+          <>
+            {/* A quick handbook is one sitting (D23): "Keep going" for everyone, before any account line (UX review 9 Oct). */}
+            {nextBtn('Keep going')}
+            <button type="button" className="quiet" onClick={onContinue}>Back to the handbook</button>
+          </>
         ) : !signedIn && !stay && !last && n < freeChapters && onNext && nextTitle ? (
           <>
             {/* D26 (9 Oct, Prateek): the wall moved to after chapter 2; before it the main action is the next chapter, sign-in a quiet line. */}
-            <button className="btn" onClick={onNext}>{nextFailed ? `Chapter ${n + 1} didn't write. Try again` : `Start chapter ${n + 1}`}</button>
+            {nextBtn(`Start chapter ${n + 1}`)}
             <button type="button" className="quiet" onClick={onKeep}>Want it on every device? Make a free account</button>
-          </>
-        ) : quick && !last && onNext ? (
-          <>
-            <button className="btn" onClick={onNext}>{nextFailed ? `Chapter ${n + 1} didn't write. Try again` : 'Keep going'}</button>
-            <button type="button" className="quiet" onClick={onContinue}>Back to the handbook</button>
           </>
         ) : !signedIn && !stay ? (
           <>
@@ -174,9 +184,10 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
             <button type="button" className="quiet" onClick={() => { setStay(true); if (!last) onNext?.() }}>{last ? 'Not now. It stays on this phone.' : `Not now, start chapter ${n + 1}`}</button>
           </>
         ) : (
-          last || !onNext ? <button className="btn btn-ghost" onClick={onContinue}>Back to the handbook</button> : (
+          // Signed in: the next chapter is the main, filled button (UX review 9 Oct: it was an outline, like a second choice).
+          last || !onNext ? <button className="btn" onClick={onContinue}>Back to the handbook</button> : (
             <>
-              <button className="btn btn-ghost" onClick={onNext}>{`Start chapter ${n + 1}`}</button>
+              {nextBtn(`Start chapter ${n + 1}`)}
               <button type="button" className="quiet" onClick={onContinue}>Back to the handbook</button>
             </>
           )
@@ -194,15 +205,21 @@ function Reminder({ n, tomorrowAt, onPickTime, handbookId, deviceToken }: { n: n
   const [saving, setSaving] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [installable, setInstallable] = useState(canInstall())
+  // "Deal. See you after dinner" only when a reminder will really come (UX review 9 Oct): granted notifications, or a
+  // subscription made just now. Otherwise the time is only saved, and the heading says that.
+  const [willRemind, setWillRemind] = useState(() => { try { return typeof Notification !== 'undefined' && Notification.permission === 'granted' } catch { return false } })
   const pick = async (t: string) => {
     setSaving(t); setNote(null)
     try {
       await onPickTime(t)
       if (!publicKey || !deviceToken) { setNote(`Saved: ${pretty(t)}. Reminders aren't available just now.`); return }
       const r = await subscribe(publicKey)
-      if (r.ok) { await save({ deviceToken, at: t, tzOffsetMin: new Date().getTimezoneOffset(), handbookId, subscription: r.subscription }); track('feedback', { n, v: 'reminder' }); setNote(`Done. This phone will remind you at ${pretty(t)}.`) }
-      else setNote(r.why === 'ios-install' ? `Saved: ${pretty(t)}. For a reminder on iPhone, tap Share, then Add to Home Screen, and open I Get It from there.`
-        : r.why === 'denied' ? `Saved: ${pretty(t)}. Notifications are off for this site, so no reminder.` : `Saved: ${pretty(t)}. This browser can't send reminders.`)
+      if (r.ok) { await save({ deviceToken, at: t, tzOffsetMin: new Date().getTimezoneOffset(), handbookId, subscription: r.subscription }); track('feedback', { n, v: 'reminder' }); setWillRemind(true); setNote(`Done. This phone will remind you at ${pretty(t)}.`) }
+      else {
+        setWillRemind(false)
+        setNote(r.why === 'ios-install' ? `Saved: ${pretty(t)}. For a reminder on iPhone, tap Share, then Add to Home Screen, and open I Get It from there.`
+          : r.why === 'denied' ? `Saved: ${pretty(t)}. Notifications are off for this site, so no reminder. To turn them on, open this site's settings in your browser (the icon left of the address), allow notifications, then pick a time again.` : `Saved: ${pretty(t)}. This browser can't send reminders.`)
+      }
     } catch { setNote("Couldn't save that. Try again.") }
     finally { setSaving(null) }
   }
@@ -217,7 +234,7 @@ function Reminder({ n, tomorrowAt, onPickTime, handbookId, deviceToken }: { n: n
   }
   return (
     <section className="remind">
-      <h2 style={{ marginTop: 'var(--xl)' }}>{tomorrowAt ? `Deal. See you ${momentOf(tomorrowAt) ?? `at ${pretty(tomorrowAt)}`}.` : `When do you have twenty minutes for chapter ${n + 1}?`}</h2>
+      <h2 style={{ marginTop: 'var(--xl)' }}>{tomorrowAt ? (willRemind ? `Deal. See you ${momentOf(tomorrowAt) ?? `at ${pretty(tomorrowAt)}`}.` : `Saved: ${momentOf(tomorrowAt) ?? pretty(tomorrowAt)}.`) : `When do you have twenty minutes for chapter ${n + 1}?`}</h2>
       {!tomorrowAt && <p className="note" style={{ marginTop: 0 }}>Pick one. One nudge a day at that time, and none on days you've already read.</p>}
       <div className="moments">
         {TIMES.map((t) => (
@@ -226,7 +243,7 @@ function Reminder({ n, tomorrowAt, onPickTime, handbookId, deviceToken }: { n: n
           </button>
         ))}
       </div>
-      {note && <p className="note">{note}</p>}
+      {note && <p className="note" role="status">{note}</p>}
       {installable && !isStandalone() && (
         <button type="button" className="quiet" onClick={async () => { await install(); setInstallable(false) }}>Add I Get It to your home screen</button>
       )}

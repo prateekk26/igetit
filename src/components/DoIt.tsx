@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 // then one tap on how it felt. Logging a set is what passes a body-skill chapter. Copy (agent).
 export type DoItCard = { type: 'doit'; title?: string; instruction: string; kind: 'reps' | 'timer' | 'checklist'; target?: number; items?: string[] }
 type Feel = 'easy' | 'right' | 'hard'
-type Props = { card: DoItCard; logged?: boolean; onLog: (count: number, feel: Feel) => Promise<void>; onLater: () => void }
+type Props = { card: DoItCard; logged?: boolean; onLog: (count: number, feel: Feel) => Promise<void>; onLater: () => void; last?: boolean }
 
-export default function DoIt({ card, logged, onLog, onLater }: Props) {
+export default function DoIt({ card, logged, onLog, onLater, last = false }: Props) {
   const target = Math.max(1, Math.min(200, Math.round(card.target ?? (card.kind === 'timer' ? 20 : 5))))
   const [count, setCount] = useState(0)
   const [running, setRunning] = useState(false)
@@ -35,7 +35,7 @@ export default function DoIt({ card, logged, onLog, onLater }: Props) {
       <div className="doit no-tap">
         <p className="story-kicker">Logged</p>
         <p className="story-big">Nice. That one counts.</p>
-        <p className="story-text size-md" style={{ marginTop: 12 }}>Tap → to keep going.</p>
+        <p className="story-text size-md" style={{ marginTop: 12 }}>{last ? 'Finish the chapter below.' : 'Tap Next to keep going.'}</p>
       </div>
     )
   }
@@ -68,7 +68,11 @@ export default function DoIt({ card, logged, onLog, onLater }: Props) {
         </ul>
       )}
 
-      {reached ? (
+      {/* A checklist (a recipe's "gather your tools") is done or not; "How did it feel?" fitted reps and timers only
+          (UX review 9 Oct). */}
+      {reached && card.kind === 'checklist' ? (
+        <button type="button" className="story-opt doit-done" disabled={saving} onClick={() => log('right')}>{saving ? 'Saving…' : 'All set'}</button>
+      ) : reached ? (
         <div className="doit-feel">
           <p className="doit-hint">How did it feel?</p>
           <div className="doit-feel-row">
@@ -79,8 +83,9 @@ export default function DoIt({ card, logged, onLog, onLater }: Props) {
         </div>
       ) : (
         <>
-          <button type="button" className="quiet doit-later" onClick={onLater}>Not now, I'll do it later</button>
-          <p className="doit-hint" style={{ marginTop: 6 }}>Or just tap → to keep going. Nothing here is a gate.</p>
+          {/* On the last frame the chapter's own Finish button is the way out; a second one here only repeated it. */}
+          {!last && <button type="button" className="quiet doit-later" onClick={onLater}>Not now, I'll do it later</button>}
+          <p className="doit-hint" style={{ marginTop: 6 }}>{last ? 'Nothing here is a gate.' : 'Or tap Next to keep going. Nothing here is a gate.'}</p>
         </>
       )}
       {error && <p className="story-error">{error}</p>}

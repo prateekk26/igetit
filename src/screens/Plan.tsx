@@ -24,8 +24,10 @@ type Props = {
   onShelf?: () => void   // The Shelf, shown under the quiet line when declined
   shelfStrip?: React.ReactNode   // the printed Shelf strip with the live count (9 Oct, D21), under the summit
   onStart: () => void
+  onTapChapter?: (n: number) => void   // a path stop (Prateek, 9 Oct): finished ones open, the next starts, ones ahead preview
   onRetry: () => void
   onChangeLine: () => void
+  canChangeLine?: boolean   // only a handbook this reader typed, before they've read it (UX review 9 Oct, #9)
   voiceNote?: string
   onTune: () => void
   onCompare?: () => void
@@ -41,25 +43,30 @@ type Props = {
 }
 
 // The handbook as a journey: a cover, then seven stops on a winding path, each with its hook as the teaser.
-export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan, passed, current, chapterReady, chapterFailed, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf, shelfStrip, onStart, onRetry, onChangeLine, voiceNote, onTune, onCompare, comparing, coverPicture, caution, onLibrary, libraryCount, nextUp, whatsNext }: Props) {
+export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan, passed, current, chapterReady, chapterFailed, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext }: Props) {
   useEffect(() => { track('plan_view', undefined, 'plan_view:' + topic) }, [topic])
   const first = passed.length === 0 && current === 1   // a reader who came in at chapter 2 from a post is on 2
   const upTitle = nextUp ? plan.chapters[nextUp.n - 1]?.title : null
   const upHook = nextUp ? plan.chapters[nextUp.n - 1]?.hook : null
+  const resuming = nextUp?.kind === 'resume'
+  // "Later, if you keep going: …" under "Later peaks:" read "Later peaks: Later, …" (UX review 9 Oct): the model's own
+  // opener is dropped.
+  const later = (plan.horizon14 ?? '').replace(/^\s*later\b[\s,:]*(peaks?[\s,:]*)?(if you keep going[\s,:]*)?/i, '').trim()
   return (
     <>
       {nextUp && chapterReady && (
         <section className="nextup" aria-label="Up next">
-          <p className="nextup-kicker">{nextUp.kind === 'resume' ? `You stopped at card ${nextUp.card} of chapter ${nextUp.n}` : 'Up next'}</p>
+          <p className="nextup-kicker">{resuming ? `You stopped at card ${nextUp.card} of chapter ${nextUp.n}` : 'Up next'}</p>
           <p className="nextup-title">{nextUp.kind === 'resume' ? `${nextUp.left} card${nextUp.left === 1 ? '' : 's'} left, about ${Math.max(2, nextUp.left * 2)} minutes.` : `Chapter ${nextUp.n}: ${upTitle ?? ''}`}</p>
           {nextUp.kind === 'next' && upHook && <p className="nextup-hook">{upHook}</p>}
-          {/* One main button per screen (review #20): the action bar holds it; this one is the quiet twin. */}
-          {declined && nextUp.kind === 'next' ? (
+          {/* One main action per screen (review #20; again 9 Oct: the card's own button and the bar's said the same thing in
+              two ways): the bar holds it. After a "Not now" the card keeps a quiet line to the account. */}
+          {declined && nextUp.kind === 'next' && (
             <>
               <button type="button" className="quiet" onClick={onSignUp ?? onStart}>Chapter {nextUp.n} opens with a free account. When you're ready.</button>
               {onShelf && <button type="button" className="quiet" onClick={onShelf}>The Shelf: every ready handbook</button>}
             </>
-          ) : <button type="button" className="btn btn-ghost" onClick={onStart}>{nextUp.kind === 'resume' ? 'Pick up where you left off' : needsAccount ? `Start chapter ${nextUp.n} (free account)` : `Start chapter ${nextUp.n}`}</button>}
+          )}
         </section>
       )}
       {passed.length >= total && whatsNext}
@@ -90,15 +97,21 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
             <li key={c.n} className={`stop ${done ? 'done' : now ? 'now' : 'ahead'} ${idx % 2 ? 'right' : 'left'}`}>
               <span className="node" aria-hidden="true">{done ? '✓' : ''}</span>{/* the card says "Chapter N"; a number here too read as "1 1" (7 Oct) */}
               {(() => {
+                const skipped = !done && c.n < current   // a post link started past it (UX review 9 Oct): it still opens
+                const ahead = !done && !now && !skipped
                 const inner = (<>
-                  <span className="stop-n">Chapter {c.n}{now && plan.format !== 'quick' && <span className="tag">{first ? 'Tonight' : 'Next'}</span>}{done && <span className="tag done">Done</span>}</span>
+                  <span className="stop-n">Chapter {c.n}{now && plan.format !== 'quick' && <span className="tag">{first ? 'Tonight' : 'Next'}</span>}{done && <span className="tag done">Done</span>}{ahead && <span className="tag later" aria-hidden="true">After chapter {c.n - 1}</span>}</span>
                   <span className="stop-t">{c.title}</span>
                   <span className="stop-hook">{c.hook || c.covers}</span>
                   {done && onOpenChapter && <span className="stop-again">Read it again ›</span>}
+                  {skipped && <span className="stop-again">Read it ›</span>}
+                  {ahead && onTapChapter && <span className="stop-again">Preview ›</span>}
                 </>)
-                // Finished chapters and the one you're on open on tap; chapters ahead stay a preview.
-                if (done && onOpenChapter) return <button type="button" className="stop-card stop-tap" onClick={() => onOpenChapter(c.n)}>{inner}</button>
+                // Every stop answers a tap (Prateek, 9 Oct: "the chapters in the path don't seem clickable"): finished and
+                // skipped chapters open, the next one starts, chapters ahead show a preview; they open one at a time.
+                if ((done || skipped) && onOpenChapter) return <button type="button" className="stop-card stop-tap" onClick={() => onOpenChapter(c.n)}>{inner}</button>
                 if (now && chapterReady) return <button type="button" className="stop-card stop-tap" onClick={onStart}>{inner}</button>
+                if (ahead && onTapChapter) return <button type="button" className="stop-card stop-tap" onClick={() => onTapChapter(c.n)} aria-label={`Chapter ${c.n}: ${c.title}. Opens after chapter ${c.n - 1}. Preview`}>{inner}</button>
                 return <div className="stop-card">{inner}</div>
               })()}
             </li>
@@ -109,21 +122,23 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
           <div className="stop-card">
             <span className="stop-n">The summit</span>
             <span className="stop-t">You can do it</span>
-            {total === 7 && plan.horizon14 && <span className="stop-hook">Later peaks: {plan.horizon14}</span>}
+            {total === 7 && later && <span className="stop-hook">Later peaks: {later}</span>}
           </div>
         </li>
       </ol>
-      {shelfStrip}
 
-      <div className="roadmap-links">
-        <button type="button" className="quiet" onClick={onTune}>Who teaches you, and how</button>
-        {/* The three-writer comparison is testers-only (App.tsx: ?compare=1 once on this phone), so readers never see it. */}
-        {onCompare && <button type="button" className="quiet" onClick={onCompare}>{comparing ? `Three writers are on chapter ${current}…` : `Testers: compare three writers on chapter ${current}`}</button>}
-        {onLibrary && <button type="button" className="quiet" onClick={onLibrary}>{libraryCount && libraryCount > 1 ? `Your handbooks (${libraryCount})` : 'Start another topic, keep this one'}</button>}
-        <button type="button" className="quiet" onClick={onChangeLine}>Not what you meant? Change what you typed</button>
-      </div>
+      {/* Prateek, 9 Oct ("Do we really need all of these links before we ask the user to resume?"): the path, then the main
+          button. The Shelf strip, "Who teaches you" and "Your handbooks" live in the side rail on a laptop and the ☰ menu on
+          a phone, and the header's back link goes home. What stays here is for this handbook only. */}
+      {(onCompare || canChangeLine) && (
+        <div className="roadmap-links">
+          {/* The three-writer comparison is testers-only (App.tsx: ?compare=1 once on this phone), so readers never see it. */}
+          {onCompare && <button type="button" className="quiet" onClick={onCompare}>{comparing ? `Three writers are on chapter ${current}…` : `Testers: compare three writers on chapter ${current}`}</button>}
+          {canChangeLine && <button type="button" className="quiet" onClick={onChangeLine}>Not what you meant? Change what you typed</button>}
+        </div>
+      )}
 
-      <ActionBar busy={!chapterReady && !chapterFailed} note={!chapterReady && !chapterFailed ? `Writing chapter ${current} and checking its facts… usually under a minute.` : undefined}>
+      <ActionBar busy={!chapterReady && !chapterFailed} note={!chapterReady && !chapterFailed ? `Writing chapter ${current} and checking its facts… about two minutes.` : undefined}>
         {lockNote ? (
           <>
             <div className="lock-card">
@@ -141,7 +156,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
           </>
         ) : (
           declined && passed.length > 0 && onOpenChapter ? <button className="btn" onClick={() => onOpenChapter(passed[passed.length - 1])}>{`Read chapter ${passed[passed.length - 1]} again ▸`}</button>
-          : <button className="btn" onClick={onStart} disabled={!chapterReady}>{passed.length >= total ? `Read chapter ${current} again ▸` : needsAccount ? `Start chapter ${current} (free account) ▸` : `Start chapter ${current} ▸`}</button>
+          : <button className="btn" onClick={onStart} disabled={!chapterReady}>{passed.length >= total ? `Read chapter ${current} again ▸` : needsAccount ? `Start chapter ${current} (free account) ▸` : resuming ? `Continue chapter ${current} ▸` : `Start chapter ${current} ▸`}</button>
         )}
       </ActionBar>
     </>

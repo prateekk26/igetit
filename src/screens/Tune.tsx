@@ -19,7 +19,10 @@ export default function Tune({ initial, onSave, onBack, signedIn, onSignIn }: Pr
   const [done, setDone] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const toggle = (x: string) => setLikes((l) => (l.includes(x) ? l.filter((y) => y !== x) : [...l, x]))
+  // An edit after Save brings the Save button back (UX review 9 Oct: later edits were silently lost), and Enter in a box saves.
+  const touch = () => { if (done) setDone(null) }
+  const onEnter = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !busy) { e.preventDefault(); save() } }
+  const toggle = (x: string) => { touch(); setLikes((l) => (l.includes(x) ? l.filter((y) => y !== x) : [...l, x])) }
   const save = async () => {
     setBusy(true); setError(null)
     try {
@@ -35,23 +38,23 @@ export default function Tune({ initial, onSave, onBack, signedIn, onSignIn }: Pr
 
       <h2>Who should teach you?</h2>
       <div className="chips wrap">
-        {PERSONAS.map((p) => <button key={p} type="button" className="chip" aria-pressed={persona === p} onClick={() => setPersona(persona === p ? '' : p)}>{p}</button>)}
+        {PERSONAS.map((p) => <button key={p} type="button" className="chip" aria-pressed={persona === p} onClick={() => { touch(); setPersona(persona === p ? '' : p) }}>{p}</button>)}
       </div>
-      <div className="field"><label htmlFor="persona">Or in your own words</label><input id="persona" className="input" value={persona} onChange={(e) => setPersona(e.target.value)} placeholder="a chef who explains everything with food" /></div>
+      <div className="field"><label htmlFor="persona">Or in your own words</label><input id="persona" className="input" value={persona} onChange={(e) => { touch(); setPersona(e.target.value) }} onKeyDown={onEnter} enterKeyHint="done" placeholder="a chef who explains everything with food" /></div>
 
       <h2>What works for you?</h2>
       <div className="chips wrap">
         {LIKES.map((x) => <button key={x} type="button" className="chip" aria-pressed={likes.includes(x)} onClick={() => toggle(x)}>{x}</button>)}
       </div>
 
-      <div className="field"><label htmlFor="examples">Pull examples from</label><input id="examples" className="input" value={examplesFrom} onChange={(e) => setExamplesFrom(e.target.value)} placeholder="my job as a PM, cricket, cooking" /></div>
-      <div className="field"><label htmlFor="tone">Anything else, in your words</label><input id="tone" className="input" value={tone} onChange={(e) => setTone(e.target.value)} placeholder="make me laugh once a chapter, never talk down to me" /></div>
-      <div className="field"><label htmlFor="avoid">Avoid</label><input id="avoid" className="input" value={avoid} onChange={(e) => setAvoid(e.target.value)} placeholder="sports examples, long paragraphs" /></div>
+      <div className="field"><label htmlFor="examples">Pull examples from</label><input id="examples" className="input" value={examplesFrom} onChange={(e) => { touch(); setExamplesFrom(e.target.value) }} onKeyDown={onEnter} enterKeyHint="done" placeholder="my job as a PM, cricket, cooking" /></div>
+      <div className="field"><label htmlFor="tone">Anything else, in your words</label><input id="tone" className="input" value={tone} onChange={(e) => { touch(); setTone(e.target.value) }} onKeyDown={onEnter} enterKeyHint="done" placeholder="make me laugh once a chapter, never talk down to me" /></div>
+      <div className="field"><label htmlFor="avoid">Avoid</label><input id="avoid" className="input" value={avoid} onChange={(e) => { touch(); setAvoid(e.target.value) }} onKeyDown={onEnter} enterKeyHint="done" placeholder="sports examples, long paragraphs" /></div>
 
       {initial?.preferredModel && <p className="note" style={{ marginTop: 'var(--l)' }}>Your chapters are written by the writer you picked in the comparison. Run it again on any chapter to change your pick.</p>}
-      {done && <p className="note" style={{ marginTop: 'var(--l)', color: 'var(--pass)' }}>{done}</p>}
+      {done && <p className="note" role="status" style={{ marginTop: 'var(--l)', color: 'var(--pass)' }}>{done}</p>}
       {done && !signedIn && onSignIn && <SignupNudge onSignIn={onSignIn} context="tune" compact />}
-      {error && <p className="error">{error}</p>}
+      {error && <p className="error" role="alert">{error}</p>}
 
       <ActionBar busy={busy}>
         {done ? <button className="btn" onClick={onBack}>Back to the handbook</button> : <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save and use this from now on'}</button>}

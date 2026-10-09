@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { limitMessage } from '../lib/limits'
 import { track } from '../lib/track'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { SECTIONS } from '../../convex/shelfSections'
+import { useOnline } from '../lib/online'
 
 // The Shelf (8 Oct, Prateek: "a section called The Shelf, always accessible, neatly organised visually as handbooks"):
 // every ready and shared handbook as a cloth-bound book standing on a shelf, one shelf per kind. Each book appears
@@ -15,7 +16,9 @@ import { SECTIONS } from '../../convex/shelfSections'
 // award title and citation on reader-typed handbooks. A book in either row is not repeated on the shelves below.
 type Award = { title: string; line: string }
 type Item = { kind: 'ready' | 'shared'; id?: Id<'library'>; key: string; topic: string; goal?: string | null; outcome: string; mode: string | null; cover: string | null; hot: boolean; loved: boolean; pick?: boolean; week: number; finishedWeek?: number; trending?: boolean; addedAt?: number; starts?: number | null; passes?: number | null; spot?: number | null; award?: Award | null; section?: string | null }
-type Props = { onReady: (topic: string) => Promise<void>; onShared: (id: Id<'library'>) => Promise<void>; onBack: () => void }
+// notice: why the reader landed here, e.g. a shared link that no longer opens (UX review 9 Oct). have: the handbooks
+// already on this phone or account, by lowercased name, with how far they got.
+type Props = { onReady: (topic: string) => Promise<void>; onShared: (id: Id<'library'>) => Promise<void>; onBack: () => void; notice?: string | null; have?: Record<string, string> }
 
 // D35 (9 Oct, Prateek: "The categorization is horrible for the shelf"): one shelf per subject (convex/shelfSections.ts),
 // in a fixed order; a book sits on the shelf the server sorted it onto (or the owner moved it to). The popularity
@@ -38,12 +41,23 @@ const stat = (i: Item) => {
 const CLOTH = ['indigo', 'green', 'marigold', 'coral', 'ink']
 const cloth = (k: string) => { let h = 0; for (const c of k) h = (h * 17 + c.charCodeAt(0)) >>> 0; return CLOTH[h % CLOTH.length] }
 
-export default function Shelf({ onReady, onShared, onBack }: Props) {
+export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: Props) {
   const items = useQuery(api.library.explore, {}) as Item[] | undefined
-  // On a phone each shelf is one row that scrolls sideways; on a wide screen a shelf holds 4 books, and a long shelf
-  // becomes several shelves, each with its own plank.
-  const [perRow, setPerRow] = useState(() => (typeof window !== 'undefined' && window.innerWidth >= 640 ? 4 : 0))
-  useEffect(() => { const f = () => setPerRow(window.innerWidth >= 640 ? 4 : 0); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f) }, [])
+  const online = useOnline()
+  // On a phone each shelf is one row that scrolls sideways; on a wide screen a shelf holds as many books as fit, and a
+  // long shelf becomes several shelves, each with its own plank. Counted from the page's own width (UX review 9 Oct: at
+  // 640 to 899 px four books overhung the plank, and at 640 the page slid sideways).
+  const pageRef = useRef<HTMLDivElement>(null)
+  const [perRow, setPerRow] = useState(0)
+  useEffect(() => {
+    const el = pageRef.current
+    if (!el) return
+    const f = () => setPerRow(window.innerWidth >= 640 ? Math.max(2, Math.min(4, Math.floor((el.clientWidth + 2) / 146))) : 0)   // a book is 132 px plus a 14 px gap; the row has 12 px of padding
+    f()
+    const ro = new ResizeObserver(f)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const rowsOf = (books: Item[]) => (perRow ? Array.from({ length: Math.ceil(books.length / perRow) }, (_, r) => books.slice(r * perRow, (r + 1) * perRow)) : [books])
   const spots = useMemo(() => (items ?? []).filter((i) => i.spot).sort((a, b) => (a.spot ?? 9) - (b.spot ?? 9)), [items])
   const awards = useMemo(() => (items ?? []).filter((i) => i.award && !i.spot), [items])
@@ -70,19 +84,37 @@ export default function Shelf({ onReady, onShared, onBack }: Props) {
     return (it.kind === 'shared' && it.id ? onShared(it.id) : onReady(it.topic)).catch((e) => { setLifting(null); setNote(limitMessage(e) ?? "Couldn't open that one. Check your connection and tap again.") })
   }
   const surprise = () => { const pool = items ?? []; if (pool.length) open(pool[Math.floor(Math.random() * pool.length)]) }
+  // The jump chips scroll in place. They were #links, and the app's Back handler read the jump as Back and closed the
+  // Shelf (UX review 9 Oct, #2).
+  const jump = (id: string) => {
+    const el = document.getElementById(id)
+    if (!el) return
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
+  }
+  const mine = (it: Item) => have[it.topic.trim().toLowerCase()]
 
   return (
-    <div className={`shelf-page${lifting ? ' lifting' : ''}`}>
+    <div ref={pageRef} className={`shelf-page${lifting ? ' lifting' : ''}`}>
       <button type="button" className="quiet" onClick={onBack}>← Back</button>
       <h1>The Shelf.</h1>
-      <p className="lede">Every handbook here opens at once, no sign-in. Pick one up.</p>
+      {/* "no sign-in" was only true for the free chapters, and was said to members too (UX review 9 Oct). Copy (agent). */}
+      <p className="lede">Every handbook here opens at once. Pick one up.</p>
+      {notice && <p className="note shelf-notice" role="status">{notice}</p>}
       {note && <p className="error" role="alert">{note}</p>}
       {slow && lifting && <p className="note" role="status">Slow connection. Still opening; it keeps trying.</p>}
+      {/* The jump row comes first, so its first chips are not for sections already scrolled past (UX review 9 Oct). */}
+      <div className="shelf-tools">
+        <button type="button" className="chip" onClick={surprise}>Surprise me</button>
+        {spots.length > 0 && <button type="button" className="chip" onClick={() => jump('shelf-spotlight')}>Spotlight</button>}
+        {awards.length > 0 && <button type="button" className="chip" onClick={() => jump('shelf-awards')}>The Awards</button>}
+        {shelves.map((s) => <button type="button" key={s.key} className="chip" onClick={() => jump(`shelf-${s.key}`)}>{s.label}</button>)}
+      </div>
       {spots.length > 0 && (
         <section id="shelf-spotlight" className="spot" aria-label="Spotlight">
           <div className="spot-head">
             <span className="spot-label">Spotlight</span>
-            <h2>The three readers finish most.</h2>
+            <h2>The three handbooks readers finish most.</h2>
           </div>
           <ol className="spot-list">
             {spots.map((it, i) => (
@@ -95,6 +127,7 @@ export default function Shelf({ onReady, onShared, onBack }: Props) {
                   {it.goal && <span className="spot-goal">for: {it.goal}</span>}
                   {it.outcome && <span className="spot-outcome">{it.outcome}</span>}
                   <span className="spot-stat">{stat(it)}</span>
+                  {mine(it) && <span className="spot-mine">{mine(it)}</span>}
                   <span className="spot-go">Open it →</span>
                 </button>
               </li>
@@ -122,13 +155,7 @@ export default function Shelf({ onReady, onShared, onBack }: Props) {
           </ul>
         </section>
       )}
-      <div className="shelf-tools">
-        <button type="button" className="chip" onClick={surprise}>Surprise me</button>
-        {spots.length > 0 && <a className="chip" href="#shelf-spotlight">Spotlight</a>}
-        {awards.length > 0 && <a className="chip" href="#shelf-awards">The Awards</a>}
-        {shelves.map((s) => <a key={s.key} className="chip" href={`#shelf-${s.key}`}>{s.label}</a>)}
-      </div>
-      {!items ? <p className="note">Dusting the shelves…</p> : shelves.map((s) => (
+      {!items ? <p className="note" role="status">{online ? 'Dusting the shelves…' : "No connection. The Shelf opens when you're back online."}</p> : shelves.map((s) => (
         <section key={s.key} id={`shelf-${s.key}`} className="shelf-sec" aria-label={s.label}>
           <div className="shelf-head"><h2>{s.label}</h2>{s.note && <p className="note">{s.note}</p>}</div>
           {rowsOf(s.books).map((row, r) => (
@@ -136,14 +163,16 @@ export default function Shelf({ onReady, onShared, onBack }: Props) {
               <ul className="shelf-books">
                 {row.map((it) => (
                   <li key={it.key} className={lifting === it.key ? 'lifting' : lifting ? 'resting' : undefined} style={{ ['--lean' as any]: `${lean(it.key)}deg` }}>
-                    <button type="button" className={`book cloth-${cloth(it.key)}`} onClick={() => { if (!lifting) open(it) }} aria-label={`${it.topic}. ${it.outcome}`} aria-busy={lifting === it.key || undefined}>
+                    <button type="button" className={`book cloth-${cloth(it.key)}`} onClick={() => { if (!lifting) open(it) }} aria-label={`${it.topic}.${mine(it) ? ` ${mine(it)}.` : ''} ${it.outcome}`} aria-busy={lifting === it.key || undefined}>
                       {lifting === it.key && <span className="lp-visually-hidden" role="status">Opening…</span>}
                       <span className="book-spine" aria-hidden="true" />
                       <span className="book-cover">
                         {it.cover ? <img src={it.cover} alt="" loading="lazy" /> : <span className="book-cover-blank">{it.topic.slice(0, 1)}</span>}
                       </span>
-                      <span className="book-plate"><span className="book-title">{it.topic}</span>{it.goal && <span className="book-goal">for: {it.goal}</span>}</span>
-                      {(it.hot || it.loved || it.pick) && <span className="book-ribbon">{it.hot ? 'Hot' : it.loved ? 'Finished' : 'Our pick'}</span>}
+                      {/* The goal line was cut to "for: Understa…" on a 90 px plate (UX review 9 Oct); the title is the name. */}
+                      <span className="book-plate"><span className="book-title">{it.topic}</span>{mine(it) && <span className="book-mine">{mine(it)}</span>}</span>
+                      {/* "Finished" read as "you finished it" (UX review 9 Oct): the ribbon means most readers finish chapter 1. */}
+                      {(it.hot || it.loved || it.pick) && <span className="book-ribbon">{it.hot ? 'Hot' : it.loved ? 'Most finished' : 'Our pick'}</span>}
                     </button>
                   </li>
                 ))}

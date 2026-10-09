@@ -42,6 +42,8 @@ export default defineSchema({
     source: v.union(v.literal("live"), v.literal("cache")),
     error: v.optional(v.string()),
     hiddenAt: v.optional(v.number()),   // a duplicate topic found when two devices merged at sign-in; kept, not deleted
+    replacedBy: v.optional(v.id("handbooks")),   // "Change what you typed" on an unread handbook (UX review 9 Oct): hidden, and no longer counts as the reader's typed one
+    planSince: v.optional(v.number()),           // when the current plan write started, so a write that died is seen as stuck (UX review 9 Oct)
     writer: v.optional(v.string()),     // a model pinned for this handbook's plan, chapters, versions and check (abtest.ts)
     test: v.optional(v.any()),          // a blind-test handbook (abtest.ts): { label, startedAt, ch1At, ch2At }; never shared
     createdAt: v.number(),
@@ -72,6 +74,7 @@ export default defineSchema({
     cards: v.optional(v.any()),   // array of cards, exercises include answer/whyNot/reteach (never sent raw to the client)
     outcomeLine: v.optional(v.string()),
     error: v.optional(v.string()),
+    writingSince: v.optional(v.number()),   // when this write started; past 15 minutes it died without being marked failed, and Try again restarts it (UX review 9 Oct)
     createdAt: v.number(),
   }).index("by_handbook_n", ["handbookId", "n"]),
 

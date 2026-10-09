@@ -29,8 +29,8 @@ export default function TryItFrame({ card, done, onDone }: Props) {
       ) : (
         <div className="tryit-box move-pending" aria-label="Being built" />
       )}
-      <p className="doit-hint">{finished ? 'Got it. Tap → to keep going.' : 'Play with it until it clicks.'}</p>
-      {!finished && !card.html && <p className="doit-hint">Still being built. Tap → if you like; it will be here next time.</p>}
+      <p className="doit-hint">{finished ? 'Got it. Tap Next to keep going.' : 'Play with it until it clicks.'}</p>
+      {!finished && !card.html && <p className="doit-hint">Still being built. Tap Next if you like; it will be here next time.</p>}
     </div>
   )
 }

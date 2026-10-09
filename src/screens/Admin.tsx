@@ -274,7 +274,8 @@ function OwnerSignIn({ signedIn }: { signedIn: boolean }) {
         {error && <p className="error">{error}</p>}
         <button className="btn" type="submit" disabled={busy} style={{ marginTop: 14 }}>{busy ? 'One moment…' : flow === 'signIn' ? 'Sign in' : 'Create the owner account'}</button>
       </form>
-      <button type="button" className="quiet" onClick={() => { setFlow(flow === 'signIn' ? 'signUp' : 'signIn'); setError(null) }}>{flow === 'signIn' ? 'No account yet? Create the owner account' : 'Already have one? Sign in'}</button>
+      {/* "No account yet? Create the owner account" was offered to any visitor (UX review 9 Oct); the owner accounts exist. */}
+      {flow === 'signUp' && <button type="button" className="quiet" onClick={() => { setFlow('signIn'); setError(null) }}>Already have one? Sign in</button>}
     </section>
   )
 }

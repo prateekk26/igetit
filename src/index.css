@@ -1,6 +1,6 @@
 /* Tokens (DESIGN.md section 3). Use the names, never the raw values, outside this block. */
 :root {
-  color-scheme: light;
+  color-scheme: only light;   /* no forced dark: the page has no dark theme (UX review 9 Oct, #17) */
   --paper: #faf7f0;
   --paper-2: #f3eee3;          /* a resting surface: the input, the option fill when pressed */
   --ink: #1b1a17;
@@ -58,6 +58,21 @@ body { font-variant-numeric: tabular-nums; }
 /* a phone header with a back link has no room for the tagline (8 Oct: it wrapped to two lines on the Done screen) */
 @media (max-width: 899px) { .top:has(.back-link) .wordmark small { display: none; } }
 .top > span { flex: none; }
+.top { gap: 8px; }
+.top-actions { display: flex; gap: 16px; align-items: center; }
+.wordmark-btn { white-space: nowrap; flex: none; }   /* "I Get It" broke onto three lines on Done at 320 px (UX review 9 Oct) */
+.top > .shelf-btn { margin-left: auto; margin-right: 4px; background: var(--paper); }   /* beside the actions, not floating mid-header; paper, so it is not a second main button (UX review 9 Oct) */
+.back-link .bl-short { display: none; }
+/* 320 px: the header slid the page 31 px sideways (UX review 9 Oct, #13). The tagline goes, the gaps shrink, the back
+   link says Back. */
+@media (max-width: 380px) {
+  .wordmark small { display: none; }
+  .top-actions { gap: 2px; }
+  .top > .shelf-btn { padding: 0 9px; gap: 5px; font-size: 0.85rem; margin-right: 0; }
+  .back-link .bl-long { display: none; }
+  .back-link .bl-short { display: inline; }
+  .menu-btn { min-width: 40px; padding: 8px 6px; }
+}
 .quiet { background: none; border: 0; padding: 8px 0; color: var(--ink-2); font-size: var(--small); font-weight: 500; text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1.5px; }
 .quiet:hover { color: var(--ink); }
 main { flex: 1; display: flex; flex-direction: column; padding-bottom: 170px; }   /* the fixed bar is up to 150 px with its note; nothing hides under it */
@@ -157,6 +172,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 @keyframes lift { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .sheet .serif { margin-top: var(--s); }
 .sheet .btn { margin-top: var(--l); }
+.actionbar .pay-error, .actionbar .pay-note { margin: 0 0 8px; }
 @keyframes up { from { transform: translateY(100%); } to { transform: none; } }
 
 /* done */
@@ -239,6 +255,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
   transition: none; }   /* no colour fade: the page turn carries the change, and text must never sit on the old colour */
 .story-frame::before { content: ''; position: absolute; inset: 0; background-image: var(--grain); opacity: 0.14; mix-blend-mode: multiply; pointer-events: none; }
 .story-frame > * { position: relative; }
+.story-frame :focus-visible { outline-color: var(--fg); }   /* the ink ring vanished on dark frames (UX review 9 Oct) */
 .tone-ink { background-color: #1b1a17; }
 .tone-indigo { background-color: #3442b8; }
 .tone-green { background-color: #1f7a4d; --fg2: rgba(250, 247, 240, 0.97); }   /* measured 4.47 at 0.92; 0.97 clears 4.5 */   /* the topic line read 3.7:1 at 0.78 (8 Oct night audit); 0.92 clears 4.5 */
@@ -255,7 +272,12 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .story-label { font-weight: 800; letter-spacing: 0; }
 .story-topic { color: var(--fg2); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .story-close { background: none; border: 0; color: var(--fg); font-size: 28px; line-height: 1; padding: 0 4px; min-width: 44px; min-height: 44px; margin: -8px -12px -8px 0; }
-.story-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 18px 2px; animation: frin 300ms var(--ease) both; min-height: 0; overflow-y: auto; }
+.story-body { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; padding: 18px 2px; animation: frin 300ms var(--ease) both; min-height: 0; overflow-y: auto; }
+/* Centred by auto margins, not justify-content: centring in a scroll box cut the title off at the top on short phones,
+   out of reach of scrolling (UX review 9 Oct, #7: 16 px at 375x667). Auto margins centre when it fits and start at the top
+   when it doesn't. */
+.story-body > :first-child { margin-top: auto; }
+.story-body > :last-child { margin-bottom: auto; }
 @keyframes frin { from { opacity: 0; transform: translateY(36px); } to { opacity: 1; transform: none; } }   /* arrives from below, like Reels */
 /* Pages (8 Oct night, Prateek): a frame turns in like a page, hinged on the spine side, 320 ms, transform and opacity
    only so a slow phone or a slow connection never waits on it. Forward turns from the right, back from the left. */
@@ -323,6 +345,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .tone-ink .story-finish { box-shadow: 4px 4px 0 rgba(250, 247, 240, 0.6); }
 .tone-marigold .story-finish { background: #1b1a17; color: #faf7f0; }
 .story-finish:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #1b1a17; }
+.story-offline { margin: 0 0 8px; align-self: flex-start; background: rgba(0, 0, 0, 0.45); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: var(--small); font-weight: 700; }
 .story-error { margin-top: 14px; background: rgba(0, 0, 0, 0.35); color: #fff; padding: 10px 12px; border-radius: 12px; font-size: var(--small); }
 .story-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; cursor: default; }
 .story-tools button, .story-tools > span:not(.story-tapnote) { background: transparent; color: var(--fg); border: 2px solid var(--fg); border-radius: 999px; padding: 9px 14px; font-size: var(--small); font-weight: 700; min-height: 44px; }
@@ -410,7 +433,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .shelf-bar span.on { background: var(--pass); border-color: var(--pass); }
 .shelf-next { color: var(--ink); font-size: var(--small); font-weight: 700; }
 .shelf-remove { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 12px; margin: 2px 4px 0 0; }   /* D36: remove a handbook, two taps */
-.shelf-remove .quiet { min-height: 36px; font-size: var(--small); }
+.shelf-remove .quiet { min-height: 44px; font-size: var(--small); }   /* 36 px was under the 44 px tap size (UX review 9 Oct) */
 .shelf-remove .note { margin: 0; flex: 1 1 100%; text-align: right; }
 .rules { list-style: none; padding: 0; margin: var(--l) 0; display: grid; gap: 10px; font-family: var(--serif); font-size: 1.04rem; line-height: 1.45; }
 .rules strong { font-family: var(--sans); }
@@ -639,6 +662,12 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .plan-wait-steps li.on::before { opacity: 1; }
 .plan-wait-steps li.on { color: var(--ink); }
 .plan-wait-steps li.on::before { background: var(--accent); border-color: var(--accent); }
+.plan-wait-steps li.done::before { content: '✓'; background: var(--pass); border-color: var(--pass); color: var(--paper); font: 800 10px/10px var(--sans); text-align: center; }   /* a finished stage is ticked, the current one is lit */
+.intent-own { display: flex; gap: 8px; align-items: stretch; }
+.intent-own .input { flex: 1; min-width: 0; }
+.intent-own-go { flex: none; min-height: 48px; padding: 0 14px; width: auto; }
+.intent-skip { min-height: 44px; }
+.intent-goal:disabled, .intent-skip:disabled { opacity: 0.55; }
 
 /* the story while a plan is written (Prateek, 6 Oct): reuse a ready handbook's Story time card */
 .wait-story { margin-top: var(--xl); padding-top: var(--l); border-top: 1px solid var(--tint); }
@@ -880,9 +909,9 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 
 /* Navigation (7 Oct, Prateek): the wordmark goes home, a menu button on phones, chapters you can reopen */
 .wordmark-btn { all: unset; cursor: pointer; display: block; font-weight: 700; font-size: var(--ui); letter-spacing: -0.01em; color: inherit; }
-.wordmark-btn:focus-visible { outline: 3px solid var(--accent-deep); outline-offset: 3px; border-radius: 6px; }
+.wordmark-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
 .menu-btn { all: unset; cursor: pointer; font-size: 1.4rem; line-height: 1; padding: 8px 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; text-align: center; border-radius: 10px; }
-.menu-btn:focus-visible { outline: 3px solid var(--accent-deep); }
+.menu-btn:focus-visible { outline: 3px solid var(--ink); }
 .menu-sheet { display: grid; gap: 4px; max-height: 70vh; overflow-y: auto; }
 .menu-sheet .rail-links, .menu-sheet > div { display: grid; gap: 4px; }
 .menu-sheet button.quiet, .menu-sheet a.quiet { text-align: left; padding: 10px 0; min-height: 44px; }
@@ -890,7 +919,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 @media (max-width: 899px) { .hide-phone { display: none; } }
 button.stop-tap { font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; -webkit-appearance: none; appearance: none; }
 button.stop-tap:active { transform: translateY(1px); }
-button.stop-tap:focus-visible { outline: 3px solid var(--accent-deep); outline-offset: 3px; }
+button.stop-tap:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 .stop-again { margin-top: 6px; font: 700 var(--small) var(--sans); color: var(--pass, #1f7a4d); }
 /* A grid column never grows past the screen because of a wide child (7 Oct: the topic carousel pushed the box,
    the button and the cover picture off a 390 px phone). */
@@ -912,7 +941,7 @@ button.stop-tap:focus-visible { outline: 3px solid var(--accent-deep); outline-o
 .moment { all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 14px; min-height: 48px; border-radius: var(--radius); border: 2px solid var(--rule); background: var(--paper); }
 .moment[aria-pressed="true"] { border-color: var(--ink); background: var(--accent); }
 .moment:disabled { opacity: 0.6; }
-.moment:focus-visible { outline: 3px solid var(--accent-deep); outline-offset: 2px; }
+.moment:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .moment-label { font: 600 var(--ui) var(--sans); }
 .moment-time { font-size: var(--small); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
@@ -939,7 +968,7 @@ button.stop-tap:focus-visible { outline: 3px solid var(--accent-deep); outline-o
 
 /* Jump to next (7 Oct) */
 .next-topics .topic-link { all: unset; cursor: pointer; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--accent-deep); font-weight: 600; color: var(--ink); }
-.next-topics .topic-link:focus-visible { outline: 3px solid var(--accent-deep); outline-offset: 2px; border-radius: 4px; }
+.next-topics .topic-link:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
 
 /* Early-bird price, struck at the real next tier (7 Oct) */
 .early-bird { margin: var(--m) 0 6px; padding: 12px 14px; border-radius: 14px; background: var(--accent); font-family: var(--sans); line-height: 1.45; }
@@ -961,13 +990,14 @@ button.stop-tap:focus-visible { outline: 3px solid var(--accent-deep); outline-o
 .doit-hint { font-size: 0.95rem; opacity: 0.8; margin: 0; }
 .doit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .doit-list label { display: flex; gap: 12px; align-items: center; background: #faf7f0; color: #1b1a17; padding: 14px 16px; border-radius: 16px; font-weight: 600; min-height: 52px; }
-.doit-list input { width: 22px; height: 22px; accent-color: #1f7a4d; }
+.doit-list input { width: 22px; height: 22px; flex: none; accent-color: #1f7a4d; }   /* it was squeezed to 13 px by a long line (UX review 9 Oct) */
+.doit-done { margin-top: 14px; justify-content: center; }
 .doit-feel { display: flex; flex-direction: column; gap: 8px; }
 .doit-feel-row { display: flex; gap: 8px; }
 .doit-feel-row .story-opt { min-height: 52px; justify-content: center; padding: 10px; }
 .doit-later { align-self: flex-start; margin-top: 4px; color: inherit; opacity: 0.85; text-decoration: underline; text-underline-offset: 3px; }
 
-.story-next { background: none; border: 0; color: inherit; font: inherit; font-weight: 700; padding: 10px 14px; margin: -10px -14px -10px auto; border-radius: 999px; min-height: 44px; }
+.story-next { background: none; border: 0; color: inherit; font: inherit; font-weight: 700; padding: 10px 14px; margin: -10px -4px -10px auto; border-radius: 999px; min-height: 44px; }   /* 16 px from the edge, not 6 (UX review 9 Oct) */
 .story-next:active { opacity: 0.6; }
 
 /* The Shelf (8 Oct): cloth-bound books on wooden shelves. One shelf per kind; a book appears once. */
@@ -1014,7 +1044,10 @@ button.stop-tap:focus-visible { outline: 3px solid var(--accent-deep); outline-o
 .book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .book-cover-blank { display: flex; align-items: center; justify-content: center; height: 100%; font: 800 2.2rem var(--sans); color: var(--ink); }
 .book-plate { position: absolute; left: 20px; right: 10px; bottom: 10px; background: #faf7f0; color: var(--ink); border-radius: 3px; padding: 6px 7px; box-shadow: 0 1px 0 rgba(0,0,0,0.25); display: grid; gap: 1px; }
-.book-title { font: 700 var(--small)/1.15 var(--serif); letter-spacing: -0.01em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.book-title { font: 700 var(--small)/1.15 var(--serif); letter-spacing: -0.01em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; hyphens: auto; overflow-wrap: break-word; }   /* a long word breaks with a hyphen, never cut off ("Choreographi", UX review 9 Oct) */
+.book-mine { font: 700 0.72rem/1.2 var(--sans); color: var(--pass); }
+.spot-mine { font: 700 var(--small) var(--sans); color: var(--ink); }
+.shelf-notice { margin-top: 10px; padding: 10px 12px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); }
 .book-goal { font: 500 0.75rem/1.2 var(--sans); color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cloth-coral .book-ribbon { background: var(--ink); color: var(--paper); }
 .book-ribbon { position: absolute; top: -6px; right: 8px; background: #e0735a; color: var(--ink); font: 700 0.75rem var(--sans); padding: 3px 7px; border-radius: 3px; box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
@@ -1022,14 +1055,14 @@ button.stop-tap:focus-visible { outline: 3px solid var(--accent-deep); outline-o
    a marigold stand with paper grain at the top of the Shelf; three printed cards face out on it, each pressed (the stand
    is the one hero on this screen), numbered with a printed ticket, the cover on a matted plate with an ink offset. On a
    phone the cards are swipe pages; on a wide screen three across. */
-.spot { margin: 18px 0 0; padding: 16px 14px 6px; border: var(--stroke) solid var(--ink); border-radius: var(--radius-card); background-color: var(--accent); background-image: var(--grain); color: var(--ink); position: relative; }
+.spot { scroll-margin-top: 16px; margin: 18px 0 0; padding: 16px 14px 6px; border: var(--stroke) solid var(--ink); border-radius: var(--radius-card); background-color: var(--accent); background-image: var(--grain); color: var(--ink); position: relative; }
 .spot-head { display: grid; gap: 2px; }
 .spot-label, .spot-no { display: inline-block; width: max-content; background: var(--ink); color: var(--paper); font: 800 0.72rem/1 var(--sans); letter-spacing: 0.02em; padding: 5px 9px; border-radius: 4px; transform: rotate(-2deg); }
 .spot-head h2 { margin: 8px 0 0; font: 800 1.5rem/1.1 var(--sans); font-stretch: 90%; letter-spacing: -0.015em; }
 .spot-list { list-style: none; margin: 0 -14px; padding: 22px 14px 18px; display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 14px; -webkit-overflow-scrolling: touch; scrollbar-width: none; counter-reset: spot; }
 .spot-list::-webkit-scrollbar { display: none; }
 .spot-list li { flex: 0 0 80%; max-width: 320px; scroll-snap-align: start; position: relative; display: flex; }
-@media (min-width: 640px) { .spot-list { overflow: visible; } .spot-list li { flex: 1 1 0; max-width: none; } }
+@media (min-width: 900px) { .spot-list { overflow: visible; } .spot-list li { flex: 1 1 0; max-width: none; } }   /* 640 to 899 keeps the sideways row: three cards squeezed to 150 px (UX review 9 Oct) */
 .spot-card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-rows: auto auto auto 1fr auto auto; gap: 6px; width: 100%; padding: 14px 12px 14px; background: var(--paper); color: var(--ink); border: var(--stroke) solid var(--ink); border-radius: var(--radius-card); box-shadow: var(--press); position: relative; transition: transform 120ms var(--ease), box-shadow 120ms var(--ease); }
 .spot-card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
 .spot-card:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
@@ -1038,7 +1071,7 @@ button.stop-tap:focus-visible { outline: 3px solid var(--accent-deep); outline-o
 .spot-plate img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .spot-plate-blank { display: flex; align-items: center; justify-content: center; height: 100%; font: 800 2.6rem var(--sans); color: var(--ink); }
 .spot-title { font: 700 1.3rem/1.15 var(--serif); letter-spacing: -0.01em; }
-.spot-goal { font: 600 var(--small) var(--sans); color: var(--accent-deep); }
+.spot-goal { font: 600 var(--small) var(--sans); color: var(--ink-2); }   /* marigold-deep on paper read 2.6:1 (UX review 9 Oct) */
 .spot-outcome { font: 400 0.98rem/1.4 var(--serif); color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .spot-stat { font: 700 var(--small) var(--sans); color: var(--pass); text-wrap: balance; }
 .spot-go { font: 800 var(--ui) var(--sans); }
@@ -1127,3 +1160,5 @@ button.stop-tap:focus-visible { outline: 3px solid var(--accent-deep); outline-o
 .wait-story-from { margin-top: 10px; }
 .wait-open { margin: var(--m) 0 var(--s); width: 100%; }
 @media (prefers-reduced-motion: reduce) { .wait-track { scroll-behavior: auto; } }
+/* A short phone (320x568) put the sign-in email box under the fixed bar: the second line of reassurance goes first (UX review 9 Oct). */
+@media (max-height: 640px) { .signin-lede { display: none; } }

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { RateLimiter, HOUR } from "@convex-dev/rate-limiter";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { components, internal } from "./_generated/api";
@@ -70,10 +70,11 @@ export async function standing(ctx: QueryCtx, userId: any) {
 export const reserve = internalMutation({
   args: { userId: v.id("users"), plan: planV },
   handler: async (ctx, { userId, plan }) => {
-    if (!(await limiter.limit(ctx, "orderPerUser", { key: userId })).ok || !(await limiter.limit(ctx, "orderAll")).ok) throw new Error("busy");
+    // ConvexError, so the reason reaches the screen on the live site (a plain Error's text is hidden in production; UX review 9 Oct).
+    if (!(await limiter.limit(ctx, "orderPerUser", { key: userId })).ok || !(await limiter.limit(ctx, "orderAll")).ok) throw new ConvexError("busy");
     const s = await standing(ctx, userId);
-    if (!s.live) throw new Error("Payments are off");
-    if (s.paidUntil) throw new Error("Already paid");
+    if (!s.live) throw new ConvexError("payments-off");
+    if (s.paidUntil) throw new ConvexError("already-paid");
     const amount = s.price[plan];
     const id = await ctx.db.insert("payments", { userId, amount, month: s.payments, plan, days: DAYS[plan], tier: s.tier - 1, status: "created", mode: modeOf(), at: Date.now() });
     return { id, amount, month: s.payments };
@@ -92,9 +93,9 @@ export const order = action({
   args: { plan: planV },
   handler: async (ctx, { plan }): Promise<{ keyId: string; orderId: string; amount: number; month: number; plan: Plan; email?: string }> => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Sign in first");
+    if (!userId) throw new ConvexError("signin");
     const keyId = process.env.RAZORPAY_KEY_ID, secret = process.env.RAZORPAY_KEY_SECRET;
-    if (!keyId || !secret) throw new Error("Payments are off");
+    if (!keyId || !secret) throw new ConvexError("payments-off");
     const r = await ctx.runMutation(internal.payments.reserve, { userId, plan });
     const res = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
@@ -105,7 +106,7 @@ export const order = action({
     if (!res.ok || !body?.id) {
       console.log(`razorpay order failed: ${res.status} ${body?.error?.description ?? ""}`);
       await ctx.runMutation(internal.payments.setOrder, { id: r.id });
-      throw new Error("Couldn't start the payment");
+      throw new ConvexError("order-failed");
     }
     await ctx.runMutation(internal.payments.setOrder, { id: r.id, orderId: body.id });
     const email = (await ctx.runQuery(internal.payments.emailOf, { userId })) ?? undefined;

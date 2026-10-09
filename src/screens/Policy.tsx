@@ -8,7 +8,7 @@ import type { ReactNode } from 'react'
 export const POLICY_PAGES = ['terms', 'privacy', 'refunds', 'contact'] as const
 export type PolicyPage = (typeof POLICY_PAGES)[number]
 
-const UPDATED = '8 October 2026'
+const UPDATED = '9 October 2026'
 
 // Prateek fills these. Shown on every page that needs them.
 const CONTACT = {
@@ -43,7 +43,8 @@ export default function Policy({ page }: { page: PolicyPage }) {
         <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }}>I Get It<small>Twenty minutes at a time.</small></a>
       </header>
       <main className="policy">
-        <p className="sub" style={{ marginTop: 10 }}><a href="/" className="quiet-link">← Back to I Get It</a> · Last updated {UPDATED}</p>
+        {/* Back goes back, to the screen the reader came from, when that was this site; it used to reload the home page (UX review 9 Oct). */}
+        <p className="sub" style={{ marginTop: 10 }}><a href="/" className="quiet-link" onClick={(e) => { try { if (window.history.length > 1 && document.referrer.startsWith(window.location.origin)) { e.preventDefault(); window.history.back() } } catch { /* the link still goes home */ } }}>← Back</a> · Last updated {UPDATED}</p>
         <h1>{TITLES[page]}</h1>
         {BODY[page]}
       </main>
@@ -64,7 +65,7 @@ const BODY: Record<PolicyPage, ReactNode> = {
       <h2>Fair use</h2>
       <p>Don't use I Get It to learn to hurt, threaten, deceive or stalk people, break into accounts or devices, or make weapons or drugs. It will decline those topics or offer a better version. Don't try to overload or break the service, or scrape it.</p>
       <h2>What you get, and what it costs</h2>
-      <p>Without an account: chapter 1 of any handbook, one handbook you type. With a free account: every chapter of every ready and shared handbook and of your one typed handbook, up to 3 new chapters a day; 3 web-checked answers a week. Members: 3 typed handbooks on the go at a time (up to 6 new a month), up to 7 new chapters a day across everything, ready and shared handbooks without limit, 30 web-checked answers a month, printing or saving any of their handbooks as a PDF, and first access to new parts when they launch. Chapters you've already opened stay open. When free readers' use costs too much in one day, new typed topics and web-checked answers pause for free readers until the next day; members are not paused.</p>
+      <p>Without an account: chapters 1 and 2 of any handbook, and one handbook you type, up to 3 new chapters a day. With a free account: every chapter of every ready and shared handbook and of your one typed handbook, up to 3 new chapters a day; 3 web-checked answers a week. Members: 3 typed handbooks on the go at a time (up to 6 new a month), up to 7 new chapters a day across all their handbooks, as many ready and shared handbooks as they like, 30 web-checked answers a month, printing or saving any of their handbooks as a PDF, and first access to new parts when they launch. Chapters you've already opened stay open. A one-sitting handbook (a recipe, a short recap) never counts toward the chapters a day. When free readers' use costs too much in one day, new typed topics and web-checked answers pause for free readers until the next day; members are not paused.</p>
       <p>The member price depends on when you first pay: the first 50 paying readers pay ₹199 a month or ₹1,999 a year, the next 100 pay ₹299 or ₹2,999, the next 200 pay ₹399 or ₹3,999, and everyone after that pays ₹499 or ₹4,999. You keep the price you first paid as long as you pay again within 7 days of your time running out. The Pricing screen shows the tiers and how many spots are left.</p>
       <p>Each payment is one-time: a month covers 30 days and a year covers 365 days. Nothing renews by itself: you're only charged when you tap Pay and approve it in Razorpay's payment sheet. Prices include any taxes that apply.</p>
       <p>If we change what members get, this page will say so first, and anything you already paid for stays as it was until your time runs out.</p>
@@ -108,7 +109,7 @@ const BODY: Record<PolicyPage, ReactNode> = {
   ),
   refunds: (
     <>
-      <p className="lede">Chapter 1 of any handbook is free without an account, and a free account opens the rest of every ready handbook plus your one typed handbook, so you can see exactly what you're paying for before you pay.</p>
+      <p className="lede">Chapters 1 and 2 of any handbook are free without an account, and a free account opens the rest of every ready handbook plus your one typed handbook, so you can see exactly what you're paying for before you pay.</p>
       <h2>Refunds</h2>
       <p>Payments are final: we don't give refunds, for a month or a year. That's why your first handbook is free and nothing renews by itself, so you only ever pay for time you chose.</p>
       <p>The one exception is a payment that went wrong; see below.</p>

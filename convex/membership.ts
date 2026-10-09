@@ -63,7 +63,7 @@ export async function typedBooks(ctx: QueryCtx | MutationCtx, userId: Id<"users"
   const out = new Map<string, Doc<"handbooks">>();
   if (userId) for (const h of await ctx.db.query("handbooks").withIndex("by_user", (q) => q.eq("userId", userId)).collect()) out.set(h._id, h);
   if (deviceToken) for (const h of await ctx.db.query("handbooks").withIndex("by_token", (q) => q.eq("ownerToken", deviceToken)).collect()) out.set(h._id, h);
-  return [...out.values()].filter((h) => h.source === "live" && !(h as any).fromLibrary && (h.status as string) !== "declined");
+  return [...out.values()].filter((h) => h.source === "live" && !(h as any).fromLibrary && (h.status as string) !== "declined" && !h.replacedBy);   // a handbook replaced by "Change what you typed" no longer counts
 }
 
 // Can this person start a new typed topic? Returns why not, for the screen to explain.
@@ -115,6 +115,7 @@ export async function tryOpen(ctx: MutationCtx, h: Doc<"handbooks">, n: number):
     : await ctx.db.query("handbooks").withIndex("by_token", (q) => q.eq("ownerToken", h.ownerToken!)).collect();
   const today: { id: string; typed: boolean }[] = [];
   for (const b of books) {
+    if ((b.plan as any)?.format === "quick") continue;   // D23: a one-sitting handbook never counts toward the day (UX review 9 Oct: Maggi used one of the 3)
     const bp = b._id === h._id ? p : await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", b._id)).unique();
     for (const o of bp?.opened ?? []) if (o.day === day) today.push({ id: b._id, typed: isTyped(b) });
   }

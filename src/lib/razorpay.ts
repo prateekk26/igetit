@@ -8,8 +8,10 @@ function load(): Promise<any> {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script')
     s.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    s.onload = () => resolve(w.Razorpay)
-    s.onerror = () => reject(new Error('checkout'))
+    // A blocked or stalled script used to leave Pay grey with no words (UX review 9 Oct): after 15 s it counts as failed.
+    const t = window.setTimeout(() => { s.remove(); reject(new Error('checkout')) }, 15000)
+    s.onload = () => { window.clearTimeout(t); resolve(w.Razorpay) }
+    s.onerror = () => { window.clearTimeout(t); s.remove(); reject(new Error('checkout')) }
     document.head.appendChild(s)
   })
 }

@@ -26,14 +26,15 @@ export default function TeachBack({ handbookId, n, deviceToken }: { handbookId: 
       <div className="teach-actions">
         <button type="button" className="btn btn-ghost" disabled={thinking || text.trim().length < 10}
           onClick={async () => { setError(null); try { await send({ handbookId, chapter: n, text, deviceToken }) } catch (e: any) { setError(limitMessage(e) ?? (String(e?.message ?? e).includes('busy') ? 'A few too many in a row. Try again in a bit.' : "Couldn't check that just now. Try again in a minute.")) } }}>
-          {thinking ? 'Reading it…' : reply?.status === 'ready' ? 'Try again' : 'Check my explanation'}
+          {/* "Try again" read as a fail after "You nailed it!" (UX review 9 Oct). */}
+          {thinking ? 'Reading it…' : reply?.status === 'ready' ? (reply.verdict === 'nailed' ? 'Check a new version' : 'Check my new version') : 'Check my explanation'}
         </button>
         <button type="button" className="quiet" onClick={() => setOpen(false)}>Skip</button>
       </div>
-      {error && <p className="error">{error}</p>}
-      {reply?.status === 'failed' && <p className="error">Couldn't check that just now. Try again in a minute.</p>}
+      {error && <p className="error" role="alert">{error}</p>}
+      {reply?.status === 'failed' && <p className="error" role="alert">Couldn't check that just now. Try again in a minute.</p>}
       {reply?.status === 'ready' && (
-        <div className={`teach-reply v-${(reply.verdict ?? '').replace(/\s+/g, '-')}`}>
+        <div role="status" className={`teach-reply v-${(reply.verdict ?? '').replace(/\s+/g, '-')}`}>
           <p className="teach-verdict">{reply.verdict === 'nailed' ? 'You nailed it!' : reply.verdict === 'close' ? 'Almost there!' : 'Good start!'}</p>
           {reply.got && <p>{reply.got}</p>}
           {reply.missed && <p><strong>Missing:</strong> {reply.missed}</p>}

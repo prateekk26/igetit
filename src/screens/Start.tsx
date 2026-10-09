@@ -5,6 +5,7 @@ import Rich from '../components/Rich'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { isMemberLimit, limitMessage } from '../lib/limits'
+import { nameOf } from '../lib/name'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
@@ -35,10 +36,16 @@ type Props = {
   onOpenReady?: () => void
   onEngaged?: () => void   // the reader swiped or asked for the next story: App then holds this screen until they tap
   onExplore?: () => void
+  // The wait follows the real stage (UX review 9 Oct, #12: steps lit on 30 s and 100 s timers, and "Ready" showed before
+  // chapter 1 existed). research: looking it up; plan: writing the plan; chapter: the plan is done, chapter 1 is on.
+  phase?: 'research' | 'plan' | 'chapter' | null
+  chapterOneReady?: boolean
+  startedAt?: number   // when the writing started (the goal was picked), for "taking longer than usual"
+  goal?: string | null
 }
 
 // The first screen, and the empty state of the whole product (DESIGN.md section 4, Start).
-export default function Start({ initialTopic = '', status, question, intents, onChooseIntent, suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged }: Props) {
+export default function Start({ initialTopic = '', status, question, intents, onChooseIntent, suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal }: Props) {
   const declined = status === 'declined'
   const [topic, setTopic] = useState(status === 'declined' ? '' : initialTopic)
   // A declined line never stays in the box: the reader starts fresh.
@@ -47,9 +54,10 @@ export default function Start({ initialTopic = '', status, question, intents, on
   const [level, setLevel] = useState<Level>('new')
   const [voice, setVoice] = useState<Voice>('friend')
   const [answer, setAnswer] = useState('')
-  const [slow, setSlow] = useState(false)
   const [verySlow, setVerySlow] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
+  // One tap starts one thing (UX review 9 Oct: no busy state, so a double tap could start things twice).
+  const [sending, setSending] = useState(false)
   const [memberLimit, setMemberLimit] = useState(false)
   const writing = status === 'writing'
   const levelRef = useRef<HTMLDivElement>(null)
@@ -60,41 +68,53 @@ export default function Start({ initialTopic = '', status, question, intents, on
   const backToBox = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 350) }
   const pick = (t: string) => { if (t) setTopic(t); setLocalError(null); backToBox() }
 
+  // Measured on prod, 7 to 9 Oct, on Gemini Flash (D41): research about 42 s, the plan 25 s, chapter 1 24 s, its check 8 s;
+  // about two minutes from the goal to chapter 1, three at the slowest tenth. Past four, it says so.
+  // Past 15 minutes the write has died (actions stop at 10): "Start it again" appears (UX review 9 Oct: it waited for ever).
+  const [stuck, setStuck] = useState(false)
   useEffect(() => {
-    if (!writing) { setSlow(false); setVerySlow(false); return }
-    // 8 Oct night, measured on the Gemini pipeline: research about 33 s, then the plan about 50 s; the plan shows at about 85 s.
-    const t = setTimeout(() => setSlow(true), 30000), t2 = setTimeout(() => setVerySlow(true), 100000)
-    return () => { clearTimeout(t); clearTimeout(t2) }
-  }, [writing])
+    if (!writing) { setVerySlow(false); setStuck(false); return }
+    const since = Date.now() - (startedAt ?? Date.now())
+    const ts: number[] = []
+    if (since >= 4 * 60 * 1000) setVerySlow(true); else ts.push(window.setTimeout(() => setVerySlow(true), 4 * 60 * 1000 - since))
+    if (since >= 15 * 60 * 1000) setStuck(true); else ts.push(window.setTimeout(() => setStuck(true), 15 * 60 * 1000 - since))
+    return () => ts.forEach((t) => clearTimeout(t))
+  }, [writing, startedAt])
 
   const submit = async () => {
     setLocalError(null)
     if (topic.trim().length < 2) { setLocalError('A few words is enough. What is it?'); backToBox(); return }
-    setMemberLimit(false)
-    try { await onCreate(topic.trim(), level, voice) } catch (e: any) { setLocalError(friendly(e)); setMemberLimit(isMemberLimit(e)) }
+    if (sending) return
+    setMemberLimit(false); setSending(true)
+    try { await onCreate(topic.trim(), level, voice) } catch (e: any) { setLocalError(friendly(e)); setMemberLimit(isMemberLimit(e)); setSending(false) }
   }
+  const shown = nameOf(topic.trim() || initialTopic)   // the typed line is the name, first letter capitalised (D28)
+  const stage = phase === 'chapter' || readyToOpen ? 3 : phase === 'plan' ? 2 : 1
 
   // While the plan is written: the topic and what's happening, not the form again (Shaktimaan, 6 Oct).
   if (writing) {
     return (
       <div className="plan-wait" role="status" aria-live="polite">
-        {readyToOpen ? (
+        {readyToOpen && chapterOneReady ? (
           <>
             <p className="plan-wait-kicker">Ready</p>
-            <h1 className="plan-wait-topic">{topic.trim() || initialTopic}</h1>
-            <p className="note">Your handbook is written. Finish the story or go now; it waits.</p>
-            <button type="button" className="btn wait-open" onClick={onOpenReady}>Open your handbook →</button>
+            <h1 className="plan-wait-topic">{shown}</h1>
+            <p className="note">Chapter 1 is written and checked. Finish the story or go now; it waits.</p>
+            <button type="button" className="btn wait-open" onClick={onOpenReady}>Open chapter 1 →</button>
           </>
         ) : (
           <>
-            <p className="plan-wait-kicker">Writing your handbook</p>
-            <h1 className="plan-wait-topic">{topic.trim() || initialTopic}</h1>
+            <p className="plan-wait-kicker">{readyToOpen ? 'Your plan is ready' : 'Writing your handbook'}</p>
+            <h1 className="plan-wait-topic">{shown}</h1>
             <ol className="plan-wait-steps">
-              <li className="on">Looking it up on the web, with the goal you picked in mind</li>
-              <li className={slow ? 'on' : ''}>Planning the chapters: a quick run-through, or up to seven nights</li>
-              <li className={verySlow ? 'on' : ''}>Taking longer than usual. Still on it.</li>
+              <li className={stage > 1 ? 'on done' : 'on'}>{goal ? 'Looking it up on the web, with your goal in mind' : 'Looking it up on the web'}</li>
+              <li className={stage > 2 ? 'on done' : stage === 2 ? 'on' : ''}>Planning the chapters: a quick run-through, or up to seven nights</li>
+              <li className={stage === 3 ? 'on' : ''}>Writing chapter 1 and checking its facts</li>
             </ol>
-            <p className="note">{verySlow ? "Still writing. You can leave; it will be waiting in Your handbooks." : "About a minute and a half. Chapter 1 is written while you read the plan."}</p>
+            <p className="note">{stuck && !readyToOpen ? "This one stalled on our side. Start it again; it won't count twice." : verySlow ? 'Taking longer than usual. Still on it; you can leave, and it will be waiting in Your handbooks.' : readyToOpen ? 'Chapter 1 is being written and checked: about a minute. A button appears here when it is ready.' : 'About two minutes in all.'}</p>
+            {stuck && !readyToOpen && onRetry && <button type="button" className="btn wait-open" disabled={sending} onClick={() => { setSending(true); onRetry().catch((e) => setLocalError(friendly(e))).finally(() => setSending(false)) }}>Start it again</button>}
+            {stuck && localError && <p className="error" role="alert">{localError}</p>}
+            {readyToOpen && <button type="button" className="quiet" onClick={onOpenReady}>See the plan now</button>}
             <div className="busybar" aria-hidden="true" />
           </>
         )}
@@ -104,7 +124,7 @@ export default function Start({ initialTopic = '', status, question, intents, on
             <StoryCarousel key={`${story.key}:${story.title ?? ''}:${storySeed}`} story={story} onEngaged={onEngaged} />
             <p className="note wait-story-from">From <strong>{story.topic}</strong>{story.chapter ? `, ${story.chapter}` : ''}.</p>
             <div className="wait-story-actions">
-              {added === story.topic ? <span className="wait-story-added">Added. It's on your shelf.</span>
+              {added === story.topic ? <span className="wait-story-added">Added to Your handbooks.</span>
                 : onAddOther && <button type="button" className="btn btn-ghost" onClick={async () => { try { await onAddOther(story.topic); setAdded(story.topic) } catch { /* the plan still comes; adding can wait */ } }}>Add this handbook</button>}
               <button type="button" className="quiet" onClick={() => { onEngaged?.(); setStorySeed((x) => x + 7) }}>Next story →</button>
             </div>
@@ -116,34 +136,38 @@ export default function Start({ initialTopic = '', status, question, intents, on
 
   // "What's it for?" (6 Oct): a goal in one tap shapes the whole handbook. Skipping is fine.
   if (status === 'intent') {
-    const choose = (goal?: string, mode?: string) => { track('submit', { via: goal ? 'goal' : 'skip' }); onChooseIntent?.(goal, mode).catch((e) => setLocalError(friendly(e))) }
+    const choose = (goal?: string, mode?: string) => { if (sending) return; setSending(true); track('submit', { via: goal ? 'goal' : 'skip' }); onChooseIntent?.(goal, mode).catch((e) => { setLocalError(friendly(e)); setSending(false) }) }
     return (
       <div className="intent">
-        <p className="plan-wait-kicker">{topic.trim() || initialTopic}</p>
+        <p className="plan-wait-kicker">{shown}</p>
         <h1>{intents?.question ?? "What's it for?"}</h1>
         <p className="lede">Pick one and the handbook is built around it.</p>
         {/* D40: a ready handbook that may cover it is offered, never swapped in. Copy (agent). */}
         {suggested && onTakeSuggested && (
           <div className="intent-offer">
-            <p><strong>Ready now: {suggested.title}.</strong> It may cover this, in seven chapters, free. Or pick a goal below for one written on “{(topic.trim() || initialTopic)}”.</p>
+            <p><strong>Ready now: {suggested.title}.</strong> It may cover this, in seven chapters, free. Or pick a goal below for one written on “{shown}”.</p>
             <button type="button" className="btn btn-ghost" onClick={() => { track('submit', { via: 'suggested' }); onTakeSuggested().catch((e) => setLocalError(friendly(e))) }}>Open {suggested.title} instead</button>
           </div>
         )}
         <div className="intent-goals">
           {intents ? intents.goals.map((g) => (
-            <button key={g.label} type="button" className="intent-goal" onClick={() => choose(g.label, g.mode)}>{g.label}</button>
+            <button key={g.label} type="button" className="intent-goal" disabled={sending} onClick={() => choose(g.label, g.mode)}>{g.label}</button>
           )) : <p className="note intent-thinking" role="status">Thinking of three reasons people learn this… a few seconds. Or say it in your words below.</p>}
         </div>
+        {/* The own-words box had no label and no button; only the keyboard's Go sent it (UX review 9 Oct). */}
         <form className="intent-own" onSubmit={(e) => { e.preventDefault(); if (answer.trim()) choose(answer.trim()) }}>
-          <input className="input" placeholder="Or say it in your words" value={answer} onChange={(e) => setAnswer(e.target.value)} maxLength={120} enterKeyHint="go" />
+          <label htmlFor="intent-own" className="lp-visually-hidden">Or say what it's for, in your words</label>
+          <input id="intent-own" className="input" placeholder="Or say it in your words" value={answer} onChange={(e) => setAnswer(e.target.value)} maxLength={120} enterKeyHint="go" disabled={sending} />
+          <button type="submit" className="btn btn-ghost intent-own-go" disabled={sending || !answer.trim()}>Use this</button>
         </form>
-        {localError && <p className="error">{localError}</p>}
-        <button type="button" className="quiet" onClick={() => choose()}>Skip, just teach me</button>
+        {localError && <p className="error" role="alert">{localError}</p>}
+        <button type="button" className="quiet intent-skip" disabled={sending} onClick={() => choose()}>Skip, just teach me</button>
       </div>
     )
   }
 
   if (status === 'question' && question) {
+    const sendAnswer = () => { if (sending || !answer.trim()) return; setSending(true); onAnswer?.(answer.trim()).catch((e) => { setLocalError(friendly(e)); setSending(false) }) }
     return (
       <>
         <h1>One question first.</h1>
@@ -151,11 +175,11 @@ export default function Start({ initialTopic = '', status, question, intents, on
         <div className="field">
           <label htmlFor="answer">Your answer</label>
           <input id="answer" className="input" autoFocus value={answer} onChange={(e) => setAnswer(e.target.value)} enterKeyHint="go"
-            onKeyDown={(e) => { if (e.key === 'Enter' && answer.trim()) onAnswer?.(answer.trim()) }} />
+            onKeyDown={(e) => { if (e.key === 'Enter' && answer.trim()) sendAnswer() }} />
         </div>
-        {localError && <p className="error">{localError}</p>}
+        {localError && <p className="error" role="alert">{localError}</p>}
         <ActionBar>
-          <button className="btn" disabled={!answer.trim()} onClick={() => onAnswer?.(answer.trim()).catch((e) => setLocalError(friendly(e)))}>That's it</button>
+          <button className="btn" disabled={!answer.trim() || sending} onClick={sendAnswer}>{sending ? 'Sending…' : "That's it"}</button>
         </ActionBar>
       </>
     )
@@ -193,7 +217,7 @@ export default function Start({ initialTopic = '', status, question, intents, on
         {examples.length > 1 && !below && (
           <p className="note">{onPickReady ? 'Ready now, opens instantly: ' : "Tonight's ready handbooks: "}{examples.slice(0, 6).map((x, i) => (
             <span key={x}>{i > 0 && ' · '}<button type="button" className="quiet" style={{ padding: 0 }} onClick={() => { if (onPickReady) onPickReady(x).catch((e) => setLocalError(friendly(e))); else setTopic(x) }} disabled={writing}>{x}</button></span>
-          ))}{onExplore && <> · <button type="button" className="quiet" style={{ padding: 0 }} onClick={onExplore}>Explore everything →</button></>}</p>
+          ))}{onExplore && <> · <button type="button" className="quiet" style={{ padding: 0 }} onClick={onExplore}>The Shelf: every ready handbook →</button></>}</p>
         )}
       </div>
 
@@ -217,11 +241,11 @@ export default function Start({ initialTopic = '', status, question, intents, on
 
       {below && !writing && below(pick)}
 
-      <ActionBar busy={writing} note={writing && slow ? 'About a minute and a half: a look on the web first, then the plan, then chapter 1.' : undefined}>
+      <ActionBar busy={writing || sending} note={sending ? 'About two minutes: a look on the web first, then the plan, then chapter 1.' : undefined}>
         {status === 'failed' && onRetry && topic.trim() === initialTopic.trim() ? (
           <button className="btn" onClick={() => onRetry().catch((e) => setLocalError(friendly(e)))}>Try again</button>
         ) : (
-          <button className="btn" onClick={submit} disabled={writing}>{writing ? 'Finding your way…' : 'Show me the way'}</button>
+          <button className="btn" onClick={submit} disabled={writing || sending}>{writing || sending ? 'Finding your way…' : 'Show me the way'}</button>
         )}
       </ActionBar>
     </>

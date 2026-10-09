@@ -8,6 +8,7 @@ import MoveFrame, { type MoveCard } from '../components/MoveFrame'
 import StepsFrame, { type StepsCard } from '../components/StepsFrame'
 import TryItFrame, { type TryItCard } from '../components/TryItFrame'
 import type { Id } from '../../convex/_generated/dataModel'
+import { useOnline } from '../lib/online'
 
 export type Card =
   | { type: 'picture' | 'example' | 'mistake' | 'try' | 'teach'; title?: string; body: string }
@@ -99,6 +100,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
     [cards, recall, n, lastTime, recapReteach],
   )
 
+  const online = useOnline()
   // For the Done screen's line: minutes since this chapter was opened, and quizzes right on the first try.
   const openedAt = useRef(Date.now())
   const firstTries = useRef<Map<string, boolean>>(new Map())
@@ -167,12 +169,16 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
     dialogRef.current?.focus({ preventScroll: true })
-    return () => { const back = opener && document.contains(opener) ? opener : document.querySelector<HTMLElement>('.actionbar .btn, .wordmark-btn'); back?.focus({ preventScroll: true }) }
+    // Closing the chapter puts focus on the handbook's main button, not the wordmark 18 Tabs away (UX review 9 Oct).
+    return () => { const back = opener && document.contains(opener) ? opener : document.querySelector<HTMLElement>('.actionbar .btn') ?? document.querySelector<HTMLElement>('.wordmark-btn'); back?.focus({ preventScroll: true }) }
   }, [])
 
   const exercisePassed = item.card.type === 'exercise' && (item.recall ? result?.correct === true : passedHere.has(key))
   const [logged, setLogged] = useState<Set<number>>(() => new Set(loggedSets))
   const [, setLater] = useState<Set<number>>(() => new Set())   // D24: 'later' no longer gates anything; the setter keeps the server's open-set hint in step
+  // A new frame keeps focus inside the chapter: after the answer sheet closed, focus fell to the page and the next Tab
+  // reached the footer behind (UX review 9 Oct).
+  useEffect(() => { const box = dialogRef.current; if (box && !box.contains(document.activeElement)) box.focus({ preventScroll: true }) }, [i])
   // D24 (9 Oct, Prateek: "let's not make the activities mandatory to exit the chapter"): only a quiz holds the arrow.
   // A do-it, try-it, steps or move card is an invitation; the arrow works from the moment the card shows.
   const canAdvance = item.card.type !== 'exercise' || exercisePassed
@@ -219,6 +225,9 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      // Enter or Space on a focused button presses that button (UX review 9 Oct: they turned the page, so Tab + Enter
+      // could not answer a quiz, open Ask or press ×). The arrows still turn pages from anywhere.
+      if ((e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement)?.closest?.('button, a, label')) return
       if (askOpen) { if (e.key === 'Escape') setAskOpen(false); return }
       if (result) { if (['Escape', 'Enter', 'ArrowRight', ' '].includes(e.key)) { e.preventDefault(); closeSheet() } return }
       if (e.key === 'ArrowLeft') { e.preventDefault(); back(); return }
@@ -296,7 +305,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
                   )
                 })}
               </div>
-              {exercisePassed && <p className="story-hint">Tap to keep going</p>}
+              {exercisePassed && <p className="story-hint">{passedChoice[key] || item.recall ? 'Tap to keep going' : "You answered this one before. Tap to keep going."}</p>}
             </>
           ) : c.type === 'move' ? (
             <MoveFrame card={c} />
@@ -305,20 +314,23 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
           ) : c.type === 'tryit' ? (
             <TryItFrame card={c} done={logged.has(item.cardIndex)} onDone={async () => { if (!onLog) return; const r = await onLog(item, 1, 'right'); setLogged((s) => new Set(s).add(item.cardIndex)); if (r.chapterPassed) track('set_passed', { n }) }} />
           ) : c.type === 'doit' ? (
-            <DoIt card={c} logged={logged.has(item.cardIndex)} onLater={() => { setLater((s) => new Set(s).add(item.cardIndex)); setI(i + 1); reset() }}
+            <DoIt card={c} last={isLast} logged={logged.has(item.cardIndex)} onLater={() => { setLater((s) => new Set(s).add(item.cardIndex)); next() }}
               onLog={async (count, feel) => { if (!onLog) return; const r = await onLog(item, count, feel); setLogged((s) => new Set(s).add(item.cardIndex)); if (r.chapterPassed) track('set_passed', { n }) }} />
           ) : c.type === 'watch' ? (
             <>
               <p className="story-kicker">Watch · {c.minutes ? `${c.minutes} min` : 'a few minutes'}</p>
               <p className="story-big">{c.who}</p>
               <p className="story-sub">{c.what}{c.from ? ` · from ${c.from}` : ''}</p>
-              <a className="story-watch no-tap" href={safeUrl(c.url)} target="_blank" rel="noopener noreferrer">Open the talk →</a>
+              {/* A link off the allow-list became "#", which opened a second copy of the app (UX review 9 Oct): no link then. */}
+              {safeUrl(c.url) !== '#' ? <a className="story-watch no-tap" href={safeUrl(c.url)} target="_blank" rel="noopener noreferrer">Open the talk →</a>
+                : <p className="story-sub">Search for it by name; the link couldn't be checked.</p>}
               <p className="story-text size-md" style={{ marginTop: 20 }}><strong>Watch for:</strong> {c.watchFor}</p>
             </>
           ) : (
             <>
               {frame.cover && <h1 className="story-title">{title}</h1>}
-              {frame.cover && caution && <p className="story-caution">Study aid, verify before you act.</p>}
+              {/* On the first frame of the chapter, whatever card it is (UX review 9 Oct: it showed only on a picture card). */}
+              {i === firstChapterFrame && caution && <p className="story-caution">Study aid, verify before you act.</p>}
               {pic ? <div className={`story-pic${credits[item.cardIndex] ? ' real' : ''}`}><img src={pic} alt={alts[item.cardIndex] ?? ''} onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')} ref={(el) => { if (el && el.complete && el.naturalWidth > 0) el.parentElement?.classList.add('loaded') }} />{credits[item.cardIndex] && <a className="story-credit no-tap" href={credits[item.cardIndex].source || undefined} target="_blank" rel="noopener noreferrer">Photo: {credits[item.cardIndex].credit}</a>}</div>
                 : null /* no picture yet, or none: no box at all; the picture fades in when it lands */}
               {!frame.cover && frame.part === 0 && (KICKER[c.type] || c.title) && <p className="story-kicker">{KICKER[c.type] ?? c.title}</p>}
@@ -328,14 +340,21 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
               )}
             </>
           )}
+          {/* The last frame can be a quiz, a rep counter, a checklist or steps (UX review 9 Oct, #8: Pool swimming's ended on
+              a counter with no way to finish but a swipe). Text cards carry their own Finish above. */}
+          {isLast && canAdvance && !['picture', 'example', 'mistake', 'try', 'teach'].includes(c.type) && (
+            <button type="button" className="story-finish no-tap" onClick={finish} disabled={finishing}>{finishing ? 'Saving…' : `Finish chapter ${n}`}</button>
+          )}
           {error && <p className="story-error no-tap">{error}</p>}
         </div>
 
+        {/* Offline, a tapped answer or Finish waited 20+ s in silence (UX review 9 Oct, #18); they go through on reconnect. */}
+        {!online && <p className="story-offline no-tap" role="status">Offline. What you do here saves when you're back online.</p>}
         <div className="story-tools no-tap">
           {!item.recall && c.type !== 'try' && <button type="button" onClick={() => setAskOpen(true)}>Ask or object</button>}
           {/* A real button (UX review #17, 8 Oct): the move and do-it frames are full of things to tap, so "next" needs a target of its own; keyboard and screen readers get one too. */}
           {canAdvance
-            ? (isLast ? null : <button type="button" className="story-next" onClick={next} aria-label="Next">Tap →</button>)   /* the last frame has its own Finish button; one finisher (second critique) */
+            ? (isLast ? null : <button type="button" className="story-next" onClick={next}>Next <span aria-hidden="true">→</span></button>)   /* the last frame has its own Finish button; one finisher (second critique). Its name is its words (UX review 9 Oct: "Tap →" was named "Next" for voice control). */
             : <span className="story-tapnote">Pick one</span>}
         </div>
       </div>

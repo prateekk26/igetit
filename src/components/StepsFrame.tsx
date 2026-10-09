@@ -20,7 +20,7 @@ export default function StepsFrame({ card }: { card: StepsCard }) {
           </li>
         ))}
       </ol>
-      <p className="doit-hint">{left === 0 ? 'All done. Tap → to check your result.' : `${left} step${left === 1 ? '' : 's'} left. Tap each as you do it.`}</p>
+      <p className="doit-hint">{left === 0 ? 'All done. Tap Next to keep going.' : `${left} step${left === 1 ? '' : 's'} left. Tap each as you do it.`}</p>
     </div>
   )
 }

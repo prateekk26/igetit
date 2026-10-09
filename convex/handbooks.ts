@@ -12,7 +12,7 @@ import { MOVE_PROMPT, moveUserMessage, TRYIT_PROMPT, tryItUserMessage, INTENT_PR
 import { level } from "./schema";
 import { copyInto, matchForIntent, sharedRow } from "./library";
 import { onShelf } from "./shelf";
-import { isSuper } from "./admin";
+import { isOwner, isSuper } from "./admin";
 import { assignVariant } from "./doctor";
 import { COST_INR, LIMITS, isOpen, memberUntil, ownerIsMember, spendFits, tryOpen, typedAllowance } from "./membership";
 
@@ -50,8 +50,13 @@ const limiter = new RateLimiter(components.rateLimiter, {
   teachAll: { kind: "fixed window", rate: 300, period: HOUR },     // ~₹0.2 each
 });
 
+// Letters and digits in any script (UX review 9 Oct, #21: a-z only gave every Hindi, emoji-only or link-only line the same
+// empty key, so a second one opened the first). Unchanged for plain English lines. A line with no letters or digits keeps
+// its own text as the key, so two different ones never collide.
 export function topicKeyOf(topic: string) {
-  return topic.toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ").slice(0, 80);
+  const t = topic.normalize("NFKC").toLowerCase();
+  const k = t.replace(/https?:\/\/\S+/g, " ").replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ").slice(0, 80);
+  return k || t.replace(/\s+/g, " ").trim().slice(0, 80) || "?";
 }
 
 
@@ -158,8 +163,9 @@ async function ensureChapter(ctx: MutationCtx, h: Doc<"handbooks">, n: number) {
   // Over a cap: store it as failed, so the reader sees "try again" instead of a chapter that never comes.
   const status = (await takeGeneration(ctx, h)) ? "writing" as const : "failed" as const;
   const error = status === "failed" ? "busy" : undefined;
-  if (existing) await ctx.db.patch(existing._id, { status, error });
-  else await ctx.db.insert("chapters", { handbookId: h._id, n, status, error, createdAt: Date.now() });
+  const writingSince = status === "writing" ? Date.now() : undefined;
+  if (existing) await ctx.db.patch(existing._id, { status, error, writingSince });
+  else await ctx.db.insert("chapters", { handbookId: h._id, n, status, error, writingSince, createdAt: Date.now() });
   if (status === "writing") await ctx.scheduler.runAfter(0, internal.handbooks.generateChapter, { handbookId: h._id, n });
 }
 
@@ -184,7 +190,7 @@ async function publicChapter(ctx: QueryCtx, ch: Doc<"chapters">, open = true, ti
   // Its pictures still go out: the handbook's cover is chapter 1's first picture (7 Oct: covers went blank).
   if (ch.status === "ready" && !open) return { n: ch.n, status: ch.status, title: ch.title, outcomeLine: ch.outcomeLine, cards: undefined, error: ch.error, svg: (ch as any).svg, stale: ch.stale ?? false, variants: undefined, vote: ch.vote, pictures, credits, picturesPending: false, locked: true };
   const variants = ch.variants?.map((vnt: any) => ({ key: vnt.key, status: vnt.status, title: vnt.title, outcomeLine: vnt.outcomeLine, svg: vnt.svg, cards: publicCards(vnt.cards) }));
-  return { n: ch.n, status: ch.status, title: ch.title, outcomeLine: ch.outcomeLine, cards: publicCards(ch.cards ? withTier(ch.cards as any[], (ch as any).quizTiers, tier) : undefined), tier, recapReteach, error: ch.error, svg: (ch as any).svg, stale: ch.stale ?? false, variants, vote: ch.vote, pictures, credits, alts, picturesPending: ch.status === "ready" && !Object.keys(pictures).length && ch.picturesStatus !== "failed" && ch.picturesStatus !== "skipped" && !!ch.cards };
+  return { n: ch.n, status: ch.status, writingSince: ch.status === "writing" ? (ch.writingSince ?? ch.createdAt) : undefined, title: ch.title, outcomeLine: ch.outcomeLine, cards: publicCards(ch.cards ? withTier(ch.cards as any[], (ch as any).quizTiers, tier) : undefined), tier, recapReteach, error: ch.error, svg: (ch as any).svg, stale: ch.stale ?? false, variants, vote: ch.vote, pictures, credits, alts, picturesPending: ch.status === "ready" && !Object.keys(pictures).length && ch.picturesStatus !== "failed" && ch.picturesStatus !== "skipped" && !!ch.cards };
 }
 
 // Money, health and legal topics carry a fixed line on every chapter: "Study aid, verify before you act."
@@ -210,6 +216,12 @@ async function fullView(ctx: QueryCtx, h: Doc<"handbooks">) {
     _id: h._id, topic: h.topic, level: h.level, voice: h.voice ?? "friend", status: h.status, question: h.question, intents: h.intents ?? null, suggested: (h as any).suggested ?? null, plan: h.plan, source: h.source, error: h.error, caution: cautionOf(h), pushback: h.pushback ?? (h.plan as any)?.pushback ?? null, suggestions: h.suggestions ?? [],
     signedIn: !!h.userId,
     total: totalOf(h),
+    // For the screens (UX review 9 Oct): a shared copy never adapts or offers "Change what you typed"; the wait screen
+    // follows the real stage and knows when the write began.
+    fromLibrary: h.fromLibrary ?? null,
+    goal: h.goal ?? null,
+    phase: h.status === "planning" ? ((h as any).brief ? "plan" : "research") : null,
+    startedAt: h.planSince ?? h.goalChosenAt ?? h.createdAt,
     loggedSets: (await ctx.db.query("sets").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).collect()).reduce((acc: Record<string, number[]>, s) => { (acc[String(s.chapter)] ??= []).push(s.cardIndex); return acc; }, {}),
     chapters: await Promise.all(chapters.sort((a, b) => a.n - b.n).map((ch) => {
       // A reader on the easier level gets a fuller recap first: the re-teach for each quiz they missed last chapter.
@@ -235,6 +247,16 @@ async function ownedBooks(ctx: QueryCtx | MutationCtx, userId: Id<"users"> | nul
   return [...out.values()].filter((h) => !h.hiddenAt);
 }
 
+// A handbook the reader removed (D36) comes back with its place when they add the same topic again (UX review 9 Oct:
+// re-adding made a fresh copy at 0 of 7, and its chapter 1 counted against the day again). The most recently removed
+// copy; never one replaced by "Change what you typed".
+export async function removedCopy(ctx: MutationCtx, userId: Id<"users"> | null, deviceToken: string | undefined, match: (h: Doc<"handbooks">) => boolean) {
+  const all: Doc<"handbooks">[] = [];
+  if (userId) all.push(...(await ctx.db.query("handbooks").withIndex("by_user", (q) => q.eq("userId", userId)).collect()));
+  if (deviceToken) all.push(...(await ctx.db.query("handbooks").withIndex("by_token", (q) => q.eq("ownerToken", deviceToken)).collect()));
+  return all.filter((h) => h.hiddenAt && !h.replacedBy && (h.status as string) !== "declined" && match(h)).sort((a, b) => (b.hiddenAt ?? 0) - (a.hiddenAt ?? 0))[0] ?? null;
+}
+
 async function passedCount(ctx: QueryCtx | MutationCtx, handbookId: Id<"handbooks">) {
   const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
   return (p?.chaptersPassed.length ?? 0) * 100 + (p?.currentCard ?? 0);
@@ -252,7 +274,7 @@ export const library = query({
       // started (9 Oct, returning-reader review): a handbook only glanced at (opened from a link, never read) should not
       // look like one in progress, and never be the one "Continue" picks.
       const started = (p?.currentCard ?? 0) > 0 || (p?.chaptersPassed.length ?? 0) > 0 || (p?.opened?.length ?? 0) > 0;
-      rows.push({ _id: h._id, topic: h.topic, status: h.status, passed: p?.chaptersPassed.length ?? 0, total: totalOf(h), current: p?.currentChapter ?? 1, card: p?.currentCard ?? 0, started, lastAt: p?.updatedAt ?? h.createdAt, outcome: (h.plan as any)?.outcome7 ?? null });
+      rows.push({ _id: h._id, topic: h.topic, status: h.status, passed: p?.chaptersPassed.length ?? 0, total: totalOf(h), current: p?.currentChapter ?? 1, card: p?.currentCard ?? 0, started, lastAt: p?.updatedAt ?? h.createdAt, outcome: (h.plan as any)?.outcome7 ?? null, typed: h.source === "live" && !h.fromLibrary });
     }
     return { signedIn: !!userId, handbooks: rows.sort((a, b) => b.lastAt - a.lastAt) };
   },
@@ -379,13 +401,26 @@ export const recallFor = query({
 // ---------- creating a handbook ----------
 
 export const create = mutation({
-  args: { topic: v.string(), level, deviceToken: v.string(), voice: v.optional(voiceV) },
-  handler: async (ctx, { topic, level: lvl, deviceToken, voice }) => {
+  args: { topic: v.string(), level, deviceToken: v.string(), voice: v.optional(voiceV), replaceId: v.optional(v.id("handbooks")) },
+  handler: async (ctx, { topic, level: lvl, deviceToken, voice, replaceId }) => {
     const clean = topic.trim().slice(0, 200);
     if (clean.length < 2) throw new Error("Type a few words first.");
     const userId = await getAuthUserId(ctx);
     const topicKey = topicKeyOf(clean);
     const now = Date.now();
+
+    // "Not what you meant? Change what you typed" (UX review 9 Oct, #9): the reader's own typed handbook, not read yet,
+    // steps aside for the new line, so a typo never costs a free reader their one typed handbook. It is hidden, marked
+    // replaced (so it no longer counts), and nothing more is written for it. Anything else is left alone. All of this is
+    // one transaction: if the new line is refused below, the old handbook stays as it was.
+    if (replaceId) {
+      const old = await ctx.db.get(replaceId);
+      if (old && owns(old, { userId, deviceToken }) && old.source === "live" && !old.fromLibrary && !old.hiddenAt) {
+        if (old.topicKey === topicKey) return { handbookId: old._id, fromCache: false, existing: true };   // the same line again: nothing to replace
+        const op = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", old._id)).unique();
+        if (!op || (op.chaptersPassed.length === 0 && op.currentCard === 0)) await ctx.db.patch(old._id, { hiddenAt: now, replacedBy: old._id });
+      }
+    }
 
     const cached = await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", topicKey).eq("level", lvl)).unique();
 
@@ -393,6 +428,8 @@ export const create = mutation({
     const already = (await ownedBooks(ctx, userId, deviceToken)).find((h) =>
       h.topicKey === topicKey || (cached && h.source === "cache" && h.topic === cached.topic));
     if (already) return { handbookId: already._id, fromCache: already.source === "cache", existing: true };
+    const back = await removedCopy(ctx, userId, deviceToken, (h) => h.topicKey === topicKey || (!!cached && h.source === "cache" && h.topic === cached.topic));
+    if (back) { await ctx.db.patch(back._id, { hiddenAt: undefined }); return { handbookId: back._id, fromCache: back.source === "cache", existing: true, restored: true }; }
 
     if (cached) {
       // A running A/B test on this topic's chapter 1 puts half the new readers on the rewrite (doctor.ts).
@@ -431,6 +468,7 @@ export const create = mutation({
       topic: clean, topicKey, level: (cue ?? lvl) as any, language: LANGUAGE, voice: voice ?? "friend", status: "intent",
       ownerToken: deviceToken, userId: userId ?? undefined, source: "live", createdAt: now,
     });
+    if (replaceId) { const old = await ctx.db.get(replaceId); if (old?.replacedBy === old?._id && old) await ctx.db.patch(old._id, { replacedBy: handbookId }); }
     await ctx.db.insert("progress", { handbookId, currentChapter: 1, currentCard: 0, chaptersPassed: [], passedExercises: [], missedExercises: [], lastOpenedAt: now, updatedAt: now });
     await ctx.scheduler.runAfter(0, internal.handbooks.matchOrIntents, { handbookId });
     return { handbookId, fromCache: false, existing: false };
@@ -451,7 +489,7 @@ export const answerQuestion = mutation({
       return;
     }
     if (!(await takeGeneration(ctx, h))) throw new ConvexError("busy");
-    await ctx.db.patch(handbookId, { status: "planning", question: undefined });
+    await ctx.db.patch(handbookId, { status: "planning", question: undefined, planSince: Date.now() });
     await ctx.scheduler.runAfter(0, internal.handbooks.generatePlan, { handbookId, clarification: answer.trim().slice(0, 300) });
   },
 });
@@ -460,15 +498,23 @@ export const retry = mutation({
   args: { handbookId: v.id("handbooks"), deviceToken: v.optional(v.string()) },
   handler: async (ctx, { handbookId, deviceToken }) => {
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
+    // A write that died without being marked failed (an action cut off at its time limit) used to wait for ever: past
+    // 15 minutes it counts as failed here, which no live write can still be (UX review 9 Oct). Actions stop at 10.
+    const STUCK = 15 * 60 * 1000, now = Date.now();
     if (!h.plan) {
-      if (h.status !== "failed") return;   // a plan is already being written
+      const stuck = h.status === "planning" && now - (h.planSince ?? h.goalChosenAt ?? h.createdAt) > STUCK;
+      if (h.status !== "failed" && !stuck) return;   // a plan is already being written
       if (!(await takeGeneration(ctx, h))) throw new ConvexError("busy");
-      await ctx.db.patch(handbookId, { status: "planning", error: undefined });
+      await ctx.db.patch(handbookId, { status: "planning", error: undefined, planSince: now });
       await ctx.scheduler.runAfter(0, internal.handbooks.generatePlan, { handbookId });
       return;
     }
-    const failed = (await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId)).collect()).filter((c) => c.status === "failed");
-    for (const c of failed) await ensureChapter(ctx, h, c.n);
+    const chs = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId)).collect();
+    for (const c of chs) {
+      const stuck = c.status === "writing" && !c.variants && now - (c.writingSince ?? c.createdAt) > STUCK;
+      if (stuck) await ctx.db.patch(c._id, { status: "failed", error: "stuck" });
+      if (c.status === "failed" || stuck) await ensureChapter(ctx, h, c.n);
+    }
   },
 });
 
@@ -575,7 +621,7 @@ export const skipIntent = internalMutation({
   handler: async (ctx, { handbookId }) => {
     const h = await ctx.db.get(handbookId);
     if (h?.status !== "intent") return;
-    await ctx.db.patch(handbookId, { status: "planning" });
+    await ctx.db.patch(handbookId, { status: "planning", planSince: Date.now() });
     await ctx.scheduler.runAfter(0, internal.handbooks.generatePlan, { handbookId });
   },
 });
@@ -586,7 +632,7 @@ export const chooseIntent = mutation({
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
     if (h.status !== "intent") return;
     const m = mode && ["skill", "story", "subject", "decision"].includes(mode) ? mode : undefined;
-    await ctx.db.patch(handbookId, { status: "planning", goal: goal?.trim().slice(0, 120) || undefined, mode: m, goalChosenAt: Date.now() });
+    await ctx.db.patch(handbookId, { status: "planning", goal: goal?.trim().slice(0, 120) || undefined, mode: m, goalChosenAt: Date.now(), planSince: Date.now() });
     // Someone already made this topic for the same kind of goal: reuse their plan and chapter 1 (instant, no tokens).
     if (await matchForIntent(ctx, (await ctx.db.get(handbookId))!, m)) return;
     await ctx.scheduler.runAfter(0, internal.handbooks.generatePlan, { handbookId });
@@ -606,7 +652,7 @@ export const generatePlan = internalAction({
   args: { handbookId: v.id("handbooks"), clarification: v.optional(v.string()) },
   handler: async (ctx, { handbookId, clarification }) => {
     let h = await ctx.runQuery(internal.handbooks.readHandbook, { handbookId });
-    if (!h) return;
+    if (!h || h.hiddenAt) return;   // removed or replaced (UX review 9 Oct): nothing more is written for it
     // Research first (research.ts): what kind of handbook this needs, and the facts and sources it rests on. It runs
     // here, after the goal (8 Oct), so there is nothing to wait for; a brief already present (a clarifying answer brings
     // the reader back here) is reused.
@@ -822,6 +868,7 @@ export const generateChapter = internalAction({
   handler: async (ctx, { handbookId, n }) => {
     const h = await ctx.runQuery(internal.handbooks.readHandbook, { handbookId });
     if (!h?.plan) return;
+    if (h.hiddenAt) { await ctx.runMutation(internal.handbooks.setChapterFailed, { handbookId, n, error: "removed" }).catch(() => {}); return; }   // removed or replaced: no paid write
     const prof = await ctx.runQuery(internal.handbooks.readProfileLine, { handbookId });
     // A reader with no profile line gets a neutral chapter, written once and shared with every later reader of this
     // handbook (7 Oct); adapting happens in the quiz versions and the recap. A reader who set a profile gets a chapter
@@ -956,8 +1003,8 @@ export const startChapter = internalMutation({
   args: { handbookId: v.id("handbooks"), n: v.number() },
   handler: async (ctx, { handbookId, n }) => {
     const existing = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", n)).unique();
-    if (existing) { if (existing.status === "failed") await ctx.db.patch(existing._id, { status: "writing", error: undefined }); return; }
-    await ctx.db.insert("chapters", { handbookId, n, status: "writing", createdAt: Date.now() });
+    if (existing) { if (existing.status === "failed") await ctx.db.patch(existing._id, { status: "writing", error: undefined, writingSince: Date.now() }); return; }
+    await ctx.db.insert("chapters", { handbookId, n, status: "writing", writingSince: Date.now(), createdAt: Date.now() });
   },
 });
 export const setChapter = internalMutation({
@@ -1265,14 +1312,11 @@ export const logSet = mutation({
     const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
     if (!isOpen(p, chapter)) throw new Error("Chapter not open");
     await ctx.db.insert("sets", { handbookId, chapter, cardIndex, count: Math.max(0, Math.min(10000, Math.round(count))), feel, at: Date.now() });
-    const hasQuiz = (ch!.cards as any[]).some((c) => c?.type === "exercise");
-    if (!p || hasQuiz || p.chaptersPassed.includes(chapter)) return { chapterPassed: false as const };
-    const total = totalOf(h);
-    await ctx.db.patch(p._id, { chaptersPassed: [...p.chaptersPassed, chapter], currentChapter: chapter < total ? chapter + 1 : chapter, currentCard: 0, currentPart: 0, updatedAt: Date.now() });
-    await recordPass(ctx, h, chapter);   // D37
-    if (chapter < total) await ensureChapter(ctx, h, chapter + 1);
-    if (chapter === 1) { if (h.source === "cache") await ctx.scheduler.runAfter(0, internal.shelf.countReady, { topic: h.topic, passed: true, handbookId }); await ctx.scheduler.runAfter(0, internal.library.countPass, { handbookId }); }
-    return { chapterPassed: true as const };
+    // A logged set is a log, never a pass (UX review 9 Oct, #3: in a recipe, ticking "Gather your tools" passed the whole
+    // chapter, moved the reader on and put the next chapter's quizzes in front of steps not read yet). D24: a quiz-free
+    // chapter passes when the reader reaches its last card (setPosition), whether or not anything was logged.
+    void h;
+    return { chapterPassed: false as const };
   },
 });
 
@@ -1311,7 +1355,9 @@ export const rateChapter = mutation({
     const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
     if (!p || !p.chaptersPassed.includes(n)) return;
     await ctx.db.patch(p._id, { feedback: { ...(p.feedback ?? {}), [String(n)]: rating }, updatedAt: Date.now() });
-    if (rating === "just_right" || h.source !== "live" || n >= totalOf(h)) return;
+    // Only the reader's own typed handbook adapts: a shared copy (fromLibrary) is shared text, like a ready one (UX review
+    // 9 Oct: "Too easy" on Tides from the Shelf queued a paid rewrite with a note that wasn't true).
+    if (rating === "just_right" || h.source !== "live" || h.fromLibrary || n >= totalOf(h)) return;
     const next = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", n + 1)).unique();
     const unread = p.currentChapter <= n + 1 && !(p.currentChapter === n + 1 && p.currentCard > 0);
     if (next && next.status === "ready" && unread && !next.stale) await ctx.db.patch(next._id, { stale: true });
@@ -1492,6 +1538,9 @@ export const saveProfile = mutation({
     let staled = 0;
     for (const h of mine) {
       if (seen.has(h._id)) continue; seen.add(h._id);
+      // Ready and shared handbooks are written once for everyone and never rewritten for one reader (AGENTS.md section 4);
+      // saving used to send all of their unread chapters back for paid rewrites (UX review 9 Oct).
+      if (h.source !== "live" || h.fromLibrary || h.hiddenAt) continue;
       const progress = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).unique();
       const current = progress?.currentChapter ?? 1;
       const started = (progress?.currentCard ?? 0) > 0;
@@ -1536,6 +1585,9 @@ export const compareModels = mutation({
   args: { handbookId: v.id("handbooks"), n: v.number(), deviceToken: v.optional(v.string()) },
   handler: async (ctx, { handbookId, n, deviceToken }) => {
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
+    // Three paid writes (about ₹30) in one tap: the owner's accounts only. Anyone could switch it on with ?compare=1 and
+    // the server never checked (UX review 9 Oct).
+    if (!(await isOwner(ctx)).ok) throw new ConvexError("owner-only");
     if (!h.plan) throw new Error("No plan yet");
     const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", n)).unique();
     if (ch?.variants && ch.variants.length === 3) return { started: false };

@@ -1,19 +1,22 @@
+import { freeChaptersText } from '../lib/free'
+
 // The reason to sign up, said plainly. Shown where it pays off; never blocks anything.
-type Props = { onSignIn: () => void; context?: 'second-topic' | 'library' | 'tune' | 'done'; compact?: boolean }
+type Props = { onSignIn: () => void; context?: 'second-topic' | 'library' | 'tune' | 'done'; compact?: boolean; freeChapters?: number }
 
 // 8 Oct (UX review #24, #25): sign-in is optional for chapter 1 (the wall is after it since 8 Oct night), and a free
 // account does not add a second typed topic, so the nudge says what is true. Copy (agent).
 const LEAD: Record<string, string> = {
   'second-topic': 'No sign-in needed here. Ready topics are free for everyone. Typed topics: one per person, three for members.',
-  library: 'Chapter 1 of anything needs no sign-in. A free account opens the rest and keeps your place on every device.',
+  library: '',   // said with the server's number below
   tune: 'Your settings are saved on this phone.',
   done: 'Keep this handbook, and the next ones.',
 }
 
-export default function SignupNudge({ onSignIn, context = 'library', compact }: Props) {
+export default function SignupNudge({ onSignIn, context = 'library', compact, freeChapters = 2 }: Props) {
+  const lead = context === 'library' ? `${freeChaptersText(freeChapters)} of any handbook ${freeChapters <= 1 ? 'needs' : 'need'} no sign-in. A free account opens the rest and keeps your place on every device.` : LEAD[context]
   return (
     <div className={`nudge${compact ? ' compact' : ''}`}>
-      <p className="nudge-lead">{LEAD[context]}</p>
+      <p className="nudge-lead">{lead}</p>
       {!compact && (
         <ul className="nudge-list">
           <li><strong>Every device.</strong> Start on your phone, carry on at your laptop.</li>

@@ -46,6 +46,8 @@ export default function Stats() {
     <div className="shell stats-shell">
       <header className="top">
         <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }}>I Get It<small>Twenty minutes at a time.</small></a>
+        {/* /stats had no way back (UX review 9 Oct). */}
+        <a className="back-link" href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>← Back to I Get It</a>
       </header>
       <main>
         <h1>The numbers, in public.</h1>

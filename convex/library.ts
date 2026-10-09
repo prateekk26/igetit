@@ -161,6 +161,9 @@ export const start = mutation({
     const mine = userId ? await ctx.db.query("handbooks").withIndex("by_user", (q) => q.eq("userId", userId)).collect() : await ctx.db.query("handbooks").withIndex("by_token", (q) => q.eq("ownerToken", deviceToken)).collect();
     const already = mine.find((x) => x.topicKey === row.topicKey && !x.hiddenAt);
     if (already) return { handbookId: already._id, existing: true };
+    // A copy the reader removed comes back with its place (UX review 9 Oct), never a fresh one at chapter 1.
+    const back = mine.filter((x) => x.topicKey === row.topicKey && x.hiddenAt && !x.replacedBy).sort((a, b) => (b.hiddenAt ?? 0) - (a.hiddenAt ?? 0))[0];
+    if (back) { await ctx.db.patch(back._id, { hiddenAt: undefined }); return { handbookId: back._id, existing: true }; }
     const handbookId = await ctx.db.insert("handbooks", { topic: row.topic, topicKey: row.topicKey, level: row.level, language: "English", voice: "friend", status: "planning",
       ownerToken: deviceToken, userId: userId ?? undefined, source: "live", createdAt: Date.now() });
     await ctx.db.insert("progress", { handbookId, currentChapter: 1, currentCard: 0, chaptersPassed: [], passedExercises: [], missedExercises: [], lastOpenedAt: Date.now(), updatedAt: Date.now() });

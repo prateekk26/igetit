@@ -6,6 +6,7 @@ import { track } from '../lib/track'
 import { PolicyLinks } from './Policy'
 import { limitMessage } from '../lib/limits'
 import ShelfStrip, { ShelfButton } from '../components/ShelfStrip'
+import { freeChaptersText } from '../lib/free'
 
 // The landing page, for first-time visitors (DESIGN.md, Landing). A printed risograph poster that sells
 // before it asks: the promise, the itch, how tonight works, a real chapter to tap, the seven nights,
@@ -14,7 +15,7 @@ import ShelfStrip, { ShelfButton } from '../components/ShelfStrip'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
-type Props = { onCreate: (topic: string, level: Level, voice: Voice) => Promise<void>; onExplore?: () => void }
+type Props = { onCreate: (topic: string, level: Level, voice: Voice) => Promise<void>; onExplore?: () => void; freeChapters?: number }
 
 type Frame =
   | { kind: 'picture' | 'teach' | 'example' | 'mistake' | 'try'; title?: string; text: string; picture: string | null }
@@ -65,7 +66,8 @@ function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; 
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
-export default function Landing({ onCreate, onExplore }: Props) {
+export default function Landing({ onCreate, onExplore, freeChapters = 2 }: Props) {
+  const freeText = freeChaptersText(freeChapters)   // D26: chapters 1 and 2 need no account; the number is the server's
   const c = useQuery(api.landing.content, {})
   const plans = useQuery(api.pricing.plans, {})
   const [topic, setTopic] = useState('')
@@ -119,7 +121,7 @@ export default function Landing({ onCreate, onExplore }: Props) {
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What do you keep meaning to learn?</label>
       <div className="lp-field">
         <input id={`lp-topic-${where}`} ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
-          placeholder="Public speaking, the stock market, n8n…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
+          placeholder="Public speaking, the stock market, sourdough…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
         <button type="submit" disabled={busy}>{busy ? 'Finding your way…' : 'Show me the way'}</button>
       </div>
       {where === 'hero' && (
@@ -138,7 +140,8 @@ export default function Landing({ onCreate, onExplore }: Props) {
       )}
       {error && <p className="lp-error" role="alert">{error}</p>}
       {slow && pickedRow && where === 'hero' && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
-      <p className="lp-fine">Chapter 1 is free, no sign-up. A free account opens the rest; no card. Topics you start can appear on the Shelf, never with your name.</p>
+      {/* Said once, under the first box (UX review 9 Oct, #10: it was on the page twice, and said chapter 1 after D26). */}
+      {where === 'hero' && <p className="lp-fine">{freeText} free, no sign-up. A free account opens the rest; no card. Topics you start can appear on the Shelf, never with your name.</p>}
       {where === 'hero' && onExplore && <ShelfStrip where="landing" onOpen={onExplore} />}
       {where === 'hero' && c && c.shelf.length > 0 && <Carousel items={c.shelf as Shelf[]} busy={busy} picked={pickedRow} onPick={(t) => pick(t, 'row')} onExplore={onExplore} />}
     </form>
@@ -175,7 +178,7 @@ export default function Landing({ onCreate, onExplore }: Props) {
       <section className="lp-steps">
         <h2>Tonight, in twenty minutes.</h2>
         <ol>
-          <li><img src="/images/landing/step1.jpg" alt="" loading="lazy" /><span className="lp-n">1</span><h3>Type it.</h3><p>Whatever you keep meaning to learn, in your own words. You get a plan, up to seven chapters for it in two to four minutes.</p></li>
+          <li><img src="/images/landing/step1.jpg" alt="" loading="lazy" /><span className="lp-n">1</span><h3>Type it.</h3><p>Whatever you keep meaning to learn, in your own words. Your plan of up to seven chapters, and chapter 1, in about two minutes.</p></li>
           <li><img src="/images/landing/step2.jpg" alt="" loading="lazy" /><span className="lp-n">2</span><h3>Tap through chapter 1.</h3><p>Full-screen frames, one idea each, with pictures. Stuck? Ask it.</p></li>
           <li><img src="/images/landing/step3.jpg" alt="" loading="lazy" /><span className="lp-n">3</span><h3>Light the first rung.</h3><p>Read to the end of chapter 1 and the first rung lights up. No quizzes tonight: chapter 2 opens with two quick questions on what stuck.</p></li>
         </ol>
@@ -210,7 +213,7 @@ export default function Landing({ onCreate, onExplore }: Props) {
       {c && c.shelf.length > 0 && (
         <section className="lp-shelf">
           <h2>Ready tonight.</h2>
-          <p className="lp-body">These open instantly. Anything else: your plan in two to four minutes, and chapter 1 is written while you read it.</p>
+          <p className="lp-body">These open instantly. Anything else is written for you: the plan and chapter 1 in about two minutes.</p>
           <ul>
             {c.shelf.map((s: { topic: string; outcome: string; cover: string | null }) => (
               <li key={s.topic}>
@@ -233,7 +236,7 @@ export default function Landing({ onCreate, onExplore }: Props) {
           <section className="lp-offer">
             <div>
               <h2>Come early, pay less.</h2>
-              <p className="lp-body">Chapter 1 of anything, free, no sign-up. A free account opens every ready handbook and one of your own. Members keep 3 of their own on the go, read up to 7 chapters a day and can save any handbook as a PDF. The earlier you join, the less you pay, and your price stays yours while you keep paying. Right now it's {inr(open.month)} a month or {inr(open.year)} a year{open.left !== null ? `, with ${open.left} of ${open.size} spots left` : ''}.</p>
+              <p className="lp-body">{freeText} of anything, free, no sign-up. A free account opens every ready handbook and one of your own. Members keep 3 of their own on the go, read up to 7 chapters a day and can save any handbook as a PDF. The earlier you join, the less you pay, and your price stays yours while you keep paying. Right now it's {inr(open.month)} a month or {inr(open.year)} a year{open.left !== null ? `, with ${open.left} of ${open.size} spots left` : ''}.</p>
               <p className="lp-once">One-time payment · No auto-renew</p>
             </div>
             <ol className="lp-tiers">
