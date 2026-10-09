@@ -42,6 +42,8 @@ const step = async (what, cond, ms = 15000) => {
 }
 // Find a button or link by the words a person sees, and tap it.
 const tap = (text) => ev(`(() => { const el = [...document.querySelectorAll('button, a')].find((e) => e.textContent.trim().startsWith(${JSON.stringify(text)})); if (!el) return false; el.scrollIntoView({ block: 'center' }); el.click(); return true })()`)
+// The chapter's next button by its class, not its words: it said "Tap →" until 9 Oct evening and says "Next →" since (D55).
+const tapNext = () => ev(`(() => { const el = document.querySelector('.story-next'); if (!el) return false; el.click(); return true })()`)
 const goto = async (url) => { await send('Page.navigate', { url }); await sleep(1200) }
 
 // ── Scenario 1: a stranger from a link, fresh phone ──────────────────────────────────────────────────────────
@@ -54,9 +56,9 @@ await ev(`document.querySelector('.lp-carousel button').click()`)
 if (await step('chapter 1 opens as full-screen frames', `!!document.querySelector('.story') && /Chapter 1 of/.test(document.querySelector('.story-label')?.textContent ?? '')`, 20000)) {
   await step('the first frame has words', `(document.querySelector('.story-text, .story-q')?.textContent ?? '').length > 20`, 10000)
   await step('a picture is on the first frame', `!!document.querySelector('.story-pic img')`, 15000)
-  // read to the end: tap "Tap →" until the finish button shows (at most 40 frames)
+  // read to the end: tap the next button until the finish button shows (at most 40 frames)
   let frames = 0
-  for (; frames < 40; frames++) { if (await ev(`!!document.querySelector('.story-finish')`)) break; if (!(await tap('Tap'))) break; await sleep(450) }
+  for (; frames < 40; frames++) { if (await ev(`!!document.querySelector('.story-finish')`)) break; if (!(await tapNext())) break; await sleep(450) }
   console.log(`     frames tapped through: ${frames}`)
   await step('the last frame offers "Finish chapter 1"', `!!document.querySelector('.story-finish')`, 5000)
   await tap('Finish chapter')
@@ -74,7 +76,7 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
         if (await ev(`!!document.querySelector('.story-finish') && !document.querySelector('.sheet')`)) break
         if (await ev(`!!document.querySelector('.sheet')`)) { await ev(`(() => { const b = [...document.querySelectorAll('.sheet .btn')].find((b) => /Keep going|Try again|Got it|Finish|See your rung/.test(b.textContent)); if (b) b.click(); return !!b })()`); await sleep(700); continue }
         if (await ev(`!!document.querySelector('.story-opt') && !document.querySelector('.story-next')`)) { await ev(`(() => { const o = [...document.querySelectorAll('.story-opt')].find((b) => !b.disabled && !b.classList.contains('missed') && !b.classList.contains('miss')); if (o) o.click(); return !!o })()`); await sleep(1500); continue }
-        if (!(await tap('Tap'))) { if (await ev(`!!document.querySelector('.story-finish')`)) break; await sleep(500); continue }
+        if (!(await tapNext())) { if (await ev(`!!document.querySelector('.story-finish')`)) break; await sleep(500); continue }
         await sleep(450)
       }
       console.log(`     chapter 2 steps: ${frames2}`)

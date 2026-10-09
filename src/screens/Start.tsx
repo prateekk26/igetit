@@ -65,7 +65,9 @@ export default function Start({ initialTopic = '', status, question, intents, on
   const story = useQuery(api.landing.waitStory, writing ? { seed: storySeed, exclude: (topic.trim() || initialTopic) || undefined } : 'skip') as WaitStory | null | undefined
   const [added, setAdded] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const backToBox = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 350) }
+  // Smooth only when the phone allows motion (UX review 9 Oct: these two scrolls ignored "reduce motion").
+  const glide = (): ScrollBehavior => (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth')
+  const backToBox = () => { window.scrollTo({ top: 0, behavior: glide() }); setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 350) }
   const pick = (t: string) => { if (t) setTopic(t); setLocalError(null); backToBox() }
 
   // Measured on prod, 7 to 9 Oct, on Gemini Flash (D41): research about 42 s, the plan 25 s, chapter 1 24 s, its check 8 s;
@@ -212,7 +214,7 @@ export default function Start({ initialTopic = '', status, question, intents, on
         <input id="topic" ref={inputRef} className="input" type="text" autoComplete="off" enterKeyHint="done" maxLength={200} placeholder={examples.length ? `${examples.slice(0, 2).join(', ')}…` : 'Swimming'} value={topic}
           onChange={(e) => setTopic(e.target.value)} disabled={writing}
           // Enter only closes the keyboard and shows the level and voice; the button starts the writing.
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); levelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) } }} />
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); levelRef.current?.scrollIntoView({ behavior: glide(), block: 'center' }) } }} />
         {topic.length >= 150 && <p className="note" aria-live="polite">{200 - topic.length} characters left. A few words is enough.</p>}
         {examples.length > 1 && !below && (
           <p className="note">{onPickReady ? 'Ready now, opens instantly: ' : "Tonight's ready handbooks: "}{examples.slice(0, 6).map((x, i) => (
