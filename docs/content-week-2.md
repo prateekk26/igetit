@@ -68,7 +68,7 @@ Checked 8 Oct: all 7 chapters of the ready topic are written (7 to 10 cards each
 
 | Day | Days left in 2026 | Instagram | X | Community / sell |
 |---|---|---|---|---|
-| Fri 9 | 83 | **Meet Dot**: the dot falls off the "i" and lands asleep; last slide lit up (playbook section 9). Ink on paper, phone photos. | Day 8 numbers: the wall moved after chapter 1; first sign-ups? | GrowthX: "We moved the wall. Here's why." Ask Swapnil (₹199). |
+| Fri 9 | 83 | **Meet Ooh** (the mascot; never "Dot", Prateek 9 Oct): Ooh falls off the "i" and lands asleep; last slide lit up (playbook section 9). Ink on paper, phone photos. | Day 8 numbers: the wall moved after chapter 1; first sign-ups? | GrowthX: "We moved the wall. Here's why." Ask Swapnil (₹199). |
 | Sat 10 | 82 | Series Night 1 (carousel) | Mirror Night 1 as an image post | Ask one of the 4 GrowthX readers who liked it |
 | Sun 11 | 81 | Trial Reel: screen recording, "type the thing you keep saving → chapter 1 → quiz" (15-30 s) | Week 1 recap: all numbers, screenshot | Topic community: Public speaking chapter 1 |
 | Mon 12 | 80 | Series Night 2 + "Comment AI and I'll DM you chapter 1" (DMs by hand) | Numbers + Night 2 | Ask |
