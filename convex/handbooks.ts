@@ -598,7 +598,7 @@ export const chooseIntent = mutation({
 // Flash 3.56 on a blind ranking; about ₹1 a plan on Flash against about ₹7 on Opus at high effort. A writer pinned by an
 // A/B test keeps its own model. To switch back: PLAN_MODEL = undefined (Opus high, the 6 Oct setting).
 // D33 (dc for Prateek, 9 Oct 04:0x, from the dev judge: Opus about 8 of 12 a chapter, Flash about 6 with invented numbers; Flash plans had no picture and one block list for every chapter): back on Opus 5.5, effort medium.
-const PLAN_MODEL: string | undefined = undefined;
+const PLAN_MODEL: string | undefined = "gemini-3.8-flash";   // D41 (Prateek, 9 Oct 19:0x: "Bring flash back. Model choices are purely my prerogative."): back on Flash; Opus stays the backup when Gemini fails
 const PLAN_EFFORT = "medium" as const;
 const PLAN_BACKUP = { model: "claude-opus-5-5", effort: "high" as const };   // D33: the first try is Opus medium, so the backup is Opus high
 
@@ -806,7 +806,7 @@ export const markRewrite = internalMutation({
 // medium effort (the writer until now) as the backup when Gemini fails. A model pinned for a reader's profile or by an
 // A/B test keeps its own model. On Flash her v3 prompt kept every shape check at about ₹1.2 a chapter. To switch back:
 // CHAPTER_MODEL = undefined (Opus medium, the 6 Oct setting).
-const CHAPTER_MODEL: string | undefined = undefined;   // D33: Opus 5.5 medium (the JOB default)
+const CHAPTER_MODEL: string | undefined = "gemini-3.8-flash";   // D41: Flash again, by Prateek; undefined = Opus 5.5 medium (the JOB default)
 const CHAPTER_BACKUP = { model: "claude-opus-5-5", effort: "medium" as const };
 // Paragraphs (one swipe each) and words across the body-bearing cards of a chapter reply (D27).
 export function chapterSize(json: any) {
@@ -971,6 +971,8 @@ export const setChapter = internalMutation({
     const versions = { quizTiers: tiers ?? undefined, recallTiers: rTiers ?? undefined };
     if (existing) await ctx.db.patch(existing._id, { status: "ready", title, cards: shuffled, recallCards: recall, outcomeLine, svg, model, factCheck, scenes, stale: false, error: undefined, ...versions });
     else await ctx.db.insert("chapters", { handbookId, n, status: "ready", title, cards: shuffled, recallCards: recall, outcomeLine, svg, model, factCheck, scenes, createdAt: Date.now(), ...(tiers ? { quizTiers: tiers } : {}), ...(rTiers ? { recallTiers: rTiers } : {}) });
+    // D42: a rebuild started from the review queue is judged the moment its chapter 1 lands (nobody reads it first).
+    if (n === 1) { const hb = await ctx.db.get(handbookId); if ((hb as any)?.rebuildOf) await ctx.scheduler.runAfter(0, internal.library.consider, { handbookId }); }
   },
 });
 // ---------- adapting to the reader ----------

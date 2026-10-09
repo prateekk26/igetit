@@ -13,11 +13,13 @@ export default function AdminReview() {
   const rows = useQuery(api.library.reviewQueue, {})
   const decide = useMutation(api.library.decide)
   const destroy = useMutation(api.library.destroy)
+  const rebuild = useMutation(api.library.rebuild)
+  const [rebuilding, setRebuilding] = useState<string | null>(null)
   const [gone, setGone] = useState<string | null>(null)
   const [reason, setReason] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   if (!rows) return null
-  const pending = rows.filter((r) => r.review === 'pending')
+  const pending = rows.filter((r) => r.review === 'pending'), building = rows.filter((r) => r.review === 'rebuilding')
   // D39 (Prateek: "It doesn't tell me which one was rejected by me or automatically"): two lists, each with its reason.
   const byMe = rows.filter((r) => r.review === 'rejected' && r.reviewedBy && !/^dc \(D3/.test(r.reviewedBy)), auto = rows.filter((r) => r.review === 'rejected' && !byMe.includes(r))
   const act = async (id: Id<'library'>, approve: boolean) => { setError(null); try { await decide({ id, approve, why: reason[id] }) } catch (e: any) { setError(String(e?.message ?? e).replace(/^.*Error: /, '').slice(0, 200)) } }
@@ -33,6 +35,8 @@ export default function AdminReview() {
         {gone === r.id
           ? <><span className="note">Delete the shared copy for good? Its reader keeps their own handbook.</span><button type="button" className="btn btn-ghost" onClick={() => { destroy({ id: r.id }); setGone(null) }}>Yes, delete forever</button><button type="button" className="quiet" onClick={() => setGone(null)}>Keep</button></>
           : <button type="button" className="quiet" onClick={() => setGone(r.id)}>Delete forever</button>}
+        {/* D42: write it again with today's pipeline; the new chapter 1 comes back here as its own row, this one steps aside. */}
+        <button type="button" className="quiet" disabled={rebuilding === r.id} onClick={async () => { setRebuilding(r.id); try { await rebuild({ id: r.id }) } catch (e: any) { setError(String(e?.message ?? e).slice(0, 160)); setRebuilding(null) } }}>{rebuilding === r.id ? 'Rebuilding…' : 'Rebuild'}</button>
         {!auto && (
           <>
             <input className="input" placeholder="Why not (optional)" value={reason[r.id] ?? ''} onChange={(e) => setReason((x) => ({ ...x, [r.id]: e.target.value }))} />
@@ -48,6 +52,7 @@ export default function AdminReview() {
       <p className="note">A typed topic reaches here once its own reader passed chapter 1 and it cleared the automatic filter (privacy check, judge 9 of 12 or more, a real topic, not one of our phones). Nothing is shared until you tap Approve.</p>
       {error && <p className="error">{error}</p>}
       {pending.length === 0 ? <p className="note">Nothing waiting.</p> : <ul className="adm-review">{pending.map((r) => <Row key={r.id} r={r} />)}</ul>}
+      {building.length > 0 && <p className="note">Rebuilding now: {building.map((r) => r.topic).join('; ')}. Research, plan and chapter 1 take about three minutes; the new chapter 1 appears above as its own row.</p>}
       {byMe.length > 0 && (
         <details style={{ marginTop: 12 }}>
           <summary>Rejected by you ({byMe.length})</summary>

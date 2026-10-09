@@ -24,13 +24,17 @@ export const consider = internalAction({
     const d: any = await ctx.runQuery(internal.library.readSource, { handbookId });
     if (!d) return;
     const h = d.h;
-    const reject = async (why: string, judge?: any): Promise<void> => { await ctx.runMutation(internal.library.publish, { handbookId, share: false, why, review: "rejected", judge }); };
+    // D42: whatever the verdict on a rebuild, the row it was started from steps aside, so the queue holds one row per handbook.
+    const reject = async (why: string, judge?: any): Promise<void> => {
+      await ctx.runMutation(internal.library.publish, { handbookId, share: false, why, review: "rejected", judge });
+      if (h.rebuildOf) await ctx.runMutation(internal.library.retire, { id: h.rebuildOf, why: `replaced by a rebuild (which was rejected: ${why.slice(0, 80)})` });
+    };
     // 8 Oct night (audit): a chapter 1 written for a reader's profile line is theirs, never shared.
     const prof: { line?: string | null } = await ctx.runQuery(internal.handbooks.readProfileLine, { handbookId });
     if (prof?.line) return reject("written for one reader's profile");
-    if (String(h.topic ?? "").trim().length < 8) return reject("typed line under 8 characters");
+    if (String(h.topic ?? "").trim().length < 8 && !h.rebuildOf) return reject("typed line under 8 characters");   // a rebuild was asked for by name
     if ((h.status as string) === "declined" || h.plan?.pushback) return reject("a declined or pushback plan");
-    if (d.excluded) return reject("typed from one of our own or a test phone");
+    if (d.excluded && !h.rebuildOf) return reject("typed from one of our own or a test phone");   // D42: a rebuild is ours on purpose
     // The privacy check (its own job and schema since 8 Oct).
     const r: any = await ctx.runAction(internal.ai.generate, { kind: "library", system: LIBRARY_CHECK_PROMPT,
       user: `Typed line: "${h.topic}"\nPlan topic: ${h.plan?.topic ?? ""}\nGoal: ${h.goal ?? ""}\nOutcome: ${h.plan?.outcome7 ?? ""}`, trace: { handbookId } });
@@ -46,6 +50,8 @@ export const consider = internalAction({
     const judge: any = j.ok ? { score: Number(j.json?.score ?? 0), checks, weakest, why: String(j.json?.why ?? "").slice(0, 300), dubious: Array.isArray(j.json?.dubious_claims) ? j.json.dubious_claims.slice(0, 5) : [] } : { error: String(j.error).slice(0, 120) };
     if (j.ok && judge.score < 7) return reject(`judge ${judge.score} of 12${weakest ? `: ${weakest}` : ""}`, judge);
     await ctx.runMutation(internal.library.publish, { handbookId, share: true, why: String(r.json?.why ?? "").slice(0, 120), review: "pending", judge });
+    // D42: the rebuild replaces the row it was started from, which steps aside with the reason.
+    if (h.rebuildOf) await ctx.runMutation(internal.library.retire, { id: h.rebuildOf, why: "replaced by a rebuild" });
   },
 });
 
@@ -230,7 +236,7 @@ export const reviewQueue = query({
   args: {},
   handler: async (ctx) => {
     if (!(await isOwner(ctx)).ok) return null;
-    const rows = (await ctx.db.query("library").collect()).filter((r) => r.review === "pending" || r.review === "rejected").sort((a, b) => b.createdAt - a.createdAt);
+    const rows = (await ctx.db.query("library").collect()).filter((r) => r.review === "pending" || r.review === "rejected" || r.review === "rebuilding").sort((a, b) => b.createdAt - a.createdAt);
     return rows.map((r) => {
       const cards: any[] = Array.isArray(r.chapter1?.cards) ? r.chapter1.cards : [];
       const text = cards.filter((c) => typeof c?.body === "string").slice(0, 2).map((c) => String(c.body).replace(/\*\*/g, "").slice(0, 320));
@@ -305,5 +311,38 @@ export const destroy = mutation({
     const row = await ctx.db.get(id);
     if (row) await ctx.db.delete(id);
     return { ok: true };
+  },
+});
+
+// D42 (Prateek, 9 Oct 19:1x: "For review - Rebuild should be an option."): write the handbook again from its typed line and
+// goal with the current pipeline (research, plan, chapter 1), under the owner's account; when chapter 1 lands it goes
+// through the same filter and judge and appears in the queue as a new row, and the old row steps aside.
+async function startRebuild(ctx: MutationCtx, id: Id<"library">, userId: Id<"users"> | null, by: string) {
+  const row = await ctx.db.get(id);
+  if (!row) throw new Error("No such handbook");
+  const now = Date.now();
+  const handbookId = await ctx.db.insert("handbooks", { topic: row.topic, topicKey: row.topicKey, level: row.level, language: "English", voice: "friend", status: "planning",
+    goal: row.goal, mode: row.mode, ownerToken: `rebuild-${String(id).slice(-8)}-${now}`, userId: userId ?? undefined, source: "live", createdAt: now, goalChosenAt: now, rebuildOf: id } as any);
+  await ctx.db.insert("progress", { handbookId, currentChapter: 1, currentCard: 0, chaptersPassed: [], passedExercises: [], missedExercises: [], lastOpenedAt: now, updatedAt: now });
+  await ctx.db.patch(id, { published: false, review: "rebuilding", reviewWhy: undefined, reviewedBy: by, reviewedAt: now });
+  const fresh = await ctx.db.get(id); if (fresh) await syncShared(ctx, fresh);
+  await ctx.scheduler.runAfter(0, internal.handbooks.generatePlan, { handbookId });
+  return handbookId;
+}
+export const rebuild = mutation({
+  args: { id: v.id("library") },
+  handler: async (ctx, { id }) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    const me = await getAuthUserId(ctx); const user = me ? await ctx.db.get(me) : null;
+    return { handbookId: await startRebuild(ctx, id, me, user?.email ?? "owner") };
+  },
+});
+export const rebuildFor = internalMutation({ args: { id: v.id("library") }, handler: async (ctx, { id }) => ({ handbookId: await startRebuild(ctx, id, null, "dc (D42)") }) });
+export const retire = internalMutation({
+  args: { id: v.id("library"), why: v.string() },
+  handler: async (ctx, { id, why }) => {
+    const row = await ctx.db.get(id); if (!row) return;
+    await ctx.db.patch(id, { published: false, review: "rejected", reviewWhy: why, reviewedAt: Date.now() });
+    const fresh = await ctx.db.get(id); if (fresh) await syncShared(ctx, fresh);
   },
 });

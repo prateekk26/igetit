@@ -24,6 +24,7 @@ export default defineSchema({
     ),
     question: v.optional(v.string()),
     intents: v.optional(v.any()),               // { question, goals: [{ label, mode }] } offered before the plan
+    rebuildOf: v.optional(v.id("library")),     // D42: a fresh write of a shared handbook, started from the review queue; its chapter 1 re-enters the queue
     suggested: v.optional(v.any()),             // D40: a ready or shared handbook offered on the goal screen ({ kind, topic, title, libraryId }); never taken for the reader
     goal: v.optional(v.string()),               // the goal the reader tapped or typed
     mode: v.optional(v.string()),               // "skill" | "story" | "subject" | "decision"
