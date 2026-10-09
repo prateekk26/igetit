@@ -75,6 +75,9 @@ export default defineSchema({
     outcomeLine: v.optional(v.string()),
     error: v.optional(v.string()),
     writingSince: v.optional(v.number()),   // when this write started; past 15 minutes it died without being marked failed, and Try again restarts it (UX review 9 Oct)
+    // 9 Oct (writer v6): what this chapter taught, the terms, names, opener and closing line it used, and any fact it
+    // needed but did not have. The next chapter's writer gets the earlier chapters' records as "Already taught".
+    ledger: v.optional(v.any()),
     createdAt: v.number(),
   }).index("by_handbook_n", ["handbookId", "n"]),
 
