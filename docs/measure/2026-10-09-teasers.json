@@ -1,0 +1,193 @@
+{
+ "fixes": [
+  {
+   "topic": "Western philosophy",
+   "from": [
+    "Socrates wrote nothing, and was executed for asking questions. What did the questions do?",
+    "Teacher and student, 20 years together, and they disagreed about whether this table is real.",
+    "In 1641 one man tried to doubt everything, and found exactly one thing he couldn't.",
+    "You've seen the sun rise every day. Hume asks: why does that prove tomorrow?",
+    "Reading Hume woke Kant from a 'dogmatic slumber'. He spent 10 years answering.",
+    "'God is dead' is not a boast. In context it's a warning. Of what?",
+    "Wittgenstein said most philosophy problems are grammar mistakes. If true, what's left to do?"
+   ],
+   "to": [
+    "People hand out reasons all day. The skill is spotting when they don't hold up the claim.",
+    "Socrates wrote nothing, and was executed for asking questions. What did the questions do?",
+    "Teacher and student, 20 years together, and they disagreed about whether this table is real.",
+    "In 1641 one man tried to doubt everything, and found exactly one thing he couldn't.",
+    "You've seen the sun rise every day. Hume asks: why does that prove tomorrow?",
+    "A murderer asks where your friend is hiding. Kant, in 1797, said you still may not lie.",
+    "'God is dead' is not a boast. In context it's a warning. Of what?"
+   ]
+  },
+  {
+   "topic": "Reading a balance sheet",
+   "from": [
+    "Every balance sheet ever written adds up to the same equation. Why can it never be off by a cent?",
+    "Assets are listed in a strict order, and the order tells you how fast each one turns into cash.",
+    "A company can owe billions and be perfectly healthy. What matters is when the bills come due.",
+    "Some well-known companies have negative equity. Can a business be worth less than nothing and still run?",
+    "Profitable companies go bust every year. The balance sheet shows the reason before it happens.",
+    "Two companies, same assets, same profits. One is a safe bet and one is a gamble. Which line tells you?",
+    "The last column, last year's numbers, is the most useful one on the page. Here is why."
+   ],
+   "to": [
+    "Every balance sheet ever written adds up to the same equation. Why can it never be off by a cent?",
+    "A balance sheet is a single photo taken on one day. What can't a photo show you?",
+    "Assets are listed in a strict order, and the order tells you how fast each one turns into cash.",
+    "A company can owe billions and be perfectly healthy. What matters is when the bills come due.",
+    "Some well-known companies have negative equity. Can a business be worth less than nothing and still run?",
+    "Two companies, same assets, same profits. One is a safe bet and one is a gamble. Which line tells you?",
+    "The last column, last year's numbers, is the most useful one on the page. Here is why."
+   ]
+  },
+  {
+   "topic": "Indian stock market basics",
+   "from": [
+    "Buy one share and you legally own a sliver of a company. What exactly did you buy?",
+    "The Sensex is just 30 companies. So why does the whole country watch it?",
+    "Your shares never sit with your broker. So where do they actually live?",
+    "A ₹3,000 share can be cheaper than a ₹50 one. One number shows you how.",
+    "Most paid fund managers fail to beat a plain list of 50 companies over ten years.",
+    "9 in 10 people who trade options in India lose money. SEBI counted.",
+    "Hold a share 13 months instead of 11 and the tax bill falls. Here is the maths."
+   ],
+   "to": [
+    "Buy one share and you legally own a sliver of a company. What exactly did you buy?",
+    "The Sensex is just 30 companies. So why does the whole country watch it?",
+    "Your shares never sit with your broker. So where do they actually live?",
+    "The safest way to buy your first share is an order that might buy nothing at all.",
+    "A ₹3,000 share can be cheaper than a ₹50 one. One number shows you how.",
+    "Most paid fund managers fail to beat a plain list of 50 companies, after fees.",
+    "Hold a share 13 months instead of 11 and the tax bill falls. Here is the maths."
+   ]
+  },
+  {
+   "topic": "Pool swimming for safety and comfort",
+   "from": [
+    "The first swimming skill has nothing to do with moving. It's blowing bubbles.",
+    "Can you stand up from floating on your back? Most beginners freeze there.",
+    "Full lungs float you. It's letting the air out that drops your legs.",
+    "One good push off the wall carries you further than your first ten strokes will.",
+    "Kicking harder moves you slower. Loose ankles beat strong legs, and here's why.",
+    "The breath you take while swimming works backwards from the one you take on land.",
+    "When you're tired, the wall is not your safest option. Your back is."
+   ],
+   "to": [
+    "The first swimming skill has nothing to do with moving. It's getting back on your feet.",
+    "Nobody holds their breath in bed. Why do most people hold it when their face touches water?",
+    "Full lungs float you. It's letting the air out that drops your legs.",
+    "One good push off the wall carries you further than your first ten strokes will.",
+    "Kicking harder moves you slower. Loose ankles beat strong legs, and here's why.",
+    "The breath you take while swimming works backwards from the one you take on land.",
+    "When you're tired, the wall is not your safest option. Your back is."
+   ]
+  },
+  {
+   "topic": "n8n workflow automation",
+   "from": [
+    "Every automation you have ever used is three parts. You will build all three in 10 minutes.",
+    "A workflow that never starts does nothing. Which of 4 starters does your task need?",
+    "The box labelled 'name' and the box labelled 'Name' are different. This chapter stops that bug.",
+    "n8n has over 400 ready-made connections. Yours take about 4 minutes each to set up.",
+    "What should happen to the one email out of 30 that says 'urgent'? Nothing, unless you say so.",
+    "One template line can write 100 personalised messages. Here is the 12-character trick behind it.",
+    "Most workflows fail silently in week 2. One extra node means you hear about it first."
+   ],
+   "to": [
+    "A workflow that never starts does nothing. Which of three common starters does your task need?",
+    "Double-click any box after a run and n8n shows exactly what it handed to the next one.",
+    "A station that works in Gmail or Slack needs a key card. Which doors does it open?",
+    "Your Slack bot just welcomed a new hire called 'name'. Not Dana. The actual word.",
+    "What should happen to the one email out of 30 that says 'urgent'? Nothing, unless you say so.",
+    "Forty runs in a day and one fails. How do you find the station that dropped it?",
+    "Who rings the bell at 8:00 tomorrow while you're still on the train?"
+   ]
+  },
+  {
+   "topic": "Vibe coding with Claude Code",
+   "from": [
+    "Your first working program is about three sentences away, and none of them are code.",
+    "Why 'make it better' is the worst instruction you can give a builder.",
+    "A small web app is only 4 kinds of files. Which one does what?",
+    "That red error message was written for Claude, not you. Hand it over.",
+    "One sentence brings back yesterday's working version, if you set this up first.",
+    "Why one small job, tested and saved, beats five asked for at once.",
+    "Claude forgets everything when you close the window, unless you leave it a note."
+   ],
+   "to": [
+    "Your first working program is two short commands and one plain-English sentence away.",
+    "Why 'make it better' is the worst instruction you can give a builder.",
+    "A small web app is only 4 kinds of files. Which one does what?",
+    "That red error message was written for Claude, not you. Hand it over.",
+    "One sentence brings back yesterday's working version, if you set this up first.",
+    "Why one small job, tested and saved, beats five asked for at once.",
+    "Claude forgets everything when you close the window, unless you leave it a note."
+   ]
+  },
+  {
+   "topic": "AI agents",
+   "from": [
+    "ChatGPT and an agent can share the exact same brain. Only one of them can act.",
+    "'Book me a table' is one sentence. Watch it become eleven steps.",
+    "The model never clicks anything. It writes a note, and software does the clicking.",
+    "Every agent has amnesia. The good ones just take better notes.",
+    "The agent reported the file was sent. No tool ever sent it.",
+    "An agent read a web page. The web page told it what to do next. It obeyed.",
+    "Renaming 500 files needs no agent. Sorting 50 emails might. Which question decides?"
+   ],
+   "to": [
+    "ChatGPT and an agent can share the exact same brain. Only one of them can act.",
+    "'Book me a table' is one sentence. An agent turns it into several laps of one loop.",
+    "The model never clicks anything. It writes a note, and software does the clicking.",
+    "Every agent has amnesia. The good ones just take better notes.",
+    "The agent reported the file was sent. No tool ever sent it.",
+    "An agent read a web page. The web page told it what to do next. It obeyed.",
+    "Renaming 500 files needs no agent. Sorting 50 emails might. Which question decides?"
+   ]
+  },
+  {
+   "topic": "Building a competitor-tracking agent",
+   "from": [
+    "ChatGPT answers when asked. An agent takes the next step unasked. That gap is the whole subject.",
+    "Most competitor tracking dies on day one from watching 40 things. Pick 15.",
+    "A web page is just text your agent can read. Mostly. The exceptions teach you the most.",
+    "Reading the page is easy. Remembering what it said last week is where agents earn their keep.",
+    "A 20% price rise and a fixed typo look identical to a diff. The model tells them apart.",
+    "An agent you start by hand is just a script. The schedule is what makes it an agent.",
+    "Your scout will cry wolf in week one. Here is how to quiet it without going deaf."
+   ],
+   "to": [
+    "ChatGPT answers when asked. An agent takes the next step unasked. That gap is the whole subject.",
+    "Watch 40 pages and by Friday you've stopped opening the note. How few is enough?",
+    "A web page is just text your agent can read. Mostly. The exceptions teach you the most.",
+    "Reading the page is easy. Remembering what it said last week is where agents earn their keep.",
+    "A 20% price rise and a fixed typo look identical to a diff. The model tells them apart.",
+    "An agent you start by hand is just a script. The schedule is what makes it an agent.",
+    "Your scout will cry wolf in week one. Here is how to quiet it without going deaf."
+   ]
+  },
+  {
+   "topic": "Public speaking",
+   "from": [
+    "Chris Anderson's first rule for a TED talk fits in three words. Most speakers break it in minute one.",
+    "Patrick Winston's opening rule: never start with a joke. His reason is practical.",
+    "Nancy Duarte mapped two famous speeches and found the same hidden zigzag in both.",
+    "Why does repeating your point 3 times make a talk clearer, not boring?",
+    "Julian Treasure lists 7 speaking habits that make people tune out. Most of us have 2.",
+    "Matt Abrahams says the spontaneous answer is a skill, not a talent. It has a drill.",
+    "Patrick Winston's last slide was never 'thank you'. What he put there instead."
+   ],
+   "to": [
+    "Chris Anderson's first rule for a TED talk fits in three words. Most speakers break it in minute one.",
+    "Patrick Winston's opening rule: never start with a joke. His reason is practical.",
+    "Nancy Duarte mapped two famous speeches and found the same hidden zigzag in both.",
+    "Why does repeating your point 3 times make a talk clearer, not boring?",
+    "The best hiking guide is the one who keeps stopping. Your voice works the same way.",
+    "Matt Abrahams says the spontaneous answer is a skill, not a talent. It has a drill.",
+    "Patrick Winston's last slide was never 'thank you'. What he put there instead."
+   ]
+  }
+ ]
+}

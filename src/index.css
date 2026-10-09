@@ -77,7 +77,7 @@ body { font-variant-numeric: tabular-nums; }
 .quiet:hover { color: var(--ink); }
 main { flex: 1; display: flex; flex-direction: column; padding-bottom: 170px; }   /* the fixed bar is up to 150 px with its note; nothing hides under it */
 .foot { color: var(--ink-2); font-size: var(--small); padding: var(--l) 0 var(--m); }
-.foot a { display: inline-block; padding: 11px 0; }   /* 44 px rows for the policy links (8 Oct night audit) */
+.foot a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0 2px; }   /* 44 by 44 for the policy links (8 Oct night audit; 9 Oct night: they measured 42 high, Terms 39 wide) */
 /* on a phone the fixed action bar is 130 px tall; the footer keeps that much clear so its links can be reached (sign-in's could not) */
 @media (max-width: 899px) { .shell > .foot { padding-bottom: 150px; } }
 
@@ -205,7 +205,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 @media (min-width: 900px) {
   .shell { max-width: 72rem; display: grid; grid-template-columns: 260px minmax(0, 38rem); column-gap: 56px; justify-content: center; align-content: start; }
   .shell > .top { grid-column: 1 / -1; }
-  .shell > .rail { display: block; grid-column: 1; position: sticky; top: 24px; align-self: start; padding-top: var(--l); }
+  .shell > .rail { display: block; grid-column: 1; position: sticky; top: 24px; align-self: start; padding-top: var(--l); max-height: calc(100vh - 24px); overflow-y: auto; }   /* long titles: the list scrolls in place rather than running off the bottom */
   .shell > main { grid-column: 2; position: relative; padding-bottom: var(--xl); min-height: 60vh; }
   .shell > .foot { grid-column: 1 / -1; }
   /* no rail (Your handbooks, sign-in, pricing, the Shelf): one centred column instead of a page that leans right (8 Oct night, 55's desktop review) */
@@ -222,12 +222,21 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .rail .rail-topic, .menu-sheet .rail-topic { font-weight: 700; font-size: var(--ui); letter-spacing: -0.01em; margin: 6px 0 2px; }
 .rail .rail-sub, .menu-sheet .rail-sub { color: var(--ink-2); font-size: var(--small); margin-bottom: var(--s); }
 .rail ol, .menu-sheet ol { list-style: none; margin: var(--m) 0; padding: 0; border-top: 1px solid var(--tint); }
-.rail li, .menu-sheet li { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--tint); font-size: var(--small); color: var(--ink-2); }
-.rail li.now, .menu-sheet li.now { color: var(--ink); font-weight: 600; }
-.rail li.done, .menu-sheet li.done { color: var(--pass); }
-.rail li .n, .menu-sheet li .n { width: 1.2rem; font-variant-numeric: tabular-nums; }
-.rail .rail-links, .menu-sheet .rail-links { display: flex; flex-direction: column; gap: 6px; margin-top: var(--m); }
-.rail .rail-links .quiet, .rail .rail-links .back-link, .menu-sheet .rail-links .quiet, .menu-sheet .rail-links .back-link { text-align: left; padding: 4px 0; }
+.rail li, .menu-sheet li { border-bottom: 1px solid var(--tint); font-size: var(--small); color: var(--ink-2); }
+/* Each chapter is one full-width row that answers a tap (9 Oct night, Shaktimaan's walk-through: they were bare browser
+   buttons, the number ran into the title, long titles wrapped in cramped boxes, and the current chapter didn't stand out). */
+.rail-ch { all: unset; box-sizing: border-box; display: flex; gap: 12px; align-items: flex-start; width: 100%; min-height: 48px; padding: 10px 8px; margin: 2px 0; border-radius: 10px; cursor: pointer; font-size: var(--small); line-height: 1.4; color: inherit; text-align: left; }
+.rail-ch:hover { background: var(--paper-2); }
+.rail-ch:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+.rail-ch .n { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid var(--rule); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.rail-ch .t { flex: 1; min-width: 0; padding-top: 2px; overflow-wrap: anywhere; hyphens: manual; }
+.rail-ch .rail-now { display: block; margin-top: 2px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.rail li.now .rail-ch, .menu-sheet li.now .rail-ch { background: var(--accent); background: color-mix(in srgb, var(--accent) 45%, var(--paper)); color: var(--ink); font-weight: 700; }
+.rail li.now .rail-ch .n, .menu-sheet li.now .rail-ch .n { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.rail li.done .rail-ch, .menu-sheet li.done .rail-ch { color: var(--ink); }
+.rail li.done .rail-ch .n, .menu-sheet li.done .rail-ch .n { background: var(--pass); border-color: var(--pass); color: var(--paper); }
+.rail .rail-links, .menu-sheet .rail-links { display: flex; flex-direction: column; gap: 2px; margin-top: var(--m); }
+.rail .rail-links .quiet, .rail .rail-links .back-link, .menu-sheet .rail-links .quiet, .menu-sheet .rail-links .back-link { text-align: left; padding: 0 8px; min-height: 44px; display: flex; align-items: center; border-radius: 10px; }
 .kbd-hint { color: var(--ink-2); font-size: var(--small); margin-top: var(--s); display: none; }
 @media (min-width: 900px) { .kbd-hint { display: block; } }
 .watch { display: flex; flex-direction: column; gap: 4px; border: var(--stroke) solid var(--ink); border-radius: var(--radius-card); padding: var(--m); text-decoration: none; color: var(--ink); margin-top: var(--m); }
@@ -524,7 +533,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .lp-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .lp-top { position: absolute; top: 0; left: 0; right: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; padding: 14px max(var(--m), env(safe-area-inset-left)); }
-.lp-mark { font-weight: 800; font-size: 1.15rem; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
+.lp-mark { font-weight: 800; font-size: 1.15rem; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; display: inline-flex; align-items: center; min-height: 44px; }
 .lp-top-cta { background: var(--ink); color: var(--paper); border: 0; border-radius: 999px; padding: 10px 16px; font: 700 0.9rem var(--sans); min-height: 44px; }
 
 /* hero: a marigold poster, the headline printed slightly off-register */
@@ -549,13 +558,16 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .lp-field button:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
 .lp-field button:disabled { opacity: 0.7; }
 .lp-options { margin-top: 12px; font-size: var(--small); }
-.lp-options summary { cursor: pointer; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; list-style: none; min-height: 32px; display: flex; align-items: center; }
+.lp-options summary { cursor: pointer; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; list-style: none; min-height: 44px; display: flex; align-items: center; }
 .lp-options summary::-webkit-details-marker { display: none; }
 .lp-seg { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .lp-seg button { border: 2px solid var(--ink); background: transparent; color: var(--ink); border-radius: 999px; padding: 8px 14px; font: 600 0.9rem var(--sans); min-height: 44px; }
 .lp-seg button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
 .lp-error { margin: 10px 0 0; font-weight: 600; color: #7a1d10; }
 .lp-fine { margin: 12px 0 0; font-size: var(--small); color: rgba(27, 26, 23, 0.75); }
+/* The one free typed topic, said beside each topic box before the first choice (Shaktimaan, 9 Oct night) */
+.lp-allow { margin: 10px 0 0; font-size: var(--small); font-weight: 600; color: var(--ink); }
+.allow-note { color: var(--ink); }
 /* "start one tonight": ready topics right under the box, one tap starts them */
 .lp-quick { margin-top: 18px; }
 .lp-quick p { font: 700 var(--small) var(--sans); margin: 0 0 8px; }
@@ -617,7 +629,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .lp-final h2 { max-width: 14ch; }
 .lp-foot { padding: 28px max(var(--m), env(safe-area-inset-left)) 40px; background: var(--ink); color: rgba(250, 247, 240, 0.8); font-size: var(--small); }
 .lp-foot p { margin: 0; max-width: 40rem; line-height: 1.6; }
-.lp-foot a { color: var(--accent); display: inline-block; padding: 11px 0; }
+.lp-foot a { color: var(--accent); display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
 
 @media (min-width: 900px) {
   .lp section { padding: 104px max(6vw, calc((100vw - 76rem) / 2)) 112px; }
@@ -682,7 +694,10 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .declined { margin: var(--l) 0 var(--xl); padding: var(--m); border-radius: var(--radius-card); background: var(--paper); border: var(--stroke) solid var(--ink); }
 .declined-kicker { font: 700 var(--small) var(--sans); color: var(--ink-2); margin: 0 0 6px; }
 .declined-line { font: 600 var(--heading) var(--sans); line-height: 1.3; margin: 0 0 var(--m); }
-.declined-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 var(--m); }
+.declined-suggestions { display: grid; gap: 8px; margin: 6px 0 var(--m); }
+/* one row each, saying whether it is ready (free) or written for you (9 Oct night; the chips squeezed three lines into 93 px) */
+.decl-pick { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 48px; padding: 8px 14px; border: 2px solid var(--rule); border-radius: 14px; background: transparent; font: 600 var(--ui) var(--sans); color: var(--ink); text-align: left; cursor: pointer; }
+.decl-tag { flex: none; font: 600 var(--small) var(--sans); color: var(--ink-2); }
 .roadmap-pushback { margin: 8px 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(250, 247, 240, 0.12); border: 1px solid rgba(250, 247, 240, 0.35); font: 600 var(--ui) var(--sans); line-height: 1.4; }
 
 /* teach it back (optional) */
@@ -851,7 +866,12 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .policy p { font-family: var(--serif); font-size: 1.04rem; line-height: 1.55; max-width: 60ch; margin: 0 0 var(--s); }
 .policy-list { padding-left: 1.1em; margin: 0 0 var(--m); display: grid; gap: 8px; font-family: var(--serif); font-size: 1.04rem; line-height: 1.5; max-width: 60ch; }
 .policy-list strong { font-family: var(--sans); }
-.policy-links { display: inline-flex; flex-wrap: wrap; gap: 6px 16px; }
+/* Links on the policy pages are 44 px to tap (9 Oct night, Shaktimaan: the contact email measured 16 px high). In running
+   text the tap area grows by padding, so the lines don't move; Back and the contact list get whole 44 px rows. */
+.policy p a { padding: 14px 0; }
+.policy .quiet-link, .policy-list a { display: inline-flex; align-items: center; min-height: 44px; }
+.library-plans { min-height: 44px; display: inline-flex; align-items: center; }
+.policy-links { display: inline-flex; flex-wrap: wrap; gap: 0 16px; }
 .policy-links a { color: inherit; }
 
 /* early-bird tiers (7 Oct): the pricing page */
@@ -908,7 +928,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .unlock-on { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px; border-radius: 50%; background: var(--pass, #1f7a4d); color: #fff; font-size: 0.8rem; font-weight: 700; }
 
 /* Navigation (7 Oct, Prateek): the wordmark goes home, a menu button on phones, chapters you can reopen */
-.wordmark-btn { all: unset; cursor: pointer; display: block; font-weight: 700; font-size: var(--ui); letter-spacing: -0.01em; color: inherit; }
+.wordmark-btn { all: unset; cursor: pointer; display: flex; flex-direction: column; justify-content: center; min-height: 44px; white-space: nowrap; font-weight: 700; font-size: var(--ui); letter-spacing: -0.01em; color: inherit; }   /* 44 px to tap; nowrap again ("all: unset" had undone it, so "I Get It" broke onto two lines at 390) */
 .wordmark-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
 .menu-btn { all: unset; cursor: pointer; font-size: 1.4rem; line-height: 1; padding: 8px 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; text-align: center; border-radius: 10px; }
 .menu-btn:focus-visible { outline: 3px solid var(--ink); }

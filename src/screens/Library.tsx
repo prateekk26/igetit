@@ -77,7 +77,7 @@ export default function Library({ rows, signedIn, isMember, freeChapters = 2, ac
       </ul>
       {/* The nudge is the short form here (8 Oct, print shop): the handbooks are the page, the account is a footnote. */}
       {!signedIn && rows.length > 0 && <SignupNudge onSignIn={onSignIn} context="library" compact freeChapters={freeChapters} />}
-      <p style={{ marginTop: 'var(--l)' }}><button type="button" className="quiet" onClick={onPlans}>{isMember ? 'Your membership' : 'What’s free, and what members get'}</button></p>
+      <p style={{ marginTop: 'var(--l)' }}><button type="button" className="quiet library-plans" onClick={onPlans}>{isMember ? 'Your membership' : 'What’s free, and what members get'}</button></p>
       {/* 8 Oct (UX review #4): the way to other topics was only in the handbook menu, so readers looped here.
           8 Oct night: the main button continues the last handbook; The Shelf and a new topic are the quiet pair. */}
       <ActionBar>

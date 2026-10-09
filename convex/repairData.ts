@@ -524,3 +524,60 @@ export const firstSeenPictureIds = internalQuery({
     return [...ids];
   },
 });
+
+// Teasers back on their own chapters (9 Oct night, Shaktimaan's walk-through: Western philosophy's chapter 3 "Plato and
+// Aristotle" previewed Descartes). Some ready plans were written with each hook teasing the chapter after it, and a few
+// hooks promised what their chapter never says. Only plan.chapters[i].hook changes, never a chapter: in the topic's stored
+// copies and in readers' copies, and only where the hooks still read exactly as "from". dryRun counts without writing.
+function withHooks(plan: any, from: string[], to: string[]) {
+  const chs = plan?.chapters;
+  if (!Array.isArray(chs) || chs.length !== from.length || chs.some((c: any, i: number) => (c?.hook ?? "") !== from[i])) return null;
+  return { ...plan, chapters: chs.map((c: any, i: number) => ({ ...c, hook: to[i] })) };
+}
+const hookFix = v.object({ topic: v.string(), from: v.array(v.string()), to: v.array(v.string()) });
+export const setHooksStored = internalMutation({
+  args: { fixes: v.array(hookFix), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { fixes, dryRun }) => {
+    const out: { topic: string; rows: number; skipped: number }[] = [];
+    for (const f of fixes) {
+      if (f.from.length !== f.to.length) throw new Error(`${f.topic}: one hook per chapter`);
+      let rows = 0, skipped = 0;
+      for (const c of await ctx.db.query("cache").withIndex("by_topic", (q) => q.eq("topic", f.topic)).collect()) {
+        const plan = withHooks(c.plan, f.from, f.to);
+        if (!plan) { skipped++; continue; }
+        if (!dryRun) await ctx.db.patch(c._id, { plan });
+        rows++;
+      }
+      out.push({ topic: f.topic, rows, skipped });
+    }
+    return out;
+  },
+});
+export const setHooksCopies = internalMutation({
+  args: { fixes: v.array(hookFix), cursor: v.union(v.string(), v.null()), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { fixes, cursor, dryRun }) => {
+    const page = await ctx.db.query("handbooks").paginate({ cursor, numItems: 100 });
+    let copies = 0;
+    for (const h of page.page) {
+      if (h.source !== "cache") continue;
+      const f = fixes.find((x) => withHooks(h.plan, x.from, x.to));
+      if (!f) continue;
+      if (!dryRun) await ctx.db.patch(h._id, { plan: withHooks(h.plan, f.from, f.to) });
+      copies++;
+    }
+    return { copies, cursor: page.continueCursor, done: page.isDone };
+  },
+});
+export const setHooks = internalAction({
+  args: { fixes: v.array(hookFix), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { fixes, dryRun }): Promise<{ dryRun: boolean; stored: any; copies: number }> => {
+    const stored = await ctx.runMutation(internal.repairData.setHooksStored, { fixes, dryRun });
+    let cursor: string | null = null, copies = 0;
+    for (;;) {
+      const p: { copies: number; cursor: string; done: boolean } = await ctx.runMutation(internal.repairData.setHooksCopies, { fixes, cursor, dryRun });
+      copies += p.copies; cursor = p.cursor;
+      if (p.done) break;
+    }
+    return { dryRun: !!dryRun, stored, copies };
+  },
+});

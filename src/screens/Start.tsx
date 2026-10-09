@@ -6,6 +6,7 @@ import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { isMemberLimit, limitMessage } from '../lib/limits'
 import { nameOf } from '../lib/name'
+import { typedBoxText, typedPickText, type TypedAllowance } from '../lib/free'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
@@ -42,11 +43,16 @@ type Props = {
   chapterOneReady?: boolean
   startedAt?: number   // when the writing started (the goal was picked), for "taking longer than usual"
   goal?: string | null
+  allowance?: TypedAllowance | null   // the typed-topic allowance, said beside the box (Shaktimaan, 9 Oct night)
+  replacingName?: string | null   // "Change what you typed": the unread handbook this line replaces, so it costs nothing
 }
 
 // The first screen, and the empty state of the whole product (DESIGN.md section 4, Start).
-export default function Start({ initialTopic = '', status, question, intents, onChooseIntent, suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal }: Props) {
+export default function Start({ initialTopic = '', status, question, intents, onChooseIntent, suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal , allowance, replacingName}: Props) {
   const declined = status === 'declined'
+  // Ready handbook names, to tell a ready suggestion (free) from one that would be written for this reader.
+  const keyOf = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
+  const readyKeys = new Set(examples.map(keyOf))
   const [topic, setTopic] = useState(status === 'declined' ? '' : initialTopic)
   // A declined line never stays in the box: the reader starts fresh.
   useEffect(() => { if (status === 'declined') setTopic('') }, [status])
@@ -197,9 +203,15 @@ export default function Start({ initialTopic = '', status, question, intents, on
           {suggestions.length > 0 && (
             <>
               <p className="note">Something you might enjoy instead:</p>
+              {/* Each says whether it is a ready handbook (free) or one written for this reader, which uses the typed topic
+                  (Shaktimaan, 9 Oct night). A safety refusal offers ready ones; the plan's own decline offers its own ideas. */}
               <div className="declined-suggestions">
-                {suggestions.map((s) => <button key={s} type="button" className="chip" onClick={() => onCreate(s, level, voice).catch((e) => setLocalError(friendly(e)))}>{s}</button>)}
+                {suggestions.map((s) => {
+                  const ready = readyKeys.has(keyOf(s))
+                  return <button key={s} type="button" className="decl-pick" onClick={() => onCreate(s, level, voice).catch((e) => setLocalError(friendly(e)))}><span>{s}</span><span className="decl-tag">{ready ? 'Ready, free' : 'Written for you'}</span></button>
+                })}
               </div>
+              {suggestions.some((s) => !readyKeys.has(keyOf(s))) && <p className="note">{typedPickText(allowance)}</p>}
             </>
           )}
           <p className="note">Or type something else below.</p>
@@ -216,6 +228,7 @@ export default function Start({ initialTopic = '', status, question, intents, on
           // Enter only closes the keyboard and shows the level and voice; the button starts the writing.
           onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); levelRef.current?.scrollIntoView({ behavior: glide(), block: 'center' }) } }} />
         {topic.length >= 150 && <p className="note" aria-live="polite">{200 - topic.length} characters left. A few words is enough.</p>}
+        {!writing && typedBoxText(allowance, replacingName) && <p className="note allow-note">{typedBoxText(allowance, replacingName)}</p>}
         {examples.length > 1 && !below && (
           <p className="note">{onPickReady ? 'Ready now, opens instantly: ' : "Tonight's ready handbooks: "}{examples.slice(0, 6).map((x, i) => (
             <span key={x}>{i > 0 && ' · '}<button type="button" className="quiet" style={{ padding: 0 }} onClick={() => { if (onPickReady) onPickReady(x).catch((e) => setLocalError(friendly(e))); else setTopic(x) }} disabled={writing}>{x}</button></span>

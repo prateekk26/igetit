@@ -6,7 +6,7 @@ import { track } from '../lib/track'
 import { PolicyLinks } from './Policy'
 import { limitMessage } from '../lib/limits'
 import ShelfStrip, { ShelfButton } from '../components/ShelfStrip'
-import { freeChaptersText } from '../lib/free'
+import { freeChaptersText, TYPED_RULE, typedBoxText, type TypedAllowance } from '../lib/free'
 
 // The landing page, for first-time visitors (DESIGN.md, Landing). A printed risograph poster that sells
 // before it asks: the promise, the itch, how tonight works, a real chapter to tap, the seven nights,
@@ -15,7 +15,7 @@ import { freeChaptersText } from '../lib/free'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
-type Props = { onCreate: (topic: string, level: Level, voice: Voice) => Promise<void>; onExplore?: () => void; freeChapters?: number }
+type Props = { onCreate: (topic: string, level: Level, voice: Voice) => Promise<void>; onExplore?: () => void; freeChapters?: number; allowance?: TypedAllowance | null }
 
 type Frame =
   | { kind: 'picture' | 'teach' | 'example' | 'mistake' | 'try'; title?: string; text: string; picture: string | null }
@@ -66,7 +66,7 @@ function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; 
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
-export default function Landing({ onCreate, onExplore, freeChapters = 2 }: Props) {
+export default function Landing({ onCreate, onExplore, freeChapters = 2, allowance }: Props) {
   const freeText = freeChaptersText(freeChapters)   // D26: chapters 1 and 2 need no account; the number is the server's
   const c = useQuery(api.landing.content, {})
   const plans = useQuery(api.pricing.plans, {})
@@ -124,6 +124,8 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2 }: Props
           placeholder="Public speaking, the stock market, sourdough…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
         <button type="submit" disabled={busy}>{busy ? 'Finding your way…' : 'Show me the way'}</button>
       </div>
+      {/* A phone whose typed handbook was removed still lands here with its one free typed topic used (removed ones count). */}
+      <p className="lp-allow">{allowance && !allowance.member && allowance.used >= allowance.limit ? typedBoxText(allowance) : TYPED_RULE}</p>
       {where === 'hero' && (
         <details className="lp-options">
           <summary>{level === 'new' ? 'New to this' : 'Know some'}, {voice === 'friend' ? 'talks like a friend' : voice === 'straight' ? 'straight to the point' : 'in stories'}. Change</summary>

@@ -309,7 +309,7 @@ export default function App() {
   }
 
   // A first-time visitor's pick stays on the landing page, with the card lifted, until its handbook is ready (8 Oct night).
-  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} onExplore={() => setView('explore')} onCreate={async (topic, level, voice) => { setHold('landing'); setDraftTopic(topic); const r = await create({ topic, level, voice, deviceToken: token }); pin(String(r.handbookId)); setFlash((r as any).restored ? 'Brought back from the ones you removed, where you left off.' : r.existing ? 'You already have this handbook, so we opened it where you left off. Each topic lives in one handbook.' : null); setView('auto') }} />
+  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={async (topic, level, voice) => { setHold('landing'); setDraftTopic(topic); const r = await create({ topic, level, voice, deviceToken: token }); pin(String(r.handbookId)); setFlash((r as any).restored ? 'Brought back from the ones you removed, where you left off.' : r.existing ? 'You already have this handbook, so we opened it where you left off. Each topic lives in one handbook.' : null); setView('auto') }} />
   const libRows = lib?.handbooks ?? []
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   if (view === 'library' || (hold === 'library' && data === undefined)) {
@@ -360,7 +360,7 @@ export default function App() {
     )
   }
   if (!hb && view !== 'start-again' && libRows.length === 0 && lib !== undefined) {
-    return <Landing freeChapters={freeChapters} onExplore={() => setView('explore')} onCreate={async (topic, level, voice) => { setHold('landing'); setDraftTopic(topic); const r = await create({ topic, level, voice, deviceToken: token }); pin(String(r.handbookId)); setFlash((r as any).restored ? 'Brought back from the ones you removed, where you left off.' : r.existing ? 'You already have this handbook, so we opened it where you left off. Each topic lives in one handbook.' : null); setView('auto') }} />
+    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={async (topic, level, voice) => { setHold('landing'); setDraftTopic(topic); const r = await create({ topic, level, voice, deviceToken: token }); pin(String(r.handbookId)); setFlash((r as any).restored ? 'Brought back from the ones you removed, where you left off.' : r.existing ? 'You already have this handbook, so we opened it where you left off. Each topic lives in one handbook.' : null); setView('auto') }} />
   }
 
   // No handbook yet, or the person wants a different line: the first screen.
@@ -395,6 +395,8 @@ export default function App() {
           onChooseIntent={async (goal, mode) => { if (hb) await chooseIntent({ handbookId: hb._id, goal, mode, deviceToken: token }) }}
           error={hb?.error}
           examples={examples}
+          allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null}
+          replacingName={view === 'start-again' && replacing ? nameOf(libRows.find((r: any) => String(r._id) === String(replacing))?.topic ?? hb?.topic ?? '') || null : null}
           onCreate={async (topic, level, voice) => { setDraftTopic(topic); let r; try { r = await create({ topic, level, voice, deviceToken: token, ...(view === 'start-again' && replacing ? { replaceId: replacing } : {}) } as any) } catch (e) { if (isMemberLimit(e)) { setPricingNotice(limitMessage(e)); goPricing(); return } throw e } pin(String(r.handbookId)); setFlash((r as any).restored ? 'Brought back from the ones you removed, where you left off.' : r.existing ? 'You already have this handbook, so we opened it where you left off. Each topic lives in one handbook.' : null); setView('auto') }}
           onAnswer={async (answer) => { if (hb) await answerQuestion({ handbookId: hb._id, answer, deviceToken: token }) }}
           onRetry={async () => { if (hb) await retry({ handbookId: hb._id, deviceToken: token }) }}   /* Start shows its own error */
@@ -432,8 +434,9 @@ export default function App() {
       <ol>
         {plan.chapters?.map((c: any) => (
           <li key={c.n} className={passed.includes(c.n) ? 'done' : c.n === currentN ? 'now' : ''}>
-            <button type="button" className="rail-ch" onClick={() => tapChapter(c.n)} aria-label={`Chapter ${c.n}: ${c.title}${passed.includes(c.n) ? ', done, read it again' : c.n === currentN ? ', next' : ', a preview'}`}>
-              <span className="n">{passed.includes(c.n) ? '✓' : c.n}</span><span>{c.title}</span>
+            <button type="button" className="rail-ch" onClick={() => tapChapter(c.n)} aria-current={!passed.includes(c.n) && c.n === currentN ? 'step' : undefined} aria-label={`Chapter ${c.n}: ${c.title}${passed.includes(c.n) ? ', done, read it again' : c.n === currentN ? ', next' : ', a preview'}`}>
+              <span className="n" aria-hidden="true">{passed.includes(c.n) ? '✓' : c.n}</span>
+              <span className="t">{c.title}{!passed.includes(c.n) && c.n === currentN && <span className="rail-now">{passed.length === 0 ? 'Start here' : 'Up next'}</span>}</span>
             </button>
           </li>
         ))}
