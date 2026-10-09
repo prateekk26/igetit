@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import ActionBar from '../components/ActionBar'
 import SignupNudge from '../components/SignupNudge'
 
 type Row = { total?: number; _id: string; topic: string; status: string; passed: number; current: number; card?: number; started?: boolean; lastAt: number; outcome: string | null }
-type Props = { rows: Row[]; signedIn: boolean; activeId?: string; onOpen: (id: string) => void; onNew: () => void; onSignIn: () => void; onPlans: () => void; onExplore: () => void }
+type Props = { rows: Row[]; signedIn: boolean; activeId?: string; onOpen: (id: string) => void; onNew: () => void; onSignIn: () => void; onPlans: () => void; onExplore: () => void; onRemove?: (id: string) => Promise<void> }
 
 function ago(t: number) {
   const m = Math.round((Date.now() - t) / 60000)
@@ -12,7 +13,10 @@ function ago(t: number) {
 }
 
 // Every handbook in one place. Each keeps its own place; starting a new one never resets another.
-export default function Library({ rows, signedIn, activeId, onOpen, onNew, onSignIn, onPlans, onExplore }: Props) {
+export default function Library({ rows, signedIn, activeId, onOpen, onNew, onSignIn, onPlans, onExplore, onRemove }: Props) {
+  // Remove (D36, 9 Oct): two taps, the second names the handbook; never a browser dialog. Copy (agent).
+  const [confirming, setConfirming] = useState<string | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
   // Newest first, and the one to continue is the one opened last (8 Oct night: a returning reader's one job is to carry
   // on; the main button says so, by name and chapter, instead of "The Shelf").
   const sorted = [...rows].sort((a, b) => Number(!!b.started) - Number(!!a.started) || b.lastAt - a.lastAt)
@@ -34,6 +38,17 @@ export default function Library({ rows, signedIn, activeId, onOpen, onNew, onSig
                 <span className="shelf-next">{where(r)}</span>
               </span>
             </button>
+            {onRemove && (
+              <div className="shelf-remove">
+                {confirming === r._id ? (
+                  <>
+                    <span className="note">Remove “{r.topic}” from your handbooks?</span>
+                    <button type="button" className="quiet" disabled={removing === r._id} onClick={async () => { setRemoving(r._id); try { await onRemove(r._id) } finally { setRemoving(null); setConfirming(null) } }}>{removing === r._id ? 'Removing…' : 'Yes, remove'}</button>
+                    <button type="button" className="quiet" onClick={() => setConfirming(null)}>Keep</button>
+                  </>
+                ) : <button type="button" className="quiet" onClick={() => setConfirming(r._id)}>Remove</button>}
+              </div>
+            )}
           </li>
         ))}
       </ul>

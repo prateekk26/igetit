@@ -409,6 +409,9 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .shelf-bar span { flex: 1; height: 9px; border-radius: 2px; border: 2px solid var(--ink); background: var(--paper); }
 .shelf-bar span.on { background: var(--pass); border-color: var(--pass); }
 .shelf-next { color: var(--ink); font-size: var(--small); font-weight: 700; }
+.shelf-remove { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 12px; margin: 2px 4px 0 0; }   /* D36: remove a handbook, two taps */
+.shelf-remove .quiet { min-height: 36px; font-size: var(--small); }
+.shelf-remove .note { margin: 0; flex: 1 1 100%; text-align: right; }
 .rules { list-style: none; padding: 0; margin: var(--l) 0; display: grid; gap: 10px; font-family: var(--serif); font-size: 1.04rem; line-height: 1.45; }
 .rules strong { font-family: var(--sans); }
 .locked { padding: 14px 16px; border-radius: var(--radius-card); background: var(--pass-tint); border: var(--stroke) solid var(--pass); color: var(--ink); font-weight: 600; }

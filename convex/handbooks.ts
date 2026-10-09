@@ -12,6 +12,7 @@ import { MOVE_PROMPT, moveUserMessage, TRYIT_PROMPT, tryItUserMessage, INTENT_PR
 import { level } from "./schema";
 import { copyInto, matchForIntent, sharedRow } from "./library";
 import { onShelf } from "./shelf";
+import { isSuper } from "./admin";
 import { assignVariant } from "./doctor";
 import { COST_INR, LIMITS, isOpen, memberUntil, ownerIsMember, spendFits, tryOpen, typedAllowance } from "./membership";
 
@@ -110,6 +111,7 @@ function ownerKey(h: Doc<"handbooks">) {
 // (audit) a free reader's write also counts against the day's free budget (membership.ts spendFits); members never
 // pause. Past the budget it throws "paused-today" (the honest message) unless soft, when it just says no.
 async function takeGeneration(ctx: MutationCtx, h: Doc<"handbooks">, opts: { soft?: boolean } = {}) {
+  if (h.userId && (await isSuper(ctx, h.userId))) return true;   // D36: the owner is never capped or paused
   const mine = await limiter.limit(ctx, "generateDevice", { key: ownerKey(h) });
   if (!mine.ok) return false;
   if (!(await limiter.limit(ctx, "generateAll")).ok) return false;
@@ -410,10 +412,12 @@ export const create = mutation({
     if (!allow.member && !(await spendFits(ctx, COST_INR.handbook))) throw new ConvexError("paused-today");   // the day's free budget is spent (8 Oct: its own code, so the message is honest)
 
     // Live generation: the caps are checked here, in the kitchen.
-    const all = await limiter.limit(ctx, "generateAll");
-    const mine = await limiter.limit(ctx, "generateDevice", { key: userId ? String(userId) : deviceToken });
-    if (!all.ok || !mine.ok) throw new ConvexError("busy");
-    if (!userId && !(await limiter.limit(ctx, "generateAnon")).ok) throw new ConvexError("busy");
+    if (!(userId && (await isSuper(ctx, userId)))) {   // D36: the owner skips the caps
+      const all = await limiter.limit(ctx, "generateAll");
+      const mine = await limiter.limit(ctx, "generateDevice", { key: userId ? String(userId) : deviceToken });
+      if (!all.ok || !mine.ok) throw new ConvexError("busy");
+      if (!userId && !(await limiter.limit(ctx, "generateAnon")).ok) throw new ConvexError("busy");
+    }
 
     // D31b (9 Oct): the typed line can say the level ("advanced", "beyond basics" → some; "beginner", "from scratch" → new).
     const cue = /\b(advanced|intermediate|beyond (the )?basics|next level|deep dive|expert)\b/i.test(clean) ? "some" : /\b(beginner|beginners|basics|from scratch|for dummies|101|absolute beginner)\b/i.test(clean) ? "new" : null;
@@ -1586,8 +1590,10 @@ export const teachBack = mutation({
     if (!Number.isInteger(chapter) || chapter < 1 || chapter > CHAPTERS) throw new Error("No such chapter");
     const t = text.trim().slice(0, 600);
     if (t.length < 10) throw new Error("A sentence or two is enough.");
-    const mine = await limiter.limit(ctx, "teachDevice", { key: ownerKey(h) });
-    if (!mine.ok || !(await limiter.limit(ctx, "teachAll")).ok) throw new ConvexError("busy");
+    if (!(h.userId && (await isSuper(ctx, h.userId)))) {   // D36
+      const mine = await limiter.limit(ctx, "teachDevice", { key: ownerKey(h) });
+      if (!mine.ok || !(await limiter.limit(ctx, "teachAll")).ok) throw new ConvexError("busy");
+    }
     if (!(await ownerIsMember(ctx, h)) && !(await spendFits(ctx, COST_INR.teach))) throw new ConvexError("paused-today");
     const id = await ctx.db.insert("teachBacks", { handbookId, chapter, text: t, status: "thinking", at: Date.now() });
     await ctx.scheduler.runAfter(0, internal.handbooks.replyToTeachBack, { id });
@@ -1641,8 +1647,10 @@ export const ask = mutation({
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
     const q = question.trim().slice(0, 300);
     if (q.length < 3) throw new Error("Ask in a few words.");
-    const mine = await limiter.limit(ctx, "askDevice", { key: ownerKey(h) });
-    if (!mine.ok || !(await limiter.limit(ctx, "askAll")).ok) throw new ConvexError("busy");
+    if (!(h.userId && (await isSuper(ctx, h.userId)))) {   // D36
+      const mine = await limiter.limit(ctx, "askDevice", { key: ownerKey(h) });
+      if (!mine.ok || !(await limiter.limit(ctx, "askAll")).ok) throw new ConvexError("busy");
+    }
     if (!(await ownerIsMember(ctx, h)) && !(await spendFits(ctx, COST_INR.ask))) throw new ConvexError("paused-today");
     const id = await ctx.db.insert("cardQuestions", { handbookId, chapter, cardIndex, question: q, status: "thinking", at: Date.now() });
     await ctx.scheduler.runAfter(0, internal.handbooks.answerQuestionAboutCard, { questionId: id });
@@ -1672,6 +1680,7 @@ export const takeSearchToken = internalMutation({
   // key is the handbook owner: an account id, else a phone token. Members: 30 a month; free: 3 a week, within the daily reader budget.
   handler: async (ctx, { key }) => {
     const userId = ctx.db.normalizeId("users", key);
+    if (userId && (await isSuper(ctx, userId))) return true;   // D36
     const member = !!(await memberUntil(ctx, userId));
     if (member) return (await limiter.limit(ctx, "searchMemberMonth", { key })).ok && (await limiter.limit(ctx, "searchAll")).ok;
     if (!(await limiter.limit(ctx, "searchFreeWeek", { key })).ok || !(await limiter.limit(ctx, "searchAll")).ok) return false;
@@ -1746,5 +1755,16 @@ export const printable = query({
         }),
       }));
     return { member: true as const, topic: h.topic, chapters, total: totalOf(h) };
+  },
+});
+
+// Readers delete their own handbooks (D36, Prateek, 9 Oct 13:3x: "enable people to delete their own handbooks"): hidden
+// (hiddenAt), never erased, so a shared copy made from it keeps working and deleting can't reset the typed-topic count.
+export const remove = mutation({
+  args: { handbookId: v.id("handbooks"), deviceToken: v.string() },
+  handler: async (ctx, { handbookId, deviceToken }) => {
+    const h = await ownedHandbook(ctx, handbookId, deviceToken);
+    if (!h.hiddenAt) await ctx.db.patch(h._id, { hiddenAt: Date.now() });
+    return { ok: true };
   },
 });

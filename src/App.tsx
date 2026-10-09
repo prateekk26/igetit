@@ -62,6 +62,7 @@ export default function App() {
   const setTomorrow = useMutation(api.handbooks.setTomorrow)
   const attachToMe = useMutation(api.handbooks.attachToMe)
   const saveProfile = useMutation(api.handbooks.saveProfile)
+  const removeHandbook = useMutation(api.handbooks.remove)
   const refreshIfStale = useMutation(api.handbooks.refreshIfStale)
   const compareModels = useMutation(api.handbooks.compareModels)
   const voteModel = useMutation(api.handbooks.voteModel)
@@ -278,6 +279,7 @@ export default function App() {
     return (
       <Shell back={hb ? { label: 'Handbook', onClick: () => setView('plan') } : undefined}>
         <Library rows={libRows as any} signedIn={!!lib?.signedIn} activeId={hb?._id} onOpen={(id) => { setHold('library'); pin(id); setDoneN(null); setView('plan') }}
+          onRemove={async (id) => { await removeHandbook({ handbookId: id as any, deviceToken: token }); if (pinned === id) { pin(null); setDoneN(null) } }}
           onNew={() => { setDraftTopic(''); setView('start-again') }} onSignIn={() => signIn('library')} onPlans={() => setView('pricing')} onExplore={goExplore} />
       </Shell>
     )

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { isSuper } from "./admin";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -42,6 +43,7 @@ function modeOf(): "test" | "live" {
 // The end of this person's paid time, if it's still running.
 export async function memberUntil(ctx: QueryCtx | MutationCtx, userId: Id<"users"> | null | undefined): Promise<number | null> {
   if (!userId) return null;
+  if (await isSuper(ctx, userId)) return Date.now() + 100 * 365 * DAY;   // D36: the owner is a member for ever
   const rows = await ctx.db.query("payments").withIndex("by_user", (q) => q.eq("userId", userId)).collect();
   let end = 0;
   for (const r of rows) {
@@ -67,6 +69,7 @@ export async function typedBooks(ctx: QueryCtx | MutationCtx, userId: Id<"users"
 // Can this person start a new typed topic? Returns why not, for the screen to explain.
 export async function typedAllowance(ctx: QueryCtx | MutationCtx, userId: Id<"users"> | null, deviceToken?: string) {
   const member = !!(await memberUntil(ctx, userId));
+  if (userId && (await isSuper(ctx, userId))) return { member: true, used: 0, limit: 999, month: 0, ok: true, why: null };   // D36
   const books = await typedBooks(ctx, userId, deviceToken);
   if (member) {
     const month = books.filter((h) => h.createdAt > Date.now() - DAYS.month * DAY).length;
@@ -105,6 +108,7 @@ export async function tryOpen(ctx: MutationCtx, h: Doc<"handbooks">, n: number):
   if ((h.plan as any)?.format === "quick") { const before0 = p.opened ?? []; await ctx.db.patch(p._id, { opened: [...before0, { n, day: istDay() }], updatedAt: Date.now() }); return { ok: true }; }
   const day = istDay();
   const member = await ownerIsMember(ctx, h);
+  const sup = h.userId ? await isSuper(ctx, h.userId) : false;   // D36: no daily cap for the owner
   // Everything this person (the account, else the phone) opened today, across their handbooks.
   const books = h.userId
     ? await ctx.db.query("handbooks").withIndex("by_user", (q) => q.eq("userId", h.userId)).collect()
@@ -115,7 +119,7 @@ export async function tryOpen(ctx: MutationCtx, h: Doc<"handbooks">, n: number):
     for (const o of bp?.opened ?? []) if (o.day === day) today.push({ id: b._id, typed: isTyped(b) });
   }
   if (member) {
-    if (today.length >= LIMITS.memberChaptersPerDay) return { ok: false, code: "daily-member" };
+    if (!sup && today.length >= LIMITS.memberChaptersPerDay) return { ok: false, code: "daily-member" };
   } else {
     // By chapter number, on purpose (Prateek, 8 Oct night: "Instagram can't direct anyone to chapter 2 straight away"):
     // a post link to chapter 2 meets the same wall as everyone else.
@@ -147,7 +151,7 @@ export const status = query({
     const userId = await getAuthUserId(ctx);
     const until = await memberUntil(ctx, userId);
     const typed = await typedAllowance(ctx, userId, deviceToken);
-    return { member: !!until, until, typed: { used: typed.used, limit: typed.limit, month: typed.month }, limits: LIMITS };
+    return { member: !!until, until, superAdmin: !!(userId && (await isSuper(ctx, userId))), typed: { used: typed.used, limit: typed.limit, month: typed.month }, limits: LIMITS };
   },
 });
 

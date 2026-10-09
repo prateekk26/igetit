@@ -2,7 +2,7 @@ import { useState } from 'react'
 import AdminPipeline from '../components/AdminPipeline'
 import AdminReview from '../components/AdminReview'
 import { SECTIONS } from '../../convex/shelfSections'
-import { useMutation, useQuery } from 'convex/react'
+import { useConvexAuth, useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
 
@@ -16,7 +16,10 @@ const secs = (s: number | null) => (s === null ? '—' : s < 90 ? `${s}s` : `${M
 
 export default function Admin() {
   const [days, setDays] = useState(1)
-  const d = useQuery(api.admin.dashboard, { days })
+  // The sign-in token loads a moment after the page (9 Oct, Prateek: "if I'm visiting the page while being signed in, it should
+  // recognise it"): until it has, the owner query is not asked, so a signed-in owner never sees the sign-in form flash.
+  const { isLoading } = useConvexAuth()
+  const d = useQuery(api.admin.dashboard, isLoading ? 'skip' : { days })
 
   return (
     <div className="adm">

@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { HOUR } from "@convex-dev/rate-limiter";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internalMutation, internalQuery, query, type QueryCtx } from "./_generated/server";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 
 // The owner's /admin dashboard (6 Oct): the funnel from visit to sign-up with drop-off at each step, landing scroll
 // depth, how handbooks get started, where chapter 1 loses people, waits, sources, topics and the latest visitors.
@@ -13,14 +13,24 @@ const dayOf = (t: number) => new Date(t + IST_MS).toISOString().slice(0, 10);
 const median = (xs: number[]) => { if (!xs.length) return null; const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
 const SECTIONS = ["hero", "saved", "steps", "demo", "path", "shelf", "offer", "final"];
 
+// Only a verified email counts (8 Oct night, security audit): a password sign-up stores the address as typed and never
+// verifies it, so "Owner@gmail.com" with any password used to pass this lowercase comparison and open /admin.
+// The owner signs in by email code (which sets emailVerificationTime); a password-only owner account signs in by code once.
+export function ownerUser(user: Doc<"users"> | null | undefined) {
+  const owners = (process.env.STATS_OWNER_EMAILS ?? "").toLowerCase().split(",").map((e) => e.trim()).filter(Boolean);
+  return !!user?.email && !!user.emailVerificationTime && owners.includes(user.email.toLowerCase());
+}
+// D36 (Prateek, 9 Oct 13:3x: "make my account a super admin account where restrictions don't apply"): an owner account is
+// a member for ever (membership.ts memberUntil) and skips every per-person cap: typed topics, chapters a day, the
+// generation, ask, teach and search limits, the free budget pause. The app-wide caps are skipped for the owner too.
+export async function isSuper(ctx: QueryCtx, userId: Id<"users"> | null | undefined) {
+  if (!userId) return false;
+  return ownerUser(await ctx.db.get(userId));
+}
 export async function isOwner(ctx: QueryCtx) {
   const id = await getAuthUserId(ctx);
   const user = id ? await ctx.db.get(id) : null;
-  const owners = (process.env.STATS_OWNER_EMAILS ?? "").toLowerCase().split(",").map((e) => e.trim()).filter(Boolean);
-  // Only a verified email counts (8 Oct night, security audit): a password sign-up stores the address as typed and never
-  // verifies it, so "Owner@gmail.com" with any password used to pass this lowercase comparison and open /admin.
-  // The owner signs in by email code (which sets emailVerificationTime); a password-only owner account signs in by code once.
-  return { ok: !!user?.email && !!user.emailVerificationTime && owners.includes(user.email.toLowerCase()), signedIn: !!user };
+  return { ok: ownerUser(user), signedIn: !!user };
 }
 
 export const dashboard = query({
