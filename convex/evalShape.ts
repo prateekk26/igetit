@@ -1,9 +1,11 @@
+import { jsonSchema, SCHEMAS } from "./schemas";
+import { z } from "zod";
 // The shape benchmark (9 Oct, feat/handbook-shape): typed handbooks run through the real pipeline (research, plan with
 // its checks, chapters with the fact check), on the dev deployment only, to see whether the shape framework fixed the
 // short, squeezed handbooks without pushing simple topics into long courses. Rows are marked as a test handbook
 // ("test"), which is never shared, and owned by the token "eval-shape". Driven by scripts/shape-bench.mjs.
 import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { inrOf } from "./costs";
 import { internal } from "./_generated/api";
 
@@ -97,5 +99,54 @@ export const runChapter = internalMutation({
     if (c) await ctx.db.patch(c._id, { status: "writing", error: undefined });
     else await ctx.db.insert("chapters", { handbookId, n, status: "writing", createdAt: Date.now() });
     await ctx.scheduler.runAfter(0, internal.handbooks.generateChapter, { handbookId, n });
+  },
+});
+
+// Schema probe (10 Oct, dev only): sends Gemini a one-line prompt with the given JSON schema and returns its verdict,
+// so a "400 invalid argument" can be pinned to the schema itself. Costs a few tokens.
+export const probeSchema = internalAction({
+  args: { schema: v.any(), model: v.optional(v.string()), maxOutputTokens: v.optional(v.number()), thinking: v.optional(v.string()) },
+  handler: async (_ctx, { schema, model, maxOutputTokens, thinking }) => {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) return { ok: false, status: 0, body: "no key" };
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model ?? "gemini-3.8-flash"}:generateContent`, {
+      method: "POST", signal: AbortSignal.timeout(60000),
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: "You answer in JSON only." }] }, contents: [{ role: "user", parts: [{ text: "Reply with the smallest valid JSON for the schema." }] }], generationConfig: { maxOutputTokens: maxOutputTokens ?? 16000, responseMimeType: "application/json", responseJsonSchema: schema, thinkingConfig: { thinkingLevel: thinking ?? "medium" } } }),
+    }).catch((e: any) => ({ ok: false, status: 0, text: async () => String(e?.message ?? e) }) as any);
+    const text = await res.text().catch(() => "");
+    return { ok: res.ok, status: res.status, body: text.slice(0, 600) };
+  },
+});
+
+// Same probe, but the schema is built on the server from SCHEMAS[kind], exactly as ai.ts does; reports whether that
+// gave a schema at all (jsonSchema swallows conversion errors and returns null) and Gemini's verdict on it.
+export const probeKind = internalAction({
+  args: { kind: v.string(), model: v.optional(v.string()), variant: v.optional(v.string()), refs: v.optional(v.boolean()) },
+  handler: async (_ctx, { kind, model, variant, refs }) => {
+    // variants of the chapter schema, built here so the test is exactly what the server would send
+    const L = { taught: z.array(z.string()), terms: z.array(z.string()).optional(), names: z.array(z.string()).optional(), opener: z.string().optional(), closing: z.string().optional(), gaps: z.array(z.string()).optional() };
+    const base = SCHEMAS.chapter as z.ZodObject<any>;
+    const variants: Record<string, z.ZodType> = {
+      ledger6: base.extend({ ledger: z.looseObject(L).optional() }),
+      ledger6req: base.extend({ ledger: z.looseObject(L) }),
+      ledger2: base.extend({ ledger: z.looseObject({ taught: z.array(z.string()), closing: z.string() }) }),
+      ledgerArr: base.extend({ ledgerTaught: z.array(z.string()) }),
+      ledgerStr: base.extend({ ledger: z.string() }),
+      ledgerFlat: base.extend({ ledgerTaught: z.array(z.string()).optional(), ledgerTerms: z.array(z.string()).optional(), ledgerNames: z.array(z.string()).optional(), ledgerOpener: z.string().optional(), ledgerClosing: z.string().optional(), ledgerGaps: z.array(z.string()).optional() }),
+    };
+    const schema = refs ? (z.toJSONSchema(variant ? variants[variant] : SCHEMAS[kind], { unrepresentable: "any", reused: "ref" }) as Record<string, unknown>) : variant ? (z.toJSONSchema(variants[variant], { unrepresentable: "any" }) as Record<string, unknown>) : jsonSchema(kind);
+    const chars = schema ? JSON.stringify(schema).length : 0;
+    let conversion = "ok";
+    try { z.toJSONSchema(SCHEMAS[kind], { unrepresentable: "any" }); } catch (e: any) { conversion = String(e?.message ?? e).slice(0, 200); }
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) return { hasSchema: !!schema, chars, conversion, status: 0, body: "no key" };
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model ?? "gemini-3.8-flash"}:generateContent`, {
+      method: "POST", signal: AbortSignal.timeout(60000),
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: "You answer in JSON only." }] }, contents: [{ role: "user", parts: [{ text: "Reply with the smallest valid JSON for the schema." }] }], generationConfig: { maxOutputTokens: 16000, responseMimeType: "application/json", ...(schema ? { responseJsonSchema: schema } : {}), thinkingConfig: { thinkingLevel: "medium" } } }),
+    }).catch((e: any) => ({ ok: false, status: 0, text: async () => String(e?.message ?? e) }) as any);
+    const text = await res.text().catch(() => "");
+    return { hasSchema: !!schema, chars, conversion, status: res.status, body: text.replace(/\s+/g, " ").slice(0, 160) };
   },
 });

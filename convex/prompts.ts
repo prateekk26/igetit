@@ -599,7 +599,12 @@ function shortShape(t: string): string {
   if (a < 0 || b < a) throw new Error("writer v6: the fallback card list was not found");
   return (t.slice(0, a) + SHAPE_SHORT + t.slice(b)).replace(`ending with the closing line (card 8 of the shape below).`, `ending with its closing line (see the "In one breath" card below).`);
 }
-export const CHAPTER_PROMPT_V6 = shortShape(CHAPTER_V6_EDITED);
+// The ledger as one string (10 Oct): Gemini rejects the chapter schema once a nested object is added to it (see
+// schemas.ts), so the record travels as one labelled line and the next chapter's context prints it as given.
+export const CHAPTER_PROMPT_V6 = edited(shortShape(CHAPTER_V6_EDITED), [
+  [`"ledger":{"taught":["<each idea, skill or step this chapter taught, a few words each>"],"terms":["<each term it explained>"],"names":["<each invented person's name>"],"opener":"<card 1's first sentence>","closing":"<the closing line>","gaps":["<a specific a must-have needed that you did not have>"]}`,
+    `"ledger":"<one line in six parts, each starting with its label, in this order: taught: each idea, skill or step this chapter taught, a few words each, separated by semicolons; terms: each term it explained; names: each invented person's name; opener: card 1's first sentence; closing: the closing line; gaps: any specific a must-have needed that you did not have, or none>"`],
+]);
 
 const CHECK_V3_EDITS: [string, string][] = [
   [`(heat, hot oil, water, electricity, a load, a dose, a legal step)`, `(heat, water, electricity, height, a load, a dose, a legal step)`],
@@ -636,7 +641,7 @@ export function chapterContext(b: any, plan: any, n: number, ledgers: { n: numbe
   if (b?.start) L.push(`Where this reader starts: ${b.start}`);
   if (ch.needs?.length) L.push(`This chapter must deliver:\n- ${ch.needs.join("\n- ")}`);
   const done = ledgers.filter((x) => x.n < n && x.ledger);
-  if (done.length) L.push(`Already taught:\n${done.map((x) => { const g = x.ledger; return `- Chapter ${x.n}${x.title ? ` "${x.title}"` : ""}: ${[(g.taught ?? []).join("; "), g.terms?.length ? `terms: ${g.terms.join(", ")}` : "", g.names?.length ? `names used: ${g.names.join(", ")}` : "", g.opener ? `opener: "${g.opener}"` : "", g.closing ? `closing: "${g.closing}"` : ""].filter(Boolean).join(" · ")}`; }).join("\n")}`);
+  if (done.length) L.push(`Already taught:\n${done.map((x) => { const g = x.ledger; if (typeof g === "string") return `- Chapter ${x.n}${x.title ? ` "${x.title}"` : ""}: ${g}`; return `- Chapter ${x.n}${x.title ? ` "${x.title}"` : ""}: ${[(g.taught ?? []).join("; "), g.terms?.length ? `terms: ${g.terms.join(", ")}` : "", g.names?.length ? `names used: ${g.names.join(", ")}` : "", g.opener ? `opener: "${g.opener}"` : "", g.closing ? `closing: "${g.closing}"` : ""].filter(Boolean).join(" · ")}`; }).join("\n")}`);
   L.push(next ? `Next chapter: "${next.title}": ${next.covers ?? ""}` : "Next chapter: none (Last chapter).");
   return `\n\n${L.join("\n")}`;
 }

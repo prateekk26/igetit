@@ -951,7 +951,7 @@ export const generateChapter = internalAction({
     const cards = checked.cards.slice(0, kept.length + checked.added), recallCards = checked.cards.slice(kept.length + checked.added);
     const report = dropped ? { ...checked.report, notes: [...checked.report.notes, `${dropped} quiz${dropped === 1 ? "" : "zes"} dropped (malformed, or not wanted in this chapter)`] } : checked.report;
     await drawMoves(ctx, h.plan?.topic ?? h.topic, title, cards, trace);
-    const ledger = ch.ledger && typeof ch.ledger === "object" ? ch.ledger : undefined;
+    const ledger = typeof ch.ledger === "string" ? ch.ledger.trim().slice(0, 1500) || undefined : ch.ledger && typeof ch.ledger === "object" ? ch.ledger : undefined;
     await ctx.runMutation(internal.handbooks.setChapter, { handbookId, n, title, cards, recallCards, outcomeLine: String(ch.outcomeLine ?? ""), model: r.model, factCheck: report, scenes: checked.scenes.length ? checked.scenes : undefined, ...(ledger ? { ledger } : {}) });
     // A quick handbook's next chapter starts now, so it is written with this one's record (writer v6, 9 Oct). Only when
     // the next chapter does not exist yet: a rewrite of one chapter never rewrites the rest.

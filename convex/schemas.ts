@@ -17,6 +17,9 @@ export const exercise = z.looseObject({
   options: z.array(option).length(3),
   answer: z.enum(["a", "b", "c"]),
   whyNot: z.record(str, str).optional(),
+  // whyRight (D38) is not declared here on purpose: the chapter schema sits at Gemini's size cap and adding it (twice,
+  // for cards and recall quizzes) tips it into "400 invalid argument"; Flash chapters get no whyRight until that is
+  // solved another way (10 Oct). Opus, not held to the schema, writes it.
   reteach: str.optional(),
 }).refine((e) => e.options.some((o) => o.id === e.answer), { message: "answer must be the id of one of the 3 options" });
 
@@ -55,12 +58,16 @@ export const plan = z.looseObject({
 });
 
 export const chapter = z.looseObject({
-  n: z.number().optional(),
+  // n and svg left out on purpose (10 Oct): the code sets n itself and nothing has drawn an SVG since 8 Oct, and the
+  // chapter schema sits at Gemini's size cap (about 3,200 characters), so every field here has to earn its place.
   title: str,
   cards: z.array(card).min(5),
   outcomeLine: str.optional(),
   recallQuizzes: z.array(exercise).max(2).optional(),
-  svg: str.optional(),
+  // writer v6 (D62): what this chapter taught, for the next chapter's "Already taught". One string on purpose: Gemini
+  // is held to this schema and emits only declared fields, and it rejects the schema (400 invalid argument) once it
+  // grows past an undocumented size; a nested ledger object of any size tipped it over, one string does not (10 Oct).
+  ledger: z.string().optional(),
 });
 
 export const check = z.looseObject({
