@@ -170,7 +170,7 @@ function publicCards(cards: any[] | undefined) {
   if (!cards) return undefined;
   return cards.map((c) => {
     if (c.type !== "exercise") return c;
-    const { answer: _a, whyNot: _w, reteach: _r, ...rest } = c;
+    const { answer: _a, whyNot: _w, reteach: _r, whyRight: _y, ...rest } = c;   // whyRight would give the answer away (D38)
     return rest;
   });
 }
@@ -1184,6 +1184,8 @@ export const recordAnswer = mutation({
       ? recallWithTier((ch?.recallCards ?? []) as any[], (ch as any)?.recallTiers, tierOf(pv, chapter + 1))[cardIndex - RECALL_BASE]
       : (ch?.cards ? withTier(ch.cards as any[], (ch as any).quizTiers, tierOf(pv, chapter)) : [])[cardIndex];
     if (!card || card.type !== "exercise") throw new Error("Not an exercise");
+    // D38: an easier or harder version of the quiz may lack its own line; the base card's serves.
+    const baseWhy: string | null = ((cardIndex >= RECALL_BASE ? ((ch?.recallCards ?? []) as any[])[cardIndex - RECALL_BASE] : (ch?.cards as any[] | undefined)?.[cardIndex]) as any)?.whyRight ?? null;
     const correct = card.kind === "poll" ? true : card.answer === optionId;   // story mode polls have no wrong answer
     // Passing the chapter's last quiz starts writing the next chapter, so the closing card and the Done
     // screen hide most of the wait. Its writer reads how this chapter went (readingReport).
@@ -1213,12 +1215,12 @@ export const recordAnswer = mutation({
         if (cardIndex !== lastQuiz && chapter < total) await ensureChapter(ctx, h, chapter + 1);   // passed on an earlier quiz
         if (chapter === 1) { if (h.source === "cache") await ctx.scheduler.runAfter(0, internal.shelf.countReady, { topic: h.topic, passed: true, handbookId }); await ctx.scheduler.runAfter(0, internal.library.countPass, { handbookId }); await ctx.scheduler.runAfter(0, internal.doctor.countPass, { handbookId }); if (h.source === "live" && !(h as any).fromLibrary && !(h as any).test) await ctx.scheduler.runAfter(0, internal.library.consider, { handbookId }); }
         const right = card.options.find((o: any) => o.id === optionId);
-        return { correct: true as const, text: right?.text ?? "", why: card.whyRight ?? null, chapterPassed: true as const };
+        return { correct: true as const, text: right?.text ?? "", why: card.whyRight ?? baseWhy, chapterPassed: true as const };
       }
     }
     if (correct) {
       const right = card.options.find((o: any) => o.id === optionId);
-      return { correct: true as const, text: right?.text ?? "", why: card.whyRight ?? null };
+      return { correct: true as const, text: right?.text ?? "", why: card.whyRight ?? baseWhy };
     }
     const whyNot = card.whyNot?.[optionId] ?? "Not that one.";
     if (attempt >= 2) {

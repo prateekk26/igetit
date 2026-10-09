@@ -85,6 +85,9 @@ function sizeOf(text: string) {
 }
 
 // The chapter as Stories: full-screen frames, one idea each, tap or swipe through.
+// D38: for an exercise with no added line yet (an old copy the backfill did not reach): a short, true line, by the card's key so it does not flicker. Copy (agent).
+const CHEERS = ['Got it in one.', "That one's yours now.", 'No hint needed.', 'Clean. Next.', 'You saw it straight away.']
+const cheer = (key: string) => { let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CHEERS[h % CHEERS.length] }
 export default function Chapter({ total = 7, topic, n, title, cards, recall, passed: _passed, passedExercises, startAt, startPart = 0, onPosition, onAnswer, onFinish, onLog, loggedSets = [], lastTime, recapReteach = [], pictures, credits = {}, alts = {}, caution, onExit, handbookId, deviceToken }: Props) {
   const items: Item[] = useMemo(
     () => [
@@ -349,7 +352,8 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
               ) : (
                 <>
                   <p className="verdict pass">{result.chapterPassed ? `That's it. Chapter ${n} passed.` : "That's it."}</p>
-                  <p className="serif">{result.text}{result.why ? ` — ${result.why}` : ''}</p>
+                  {/* D38 (Prateek, 9 Oct: "Why just repeat my answer back to me?"): the option stays lit on the card; here is what it adds. */}
+                  <p className="serif">{result.why ? inline(result.why) : cheer(key)}</p>
                 </>
               )}
               {result.chapterPassed && !isLast ? (

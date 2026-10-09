@@ -60,8 +60,9 @@ export default function Library({ rows, signedIn, activeId, onOpen, onNew, onSig
       <ActionBar>
         {latest ? <button className="btn" onClick={() => onOpen(latest._id)}>{latest.status !== 'ready' ? `Open ${latest.topic}` : latest.passed >= (latest.total ?? 7) ? `Open ${latest.topic}` : `Continue ${latest.topic}: chapter ${latest.current}`}</button>
           : <button className="btn" onClick={onExplore}>The Shelf</button>}
+        {/* 9 Oct (Prateek: "Do we still need this shelf button here when we have already put it up top"): the Shelf link
+            left the bar; the header's Shelf button (D21) is the one way there. The empty state keeps The Shelf as its main button. */}
         <span className="library-quiet">
-          {latest && <button type="button" className="quiet" onClick={onExplore}>The Shelf: every ready handbook</button>}
           <button type="button" className="quiet" onClick={onNew}>Start another topic</button>
         </span>
       </ActionBar>

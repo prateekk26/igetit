@@ -57,6 +57,7 @@ import type * as stats from "../stats.js";
 import type * as stories from "../stories.js";
 import type * as trace from "../trace.js";
 import type * as trending from "../trending.js";
+import type * as whyRight from "../whyRight.js";
 
 import type {
   ApiFromModules,
@@ -114,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   stories: typeof stories;
   trace: typeof trace;
   trending: typeof trending;
+  whyRight: typeof whyRight;
 }>;
 
 /**
