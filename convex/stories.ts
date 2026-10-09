@@ -103,3 +103,25 @@ export const buildAll = internalAction({
     await ctx.scheduler.runAfter(0, internal.stories.buildAll, { topics: rest, done: done + 1, force });
   },
 });
+
+// D29g (Prateek, 9 Oct 12:5x: "draw a picture per story for the Spotlight topics"): the stories of one topic, for images.forStories.
+export const readStories = internalQuery({
+  args: { topic: v.string() },
+  handler: async (ctx, { topic }) => {
+    const rows = await ctx.db.query("cache").withIndex("by_topic", (q) => q.eq("topic", topic)).collect();
+    const r: any = rows.find((x) => x.level === "new") ?? rows[0];
+    if (!r) return null;
+    return { id: r._id, topic: r.topic, analogy: String(r.plan?.picture?.line ?? r.plan?.picture?.name ?? ""), stories: (Array.isArray(r.waitStories) ? r.waitStories : []) as any[] };
+  },
+});
+// The drawn picture goes on its story (replacing the borrowed chapter picture), then the Shelf row is resynced.
+export const setPictures = internalMutation({
+  args: { id: v.id("cache"), topic: v.string(), pictures: v.array(v.object({ i: v.number(), storageId: v.id("_storage"), scene: v.string() })) },
+  handler: async (ctx, { id, topic, pictures }) => {
+    const r: any = await ctx.db.get(id);
+    if (!r || !Array.isArray(r.waitStories)) return;
+    const stories = r.waitStories.map((st: any, i: number) => { const p = pictures.find((x) => x.i === i); return p ? { ...st, storageId: p.storageId, scene: p.scene, drawn: true } : st; });
+    await ctx.db.patch(id, { waitStories: stories });
+    await ctx.scheduler.runAfter(0, internal.shelf.syncReadyTopic, { topic });
+  },
+});

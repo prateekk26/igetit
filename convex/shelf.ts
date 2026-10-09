@@ -5,6 +5,7 @@ import { internalAction, internalMutation, internalQuery, mutation, query, type 
 import type { Doc } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { isOwner } from "./admin";
+import { CLASSIFY_PROMPT, SECTION_KEYS } from "./shelfSections";
 
 // The shelf (7 Oct, before launch traffic): one light row per ready topic and per shared handbook, with just what the
 // landing page, Explore, "Jump to next" and the wait-screen story show. Those pages read this table and this week's
@@ -146,6 +147,7 @@ export const rebuildAll = internalAction({
       cursor = p.cursor; if (p.done) break;
     }
     await ctx.runMutation(internal.shelf.setCounts, { counts: [...counts].map(([topic, c]) => ({ topic, ...c })) });
+    await ctx.scheduler.runAfter(0, internal.shelf.classify, {});   // D35: any row without a subject shelf gets one
     return { ready: topics.length, shared: ids.length };
   },
 });
@@ -157,7 +159,7 @@ export const adminList = query({
     if (!(await isOwner(ctx)).ok) return null;
     const rows = (await ctx.db.query("shelf").collect()).filter((r) => r.kind === "shared" || r.level === "new");
     const items = rows.map((r) => ({ id: r._id, kind: r.kind, key: r.key, title: r.title, mode: r.mode ?? null, goal: r.goal ?? null, starts: r.starts, passes: r.passes,
-      on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
+      on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
     const spot = spotlight(items.filter((i) => i.on));
     return items.map((i) => ({ ...i, spot: spot.indexOf(i.key) + 1 || null }))
       .sort((a, b) => Number(b.on) - Number(a.on) || (a.spot ?? 9) - (b.spot ?? 9) || b.passes - a.passes || b.starts - a.starts);
@@ -245,5 +247,39 @@ export const rows = internalQuery({
       out.push(`${r.kind} | ${r.key} | ${onShelf(r) ? "ON" : "off"} | starts ${r.starts} passes ${r.passes}${r.pick ? " | pinned" : ""}${r.award ? ` | award: ${r.award.title}` : ""}${l ? ` | lib published ${l.published} review ${l.review ?? "-"} ${l.reviewWhy ?? ""}` : ""}${r.offWhy ? ` | off: ${r.offWhy}` : ""}`);
     }
     return out.sort();
+  },
+});
+
+// D35: sort every row that has no subject shelf yet (or all of them, with all:true) in one Sonnet call; the owner's
+// hand-set shelves are kept unless all:true.  npx convex run --prod shelf:classify '{}'
+export const unsorted = internalQuery({
+  args: { all: v.optional(v.boolean()) },
+  handler: async (ctx, { all }) => (await ctx.db.query("shelf").collect()).filter((r) => (r.kind === "shared" || r.level === "new") && (all || !r.section))
+    .map((r) => ({ id: r._id, title: r.title, goal: r.goal ?? null, outcome: r.outcome, mode: r.mode ?? null, kind: r.kind })),
+});
+export const setSections = internalMutation({
+  args: { rows: v.array(v.object({ id: v.id("shelf"), section: v.string() })) },
+  handler: async (ctx, { rows }) => { for (const x of rows) if (SECTION_KEYS.includes(x.section)) await ctx.db.patch(x.id, { section: x.section }); },
+});
+export const classify = internalAction({
+  args: { all: v.optional(v.boolean()) },
+  handler: async (ctx, { all }): Promise<{ sorted: number; of: number; error?: string }> => {
+    const rows: any[] = await ctx.runQuery(internal.shelf.unsorted, { all });
+    if (!rows.length) return { sorted: 0, of: 0 };
+    const user = rows.map((r) => `id ${r.id}: "${r.title}"${r.goal ? ` (for: ${r.goal})` : ""}; by day 7: ${r.outcome || "(no line)"}; kind: ${r.mode ?? "unknown"}`).join("\n");
+    const g: any = await ctx.runAction(internal.ai.generate, { kind: "shelf", system: CLASSIFY_PROMPT, user });
+    if (!g.ok) return { sorted: 0, of: rows.length, error: String(g.error).slice(0, 200) };
+    const out = ((g.json?.shelves ?? []) as any[]).map((x) => ({ id: String(x?.id ?? ""), section: String(x?.key ?? "") })).filter((x) => rows.some((r) => String(r.id) === x.id) && SECTION_KEYS.includes(x.section));
+    await ctx.runMutation(internal.shelf.setSections, { rows: out as any });
+    return { sorted: out.length, of: rows.length };
+  },
+});
+// The owner moves a row to another shelf on /admin.
+export const setSection = mutation({
+  args: { id: v.id("shelf"), section: v.string() },
+  handler: async (ctx, { id, section }) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    if (!SECTION_KEYS.includes(section)) throw new Error("No such shelf");
+    await ctx.db.patch(id, { section });
   },
 });

@@ -197,14 +197,14 @@ export const explore = query({
     for (const r of shelf.filter((x) => x.kind === "ready" && x.level === "new" && onShelf(x))) {
       if (seen.has(r.topic)) continue; seen.add(r.topic);
       const mine = recent.filter((h) => h.source === "cache" && h.topic === r.topic);
-      items.push({ kind: "ready", key: r.key, topic: r.title, outcome: r.outcome, mode: r.mode ?? null, cover: await url(r.cover), week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null,
+      items.push({ kind: "ready", key: r.key, topic: r.title, outcome: r.outcome, mode: r.mode ?? null, cover: await url(r.cover), week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null, section: r.section ?? null,
         finishedWeek: mine.filter((h) => finished.has(h._id)).length, trending: r.trendingWeek === thisWeek, addedAt: r.addedAt });
     }
     for (const r of shelf.filter((x) => x.kind === "shared" && onShelf(x))) {
       if (seen.has(r.topic)) continue; seen.add(r.topic);
       const mine = recent.filter((h) => (h as any).fromLibrary === r.libraryId);
       items.push({ kind: "shared", id: r.libraryId, key: r.key, topic: r.title, goal: r.goal ?? null, outcome: r.outcome, mode: r.mode ?? null, cover: await url(r.cover),
-        week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null, finishedWeek: mine.filter((h) => finished.has(h._id)).length, trending: false, addedAt: r.addedAt });
+        week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, finishedWeek: mine.filter((h) => finished.has(h._id)).length, trending: false, addedAt: r.addedAt });
     }
     const hot = new Set(items.filter((i) => i.week >= 2).sort((a, b) => b.week - a.week).slice(0, 3).map((i) => i.key));
     const loved = new Set(items.filter((i) => i.starts !== null && i.starts >= 3 && i.passes / i.starts >= 0.5).sort((a, b) => b.passes / b.starts - a.passes / a.starts).slice(0, 3).map((i) => i.key));
@@ -253,6 +253,7 @@ export const decide = mutation({
     if (approve && twin) throw new Error("A copy for this topic and goal is already shared; hide that one first.");
     await ctx.db.patch(id, { published: approve, review: approve ? "approved" : "rejected", reviewWhy: approve ? undefined : (why?.trim().slice(0, 200) || "rejected by the owner"), reviewedBy: user?.email ?? "owner", reviewedAt: Date.now() });
     const fresh = await ctx.db.get(id); if (fresh) await syncShared(ctx, fresh);
+    if (approve) await ctx.scheduler.runAfter(0, internal.shelf.classify, {});   // D35: the new row gets its subject shelf
   },
 });
 export const pendingCount = internalQuery({ args: {}, handler: async (ctx) => (await ctx.db.query("library").collect()).filter((r) => r.review === "pending").length });

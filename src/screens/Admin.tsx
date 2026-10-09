@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import AdminPipeline from '../components/AdminPipeline'
 import AdminReview from '../components/AdminReview'
+import { SECTIONS } from '../../convex/shelfSections'
 import { useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../../convex/_generated/api'
@@ -220,6 +221,7 @@ function ShelfCard() {
   const setOn = useMutation(api.shelf.setOnShelf)
   const setPick = useMutation(api.shelf.setPick)
   const setAward = useMutation(api.shelf.setAward)
+  const setSection = useMutation(api.shelf.setSection)
   const [editing, setEditing] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [line, setLine] = useState('')
@@ -232,11 +234,12 @@ function ShelfCard() {
       <p className="note">{on} on the Shelf of {rows.length}. Spotlight: the three on the Shelf with the most readers finishing chapter 1 (starts break ties, a pinned one goes first, an awarded one is left out). "Take off" hides a handbook from the Shelf, the landing carousel, the wait stories and What's next; readers who already have it keep it, and you can put it back. A shared handbook taken off is also unpublished (its ?l= link stops), with the reason in the review list.</p>
       <div className="adm-scroll">
         <table className="adm-table">
-          <thead><tr><th>Handbook</th><th>Kind</th><th>Mode</th><th>Starts</th><th>Finished ch 1</th><th>Spotlight</th><th>Award</th><th>On the Shelf</th></tr></thead>
+          <thead><tr><th>Handbook</th><th>Shelf</th><th>Kind</th><th>Starts</th><th>Finished ch 1</th><th>Spotlight</th><th>Award</th><th>On the Shelf</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.id} style={r.on ? undefined : { opacity: 0.55 }}>
               <td>{r.title}{r.goal ? <small> · for: {r.goal}</small> : null}{!r.cover && <small> · no cover</small>}</td>
-              <td>{r.kind}</td><td>{r.mode ?? ''}</td><td>{r.starts}</td><td>{r.passes}</td>
+              <td><select value={r.section ?? ''} onChange={(e) => setSection({ id: r.id, section: e.target.value })} aria-label="Shelf"><option value="" disabled>not sorted</option>{SECTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</select></td>
+              <td>{r.kind}{r.mode ? ` · ${r.mode}` : ''}</td><td>{r.starts}</td><td>{r.passes}</td>
               <td>{r.spot ? `No. ${r.spot}` : ''} <button type="button" className="quiet" onClick={() => setPick({ id: r.id, pick: !r.pick })}>{r.pick ? 'Pinned ✓' : 'Pin'}</button></td>
               <td>
                 {editing === r.id ? (

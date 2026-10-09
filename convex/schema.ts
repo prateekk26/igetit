@@ -332,6 +332,7 @@ export default defineSchema({
     // D34a (Prateek, 9 Oct: "funny award categories for the creative handbooks people are requesting"): the owner's award,
     // shown in the Awards row of the Shelf. Copy is his; the agent's first set is a placeholder.
     award: v.optional(v.object({ title: v.string(), line: v.string() })),
+    section: v.optional(v.string()),   // D35: the subject shelf (shelfSections.ts), set by shelf.classify or the owner
     starts: v.number(), passes: v.number(),
   }).index("by_topic_kind", ["topic", "kind"]).index("by_library", ["libraryId"]).index("by_kind", ["kind"]),
 

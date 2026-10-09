@@ -3,6 +3,7 @@ import { limitMessage } from '../lib/limits'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { SECTIONS } from '../../convex/shelfSections'
 
 // The Shelf (8 Oct, Prateek: "a section called The Shelf, always accessible, neatly organised visually as handbooks"):
 // every ready and shared handbook as a cloth-bound book standing on a shelf, one shelf per kind. Each book appears
@@ -12,21 +13,18 @@ import type { Id } from '../../convex/_generated/dataModel'
 // 3). D34a ("funny award categories for the creative handbooks people are requesting"): the Awards row, the owner's
 // award title and citation on reader-typed handbooks. A book in either row is not repeated on the shelves below.
 type Award = { title: string; line: string }
-type Item = { kind: 'ready' | 'shared'; id?: Id<'library'>; key: string; topic: string; goal?: string | null; outcome: string; mode: string | null; cover: string | null; hot: boolean; loved: boolean; pick?: boolean; week: number; finishedWeek?: number; trending?: boolean; addedAt?: number; starts?: number | null; passes?: number | null; spot?: number | null; award?: Award | null }
+type Item = { kind: 'ready' | 'shared'; id?: Id<'library'>; key: string; topic: string; goal?: string | null; outcome: string; mode: string | null; cover: string | null; hot: boolean; loved: boolean; pick?: boolean; week: number; finishedWeek?: number; trending?: boolean; addedAt?: number; starts?: number | null; passes?: number | null; spot?: number | null; award?: Award | null; section?: string | null }
 type Props = { onReady: (topic: string) => Promise<void>; onShared: (id: Id<'library'>) => Promise<void>; onBack: () => void }
 
-const WEEK = 7 * 24 * 60 * 60 * 1000
+// D35 (9 Oct, Prateek: "The categorization is horrible for the shelf"): one shelf per subject (convex/shelfSections.ts),
+// in a fixed order; a book sits on the shelf the server sorted it onto (or the owner moved it to). The popularity
+// shelves are gone: the Spotlight does that. Books with no shelf yet wait on "More".
 const SHELVES: { key: string; label: string; note: string; pick: (i: Item) => boolean }[] = [
-  { key: 'trending', label: 'Trending this week', note: 'What people are starting right now.', pick: (i) => !!(i.trending || i.hot) },
-  { key: 'finished', label: 'Most finished', note: 'Readers who started these kept going.', pick: (i) => !!i.loved || (i.passes ?? 0) >= 3 },
-  { key: 'skill', label: 'Things to do', note: 'Skills: you practise, you log it.', pick: (i) => i.mode === 'skill' },
-  { key: 'story', label: 'Stories', note: 'Films, books, history: catch up in order.', pick: (i) => i.mode === 'story' },
-  { key: 'subject', label: 'How things work', note: 'Ideas you can explain to a friend by day 7.', pick: (i) => i.mode === 'subject' },
-  { key: 'decision', label: 'Money, health, legal', note: 'The rule, the trap, the checklist. Study aid, not advice.', pick: (i) => i.mode === 'decision' },
-  { key: 'shared', label: 'Shared by readers', note: 'Typed by someone, kept for everyone, without names.', pick: (i) => i.kind === 'shared' },
-  { key: 'new', label: 'New on the shelf', note: 'Added this week.', pick: (i) => (i.addedAt ?? 0) > Date.now() - WEEK },
-  { key: 'rest', label: 'The rest of the shelf', note: '', pick: () => true },
+  ...SECTIONS.map((s) => ({ key: s.key, label: s.label, note: s.note, pick: (i: Item) => i.section === s.key })),
+  { key: 'more', label: 'More', note: 'Not sorted yet.', pick: () => true },
 ]
+// Within a shelf: the books readers finish most to the left, then the most opened, then the ones with a cover.
+const byReaders = (a: Item, b: Item) => (b.passes ?? 0) - (a.passes ?? 0) || (b.starts ?? 0) - (a.starts ?? 0) || Number(!!b.cover) - Number(!!a.cover) || a.topic.localeCompare(b.topic)
 // A deterministic lean per book, so the shelf looks lived-in but never moves.
 const lean = (k: string) => { let h = 0; for (const c of k) h = (h * 31 + c.charCodeAt(0)) >>> 0; return ((h % 7) - 3) * 0.6 }
 // The Spotlight's one honest line under each book: real counts, never a claim the numbers can't back. Copy (agent).
@@ -52,7 +50,7 @@ export default function Shelf({ onReady, onShared, onBack }: Props) {
     if (!items) return []
     const left = new Set(items.filter((i) => !i.spot && !i.award).map((i) => i.key))
     return SHELVES.map((s) => {
-      const books = items.filter((i) => left.has(i.key) && s.pick(i))
+      const books = items.filter((i) => left.has(i.key) && s.pick(i)).sort(byReaders)
       for (const b of books) left.delete(b.key)
       return { ...s, books }
     }).filter((s) => s.books.length > 0)

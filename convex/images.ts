@@ -342,3 +342,37 @@ export const smallVariants = internalAction({
     return { made, skipped, bytes };
   },
 });
+
+// D29g (Prateek, 9 Oct: "Let's draw a picture per story for the Spotlight topics"): one drawn scene per wait story, in the
+// house style, from the story's first two frames (the beat and the scene), through the same scene editor and Runway call
+// as a chapter. Drawn only, never a photo: the story card is one medium. The borrowed chapter picture is replaced.
+// Run by hand per topic:  npx convex run --prod images:forStories '{"topic":"Public speaking"}'   (about ₹4 a picture)
+export const forStories = internalAction({
+  args: { topic: v.string(), redo: v.optional(v.boolean()) },
+  handler: async (ctx, { topic, redo }): Promise<{ ok: boolean; drawn: number; error?: string; pictures?: { i: number; title: string; scene: string; url: string | null }[] }> => {
+    const r: any = await ctx.runQuery(internal.stories.readStories, { topic });
+    if (!r) return { ok: false, drawn: 0, error: "no ready handbook with that topic" };
+    const todo = r.stories.map((st: any, i: number) => ({ st, i })).filter(({ st }: any) => redo || !st.drawn);
+    if (!todo.length) return { ok: true, drawn: 0, pictures: [] };
+    const cards = todo.map(({ st, i }: any) => ({ card: i, type: "story", title: String(st.title ?? ""), body: (st.frames ?? []).slice(0, 2).join(" ") }));
+    const g: any = await ctx.runAction(internal.ai.generate, { kind: "scenes", system: SCENES_PROMPT, user: scenesUserMessage(r.topic, "Stories while you wait", r.analogy, cards) });
+    const scenes: { i: number; scene: string }[] = [];
+    for (const x of (g.ok ? g.json?.scenes : null) ?? []) {
+      const i = parseInt(String(x?.card ?? "").replace(/[^0-9]/g, ""), 10), scene = String(x?.scene ?? "").trim().slice(0, 400);
+      if (todo.some((t: any) => t.i === i) && scene && !scenes.some((y) => y.i === i)) scenes.push({ i, scene });
+    }
+    if (!scenes.length) return { ok: false, drawn: 0, error: `no scenes: ${g.ok ? "empty" : g.error}` };
+    const drawn: (Awaited<ReturnType<typeof drawOne>> | null)[] = new Array(scenes.length).fill(null);
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(AT_ONCE, scenes.length) }, async () => {
+      while (next < scenes.length) { const k = next++; drawn[k] = await drawOne(ctx, `${PICTURE_ANCHOR} Subject: ${scenes[k].scene} ${PICTURE_NEVER}`); }
+    }));
+    const pictures = scenes.map((s, k) => ({ i: s.i, scene: s.scene, storageId: drawn[k]?.ok ? (drawn[k] as any).storageId as Id<"_storage"> : null })).filter((p) => p.storageId) as { i: number; scene: string; storageId: Id<"_storage"> }[];
+    if (pictures.length) await ctx.runMutation(internal.stories.setPictures, { id: r.id, topic: r.topic, pictures });
+    // The 560 px variant the wait card loads first (D29b); smallVariants skips every picture that already has one.
+    if (pictures.length) await ctx.runAction(internal.images.smallVariants, {});
+    const out = [];
+    for (const p of pictures) out.push({ i: p.i, title: String(r.stories[p.i]?.title ?? ""), scene: p.scene, url: await ctx.storage.getUrl(p.storageId) });
+    return { ok: pictures.length > 0, drawn: pictures.length, pictures: out, ...(pictures.length < scenes.length ? { error: `${scenes.length - pictures.length} failed: ${drawn.filter((d) => d && !d.ok).map((d: any) => d.error).join("; ").slice(0, 200)}` } : {}) };
+  },
+});

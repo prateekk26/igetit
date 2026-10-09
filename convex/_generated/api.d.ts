@@ -51,6 +51,7 @@ import type * as research from "../research.js";
 import type * as schemas from "../schemas.js";
 import type * as settings from "../settings.js";
 import type * as shelf from "../shelf.js";
+import type * as shelfSections from "../shelfSections.js";
 import type * as social from "../social.js";
 import type * as stats from "../stats.js";
 import type * as stories from "../stories.js";
@@ -107,6 +108,7 @@ declare const fullApi: ApiFromModules<{
   schemas: typeof schemas;
   settings: typeof settings;
   shelf: typeof shelf;
+  shelfSections: typeof shelfSections;
   social: typeof social;
   stats: typeof stats;
   stories: typeof stories;
