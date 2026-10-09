@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { limitMessage } from '../lib/limits'
+import { track } from '../lib/track'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -55,6 +56,7 @@ export default function Shelf({ onReady, onShared, onBack }: Props) {
       return { ...s, books }
     }).filter((s) => s.books.length > 0)
   }, [items])
+  useEffect(() => { track('shelf_view', undefined, 'shelf_view') }, [])   // D37: "shelf browsed" on /admin, once per visit
   const [note, setNote] = useState<string | null>(null)
   // The tapped book lifts off the shelf and turns to face the reader while its handbook opens (8 Oct night, Prateek):
   // a CSS transform only, so it costs nothing on a slow connection; it holds "lifted" until the chapter arrives, and

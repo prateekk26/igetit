@@ -34,17 +34,23 @@ export default function Admin() {
         <>
           <p className="note">Updated live. Your own phones and accounts are left out. {d.trackingSince ? `Landing steps (marked •) are counted from ${time(d.trackingSince)}, when page tracking began.` : 'Landing steps (marked •) start counting from the next visit.'}</p>
 
-          <ProviderSwitch />
-          <AdminReview />
-          <ShelfCard />
-          <LibraryCard />
-          <TrendingCard />
-          <ExperimentsCard />
-          <PaymentsCard />
-          {/* AI and cost together (8 Oct, Tanisha): what every step takes and costs, by handbook, then spend by day. */}
-          <AdminPipeline />
-          <CostsCard />
+          {/* D37 (Prateek, 9 Oct): the page opens on the metrics that matter, in the order they cause each other. Everything
+              else is below, folded, so the first screen is the chain, coming back, and money. */}
+          <Metrics days={days} />
 
+          <details className="adm-group"><summary>Review queue, the Shelf, the library, trending topics, experiments</summary>
+            <AdminReview />
+            <ShelfCard />
+            <LibraryCard />
+            <TrendingCard />
+            <ExperimentsCard />
+            <ProviderSwitch />
+          </details>
+          <details className="adm-group"><summary>Payments</summary><PaymentsCard /></details>
+          {/* AI and cost together (8 Oct, Tanisha): what every step takes and costs, by handbook, then spend by day. */}
+          <details className="adm-group"><summary>AI pipeline and model cost by day</summary><AdminPipeline /><CostsCard /></details>
+
+          <details className="adm-group"><summary>Funnel detail: every step, sources, topics, waits, each person's path</summary>
           <section className="adm-card adm-wide">
             <h2>Funnel</h2>
             <div className="adm-funnel">
@@ -161,9 +167,88 @@ export default function Admin() {
               <tbody>{d.days.slice().reverse().map((x) => <tr key={x.day}><td>{x.day}</td><td>{x.visitors}</td><td>{x.started}</td><td>{x.passed}</td></tr>)}</tbody>
             </table>
           </section>
+          </details>
         </>
       )}
     </div>
+  )
+}
+
+const inr = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
+const day = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '')
+function Tile({ big, label, sub, tone }: { big: string | number; label: string; sub?: string; tone?: 'good' | 'bad' }) {
+  return <div className={`adm-tile${tone ? ` adm-tile-${tone}` : ''}`}><b>{big}</b><span>{label}</span>{sub && <small>{sub}</small>}</div>
+}
+// D37: the metrics that matter, in the order they cause each other (Prateek, 9 Oct: "Revenue which is influenced by sign
+// ups which is influenced by handbooks created which is influenced by visits… retention… cost"). Window from the tabs;
+// "all time" in small under each. The fixed costs are the owner's own rows; the calculator adds them to the model bills.
+function Metrics({ days }: { days: number }) {
+  const m = useQuery(api.admin.metrics, { days })
+  const save = useMutation(api.admin.saveFixedCost)
+  const remove = useMutation(api.admin.removeFixedCost)
+  const [form, setForm] = useState<{ id?: string; name: string; amount: string; kind: 'monthly' | 'once'; from: string; to: string; note: string } | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  if (!m) return <section className="adm-card adm-wide"><h2>What matters</h2><p className="note">Loading…</p></section>
+  const c = m.chain, b = m.back, $ = m.money
+  const label = days === 0 ? 'all time' : days === 1 ? 'today' : `last ${days} days`
+  const p = (n: number, of: number) => (of ? `${pct(n, of)}%` : '—')
+  const submit = async () => {
+    if (!form) return
+    setErr(null)
+    try { await save({ id: form.id as any, name: form.name, amount: Number(form.amount), kind: form.kind, from: form.from, to: form.to || undefined, note: form.note || undefined }); setForm(null) }
+    catch (e: any) { setErr(String(e?.message ?? e).replace(/^.*Error: /, '').slice(0, 120)) }
+  }
+  return (
+    <section className="adm-card adm-wide adm-metrics">
+      <h2>What matters <small>({label})</small></h2>
+      <h3>The chain: each one feeds the next</h3>
+      <div className="adm-chain">
+        <Tile big={c.visitors} label="Visits" sub={`people; all time ${c.all.visitors}`} />
+        <Tile big={c.started} label="Handbooks started" sub={`${p(c.starters, c.visitors)} of visitors started one · ${c.typed} typed; all time ${c.all.started}`} />
+        <Tile big={c.signups} label="Sign-ups" sub={`${p(c.signups, c.starters)} of people who started; all time ${c.all.signups}`} />
+        <Tile big={inr(c.revenue)} label="Revenue" sub={`${c.payers} paid, ${p(c.payers, c.signups)} of sign-ups; all time ${inr(c.all.revenue)}`} tone={c.revenue > 0 ? 'good' : undefined} />
+      </div>
+      <h3>Coming back</h3>
+      <div className="adm-chain">
+        <Tile big={b.repeat} label="Repeat visits" sub={`people seen on 2 or more days; all time ${b.repeatAll}`} />
+        <Tile big={b.passesSince ? b.passed : b.passedAll} label="Chapters completed" sub={b.passesSince ? `counted from ${time(b.passesSince)}; all time ${b.passedAll}` : `all time; by-window counting starts with the next pass`} />
+        <Tile big={b.shelf} label="Shelf browsed" sub={b.shelfSince ? `people who opened the Shelf; counted from ${time(b.shelfSince)}` : 'counted from the next Shelf open'} />
+      </div>
+      <h3>Money</h3>
+      <div className="adm-chain">
+        <Tile big={inr($.revenue)} label="Revenue" sub={`all time ${inr($.revenueAll)}`} />
+        <Tile big={inr($.variable)} label="Model cost (variable)" sub={`all time ${inr($.variableAll)}${$.costSince ? ` since ${day($.costSince)}` : ''}`} />
+        <Tile big={inr($.fixedToDate)} label="Fixed cost to date" sub={`${inr($.fixedMonthly)} a month right now`} />
+        <Tile big={inr($.invested)} label="Invested till now" sub="fixed to date + model cost all time" />
+        <Tile big={inr($.net)} label="Net" sub="revenue all time − invested" tone={$.net >= 0 ? 'good' : 'bad'} />
+        <Tile big={inr($.perDay)} label="Burn a day" sub="fixed ÷ 30 + model cost, last 7 days ÷ 7" />
+      </div>
+      <h3>Fixed costs <button type="button" className="quiet" onClick={() => setForm({ name: '', amount: '', kind: 'monthly', from: new Date().toISOString().slice(0, 10), to: '', note: '' })}>Add one</button></h3>
+      {m.fixed.length === 0 && !form && <p className="note">Nothing entered yet. Add what you pay for: Claude Code, Convex, the domain, Runway credits, anything with a bill. Monthly ones count from their start date to today; one-offs count once.</p>}
+      {m.fixed.length > 0 && (
+        <div className="adm-scroll"><table className="adm-table">
+          <thead><tr><th>Name</th><th>Amount</th><th>Kind</th><th>From</th><th>To</th><th>Note</th><th>So far</th><th></th></tr></thead>
+          <tbody>{m.fixed.map((f) => (
+            <tr key={f.id}>
+              <td>{f.name}</td><td>{inr(f.amount)}</td><td>{f.kind === 'monthly' ? 'a month' : 'one-off'}</td><td>{f.from}</td><td>{f.to ?? ''}</td><td><small>{f.note ?? ''}</small></td><td><b>{inr(f.soFar)}</b></td>
+              <td><button type="button" className="quiet" onClick={() => setForm({ id: f.id, name: f.name, amount: String(f.amount), kind: f.kind as any, from: f.from, to: f.to ?? '', note: f.note ?? '' })}>Edit</button> <button type="button" className="quiet" onClick={() => remove({ id: f.id as any })}>Remove</button></td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
+      {form && (
+        <form className="adm-form" onSubmit={(e) => { e.preventDefault(); submit() }}>
+          <input className="input" placeholder="Name (Claude Code, Convex…)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={60} />
+          <input className="input" type="number" min={0} step={1} placeholder="Rupees" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as any })}><option value="monthly">a month</option><option value="once">one-off</option></select>
+          <input className="input" type="date" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} aria-label="From" />
+          <input className="input" type="date" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} aria-label="To (optional)" />
+          <input className="input" placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} maxLength={120} />
+          <span><button className="btn" type="submit">Save</button> <button type="button" className="quiet" onClick={() => { setForm(null); setErr(null) }}>Cancel</button></span>
+          {err && <p className="error">{err}</p>}
+        </form>
+      )}
+    </section>
   )
 }
 

@@ -4,7 +4,7 @@ import { components } from "./_generated/api";
 import { mutation } from "./_generated/server";
 
 // Page events for the owner-only /admin funnel. Only these names and these prop keys are kept; anything else is dropped.
-const NAMES = new Set(["open", "beat", "land", "section", "box_focus", "box_type", "submit", "demo_tap", "plan_view", "ch_open", "card", "wait_view", "feedback", "wall_tap"]);   // wall_tap (8 Oct night): the Done screen's account button, so sign-ups can be read against taps
+const NAMES = new Set(["open", "beat", "land", "section", "box_focus", "box_type", "submit", "demo_tap", "plan_view", "ch_open", "card", "wait_view", "feedback", "wall_tap", "shelf_view", "ch_pass"]);   // D37: shelf_view from the Shelf screen; ch_pass written by the server when a chapter is passed   // wall_tap (8 Oct night): the Done screen's account button, so sign-ups can be read against taps
 const KEYS = new Set(["section", "via", "topic", "n", "i", "source", "len", "device", "w", "path", "v"]);
 
 const limiter = new RateLimiter(components.rateLimiter, {

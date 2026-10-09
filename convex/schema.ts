@@ -230,6 +230,18 @@ export default defineSchema({
   }).index("by_topic", ["topic", "level"]),
 
   // Switches the owner flips on /admin (6 Oct): "provider" = "claude" | "inference" (The Inference Company, deepseek-v4-pro).
+  // D37 (Prateek, 9 Oct 13:5x: "Enable me to enter and save the fixed cost values"): the owner's fixed costs, for the
+  // money section of /admin. Monthly ones run from "from" to "to" (or today); one-offs count once on "from".
+  fixedCosts: defineTable({
+    name: v.string(),
+    amount: v.number(),                       // rupees
+    kind: v.union(v.literal("monthly"), v.literal("once")),
+    from: v.string(),                         // "2026-10-01"
+    to: v.optional(v.string()),
+    note: v.optional(v.string()),
+    at: v.number(),
+  }),
+
   settings: defineTable({
     key: v.string(),
     value: v.string(),

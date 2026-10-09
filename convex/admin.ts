@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { HOUR } from "@convex-dev/rate-limiter";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { internalMutation, internalQuery, query, type QueryCtx } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 
 // The owner's /admin dashboard (6 Oct): the funnel from visit to sign-up with drop-off at each step, landing scroll
@@ -274,3 +274,118 @@ async function journey(ctx: QueryCtx, first: number, es: Doc<"events">[], hb: Do
 
   return { device, spentS: Math.round(spent / 1000), reason, timeline: steps.slice(0, 80).map((x) => ({ t: Math.round((x.at - first) / 1000), what: x.what })) };
 }
+
+// D37 (Prateek, 9 Oct 13:5x: "What are the metrics that matter to us? Revenue which is influenced by sign ups which is
+// influenced by handbooks created which is influenced by visits. Then for retention, repeat visits, chapters completed,
+// shelf browsed. Then from a cost perspective… fixed cost… variable cost which will be my llm cost… A sample calculator
+// which shows money invested till now."): the top of /admin. Our own phones and accounts are left out everywhere.
+const IST_H = 5.5 * HOUR;
+const dayStr = (t: number) => new Date(t + IST_H).toISOString().slice(0, 10);
+const daysBetween = (a: string, b: string) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / (24 * HOUR)) + 1);   // both days inclusive
+export function fixedSoFar(f: { amount: number; kind: string; from: string; to?: string }, today: string) {
+  if (f.from > today) return 0;
+  if (f.kind === "once") return f.amount;
+  const end = f.to && f.to < today ? f.to : today;
+  return f.amount * (daysBetween(f.from, end) / 30.4375);
+}
+async function buildMetrics(ctx: QueryCtx, days: number) {
+  const now = Date.now(), today = dayStr(now);
+  const since = days > 0 ? dayStr(now - (days - 1) * 24 * HOUR) : "0000";
+  const excluded = await ctx.db.query("statsExcluded").collect();
+  const xTokens = new Set(excluded.map((e) => e.deviceToken).filter(Boolean) as string[]);
+  const xUsers = new Set(excluded.map((e) => e.userId).filter(Boolean).map(String));
+  const owners = (process.env.STATS_OWNER_EMAILS ?? "").toLowerCase().split(",").map((e) => e.trim()).filter(Boolean);
+  const users = await ctx.db.query("users").collect();
+  const ownerIds = new Set(users.filter((u) => u.email && owners.includes(u.email.toLowerCase())).map((u) => String(u._id)));
+  const allBooks = await ctx.db.query("handbooks").collect();
+  for (const h of allBooks) if (h.userId && (xUsers.has(String(h.userId)) || ownerIds.has(String(h.userId))) && h.ownerToken) xTokens.add(h.ownerToken);
+  const skip = (t?: string) => !t || xTokens.has(t) || t.startsWith("abuse-");
+  const realUser = (id: any) => !!id && !xUsers.has(String(id)) && !ownerIds.has(String(id));
+
+  // Visits: people (phones) in the window, and the ones seen on two or more days.
+  const visits = (await ctx.db.query("visits").collect()).filter((x) => !skip(x.visitor));
+  const daysOf = (rows: typeof visits) => { const m = new Map<string, Set<string>>(); for (const x of rows) { if (!m.has(x.visitor)) m.set(x.visitor, new Set()); m.get(x.visitor)!.add(x.day); } return m; };
+  const win = daysOf(visits.filter((x) => x.day >= since)), all = daysOf(visits);
+  const repeat = (m: Map<string, Set<string>>) => [...m.values()].filter((d) => d.size >= 2).length;
+
+  // Handbooks started (typed, ready or shared), by anyone who is not us.
+  const books = allBooks.filter((h) => !skip(h.ownerToken) && !(h.userId && !realUser(h.userId)) && (h.status as string) !== "declined");
+  const booksWin = books.filter((h) => dayStr(h.createdAt) >= since);
+  const typed = (hs: typeof books) => hs.filter((h) => h.source === "live" && !(h as any).fromLibrary).length;
+  const starters = (hs: typeof books) => new Set(hs.map((h) => h.ownerToken ?? String(h.userId))).size;
+
+  // Sign-ups: accounts made, not ours.
+  const people = users.filter((u) => realUser(u._id));
+  const signups = people.filter((u) => dayStr(u._creationTime) >= since).length;
+
+  // Revenue: live payments that went through.
+  const pays = (await ctx.db.query("payments").collect()).filter((p) => p.status === "paid" && p.mode === "live" && realUser(p.userId));
+  const paysWin = pays.filter((p) => dayStr(p.paidAt ?? p.at) >= since);
+  const sum = (ps: typeof pays) => ps.reduce((t, p) => t + p.amount, 0);
+  const payers = (ps: typeof pays) => new Set(ps.map((p) => String(p.userId))).size;
+
+  // Chapters completed: server events from their first day (D37); all time from every handbook's progress.
+  const events = (await ctx.db.query("events").collect()).filter((e) => !skip(e.visitor));
+  const passes = events.filter((e) => e.name === "ch_pass");
+  const passesSince = passes.length ? Math.min(...passes.map((e) => e.at)) : null;
+  let passedAll = 0;
+  for (const h of books) { const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).unique(); passedAll += p?.chaptersPassed.length ?? 0; }
+  const shelf = events.filter((e) => e.name === "shelf_view");
+  const shelfSince = shelf.length ? Math.min(...shelf.map((e) => e.at)) : null;
+  const shelfWin = new Set(shelf.filter((e) => e.day >= since).map((e) => e.visitor)).size;
+
+  // Costs: the model bills by day (costs.ts), and the owner's fixed costs.
+  const cost = await ctx.db.query("costDaily").collect();
+  const inr = (rows: typeof cost) => rows.reduce((t, r) => t + r.inr, 0);
+  const costSince = cost.length ? cost.map((r) => r.day).sort()[0] : null;
+  const last7 = dayStr(now - 6 * 24 * HOUR);
+  const fixed = (await ctx.db.query("fixedCosts").collect()).sort((a, b) => a.from.localeCompare(b.from) || a.name.localeCompare(b.name));
+  const fixedToDate = fixed.reduce((t, f) => t + fixedSoFar(f, today), 0);
+  const fixedMonthly = fixed.filter((f) => f.kind === "monthly" && f.from <= today && !(f.to && f.to < today)).reduce((t, f) => t + f.amount, 0);
+  const variableAll = inr(cost), variable7 = inr(cost.filter((r) => r.day >= last7));
+  const r0 = (x: number) => Math.round(x);
+  return {
+    at: now, days, since: days > 0 ? since : costSince ?? since,
+    chain: {
+      visitors: win.size, started: booksWin.length, typed: typed(booksWin), starters: starters(booksWin), signups, revenue: r0(sum(paysWin)), payers: payers(paysWin),
+      all: { visitors: all.size, started: books.length, typed: typed(books), starters: starters(books), signups: people.length, revenue: r0(sum(pays)), payers: payers(pays) },
+    },
+    back: {
+      repeat: repeat(win), repeatAll: repeat(all),
+      passed: passes.filter((e) => e.day >= since).length, passedAll, passesSince,
+      shelf: shelfWin, shelfAll: new Set(shelf.map((e) => e.visitor)).size, shelfSince,
+    },
+    money: {
+      revenue: r0(sum(paysWin)), revenueAll: r0(sum(pays)),
+      variable: r0(inr(cost.filter((r) => r.day >= since))), variableAll: r0(variableAll), variable7: r0(variable7), costSince,
+      fixedToDate: r0(fixedToDate), fixedMonthly: r0(fixedMonthly),
+      invested: r0(fixedToDate + variableAll), net: r0(sum(pays) - fixedToDate - variableAll),
+      perDay: r0(fixedMonthly / 30.4375 + variable7 / 7),
+    },
+    fixed: fixed.map((f) => ({ id: f._id, name: f.name, amount: f.amount, kind: f.kind, from: f.from, to: f.to ?? null, note: f.note ?? null, soFar: r0(fixedSoFar(f, today)) })),
+  };
+}
+export const metrics = query({
+  args: { days: v.number() },
+  handler: async (ctx, { days }) => {
+    if (!(await isOwner(ctx)).ok) return null;
+    return await buildMetrics(ctx, days);
+  },
+});
+export const metricsPeek = internalQuery({ args: { days: v.number() }, handler: async (ctx, { days }) => buildMetrics(ctx, days) });
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+export const saveFixedCost = mutation({
+  args: { id: v.optional(v.id("fixedCosts")), name: v.string(), amount: v.number(), kind: v.union(v.literal("monthly"), v.literal("once")), from: v.string(), to: v.optional(v.string()), note: v.optional(v.string()) },
+  handler: async (ctx, { id, name, amount, kind, from, to, note }) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    const n = name.trim().slice(0, 60); if (!n) throw new Error("Give it a name");
+    if (!Number.isFinite(amount) || amount < 0) throw new Error("Amount in rupees");
+    if (!DAY_RE.test(from) || (to && !DAY_RE.test(to))) throw new Error("Dates as 2026-10-01");
+    const row = { name: n, amount: Math.round(amount), kind, from, to: to || undefined, note: note?.trim().slice(0, 120) || undefined, at: Date.now() };
+    if (id) await ctx.db.patch(id, row); else await ctx.db.insert("fixedCosts", row);
+  },
+});
+export const removeFixedCost = mutation({
+  args: { id: v.id("fixedCosts") },
+  handler: async (ctx, { id }) => { if (!(await isOwner(ctx)).ok) throw new Error("Owner only"); await ctx.db.delete(id); },
+});

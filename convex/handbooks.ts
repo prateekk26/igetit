@@ -103,6 +103,12 @@ async function ownedHandbook(ctx: QueryCtx | MutationCtx, handbookId: Id<"handbo
 
 // Per-person caps count against whoever owns the handbook (the account, else the phone that made it),
 // never against the token sent with the call, which costs nothing to make up.
+
+// D37: a chapter pass is also an event (name "ch_pass", visitor = the phone), so /admin can count completions in a window.
+async function recordPass(ctx: MutationCtx, h: Doc<"handbooks">, n: number) {
+  const now = Date.now();
+  await ctx.db.insert("events", { visitor: h.ownerToken ?? String(h.userId ?? h._id), name: "ch_pass", props: { n }, day: new Date(now + 5.5 * HOUR).toISOString().slice(0, 10), at: now });
+}
 function ownerKey(h: Doc<"handbooks">) {
   return h.userId ? String(h.userId) : (h.ownerToken ?? String(h._id));
 }
@@ -1113,6 +1119,7 @@ export const setPosition = mutation({
     const lastShown = cards.length - 1 - (breathLast ? 1 : 0);
     if (quizFree && cardIndex >= lastShown && !p.chaptersPassed.includes(chapter)) {
       await ctx.db.patch(p._id, { chaptersPassed: [...p.chaptersPassed, chapter], currentChapter: chapter < totalOf(h) ? chapter + 1 : chapter, currentCard: 0, currentPart: 0, lastOpenedAt: Date.now(), updatedAt: Date.now() });
+      await recordPass(ctx, h, chapter);   // D37
       if (chapter < totalOf(h)) await ensureChapter(ctx, h, chapter + 1);
       if (chapter === 1) { if (h.source === "cache") await ctx.scheduler.runAfter(0, internal.shelf.countReady, { topic: h.topic, passed: true, handbookId }); await ctx.scheduler.runAfter(0, internal.library.countPass, { handbookId }); await ctx.scheduler.runAfter(0, internal.doctor.countPass, { handbookId }); if (h.source === "live" && !(h as any).fromLibrary && !(h as any).test) await ctx.scheduler.runAfter(0, internal.library.consider, { handbookId }); }
       return;
@@ -1201,6 +1208,7 @@ export const recordAnswer = mutation({
         passedExercises: [...passed], missedExercises: [...missed], updatedAt: Date.now(),
         ...(passesNow ? { chaptersPassed: [...p.chaptersPassed, chapter], currentChapter: chapter < total ? chapter + 1 : chapter, currentCard: 0, currentPart: 0 } : {}),
       });
+        if (passesNow) await recordPass(ctx, h, chapter);   // D37
       if (passesNow) {
         if (cardIndex !== lastQuiz && chapter < total) await ensureChapter(ctx, h, chapter + 1);   // passed on an earlier quiz
         if (chapter === 1) { if (h.source === "cache") await ctx.scheduler.runAfter(0, internal.shelf.countReady, { topic: h.topic, passed: true, handbookId }); await ctx.scheduler.runAfter(0, internal.library.countPass, { handbookId }); await ctx.scheduler.runAfter(0, internal.doctor.countPass, { handbookId }); if (h.source === "live" && !(h as any).fromLibrary && !(h as any).test) await ctx.scheduler.runAfter(0, internal.library.consider, { handbookId }); }
@@ -1237,6 +1245,7 @@ export const logSet = mutation({
     if (!p || hasQuiz || p.chaptersPassed.includes(chapter)) return { chapterPassed: false as const };
     const total = totalOf(h);
     await ctx.db.patch(p._id, { chaptersPassed: [...p.chaptersPassed, chapter], currentChapter: chapter < total ? chapter + 1 : chapter, currentCard: 0, currentPart: 0, updatedAt: Date.now() });
+    await recordPass(ctx, h, chapter);   // D37
     if (chapter < total) await ensureChapter(ctx, h, chapter + 1);
     if (chapter === 1) { if (h.source === "cache") await ctx.scheduler.runAfter(0, internal.shelf.countReady, { topic: h.topic, passed: true, handbookId }); await ctx.scheduler.runAfter(0, internal.library.countPass, { handbookId }); }
     return { chapterPassed: true as const };
