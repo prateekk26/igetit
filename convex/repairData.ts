@@ -581,3 +581,66 @@ export const setHooks = internalAction({
     return { dryRun: !!dryRun, stored, copies };
   },
 });
+
+// A last chapter's closing line that teases a chapter the handbook doesn't have (9 Oct night: Western philosophy's
+// chapter 7 ends "Next: Wittgenstein's idea...", and there is no chapter 8). Exact text replacements in the body and the
+// simpler version of chapter n's cards, in the topic's stored copies and in readers' copies; nothing else on the chapter
+// changes, and a text that isn't there is left alone. dryRun counts without writing.
+const textEdit = v.object({ from: v.string(), to: v.string() });
+function editCards(cards: any[], edits: { from: string; to: string }[]) {
+  let hits = 0;
+  const out = (cards ?? []).map((c: any) => {
+    const next = { ...c };
+    for (const f of ["body", "simpler"]) {
+      if (typeof next[f] !== "string") continue;
+      for (const e of edits) if (e.from && next[f].includes(e.from)) { next[f] = next[f].split(e.from).join(e.to); hits++; }
+    }
+    return next;
+  });
+  return { cards: out, hits };
+}
+export const editChapterTextStored = internalMutation({
+  args: { topic: v.string(), n: v.number(), edits: v.array(textEdit), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { topic, n, edits, dryRun }) => {
+    let rows = 0, hits = 0;
+    for (const c of await ctx.db.query("cache").withIndex("by_topic", (q) => q.eq("topic", topic)).collect()) {
+      const chapters = (c.chapters as any[]).map((ch) => {
+        if (ch.n !== n) return ch;
+        const r = editCards(ch.cards, edits); hits += r.hits;
+        return r.hits ? { ...ch, cards: r.cards } : ch;
+      });
+      if (chapters.some((ch, i) => ch !== (c.chapters as any[])[i])) { rows++; if (!dryRun) await ctx.db.patch(c._id, { chapters }); }
+    }
+    return { rows, hits };
+  },
+});
+export const editChapterTextCopies = internalMutation({
+  args: { topic: v.string(), n: v.number(), edits: v.array(textEdit), cursor: v.union(v.string(), v.null()), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { topic, n, edits, cursor, dryRun }) => {
+    const page = await ctx.db.query("handbooks").paginate({ cursor, numItems: 100 });
+    let copies = 0, hits = 0;
+    for (const h of page.page) {
+      if (h.source !== "cache" || ((h.plan as any)?.topic !== topic && h.topic !== topic)) continue;
+      for (const ch of await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).collect()) {
+        const r = editCards((ch as any).cards ?? [], edits);
+        if (!r.hits) continue;
+        copies++; hits += r.hits;
+        if (!dryRun) await ctx.db.patch(ch._id, { cards: r.cards } as any);
+      }
+    }
+    return { copies, hits, cursor: page.continueCursor, done: page.isDone };
+  },
+});
+export const editChapterText = internalAction({
+  args: { topic: v.string(), n: v.number(), edits: v.array(textEdit), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, args): Promise<{ dryRun: boolean; stored: { rows: number; hits: number }; copies: number; copyHits: number }> => {
+    const stored = await ctx.runMutation(internal.repairData.editChapterTextStored, args);
+    let cursor: string | null = null, copies = 0, copyHits = 0;
+    for (;;) {
+      const p: { copies: number; hits: number; cursor: string; done: boolean } = await ctx.runMutation(internal.repairData.editChapterTextCopies, { ...args, cursor });
+      copies += p.copies; copyHits += p.hits; cursor = p.cursor;
+      if (p.done) break;
+    }
+    return { dryRun: !!args.dryRun, stored, copies, copyHits };
+  },
+});
