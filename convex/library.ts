@@ -293,3 +293,17 @@ export const related = query({
   },
 });
 
+
+// D39 (Prateek, 9 Oct 17:0x: "What if I want to delete it forever? Where's that option?"): the shared copy and its Shelf
+// row go for good. Readers who already copied it keep their own chapters (they are copies); its source handbook stays its
+// owner's. Owner only.
+export const destroy = mutation({
+  args: { id: v.id("library") },
+  handler: async (ctx, { id }) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    for (const s of await ctx.db.query("shelf").withIndex("by_library", (q) => q.eq("libraryId", id)).collect()) await ctx.db.delete(s._id);
+    const row = await ctx.db.get(id);
+    if (row) await ctx.db.delete(id);
+    return { ok: true };
+  },
+});

@@ -200,7 +200,7 @@ Return only JSON: {"slips": [{"card": <0-based index>, "kind": "false|misleading
 export const REPAIR_PROMPT = `You fix one finished chapter of a beginner's handbook. You get its cards as JSON (index 0 first).
 
 1. For every exercise: does its "reteach" or any "whyNot" line give away which option is right (states it, hints at it, or repeats the right option's words, number or count)? If so, rewrite only that text so it explains the idea a different way without revealing the answer. Keep the length and the voice. Leave lines that don't leak exactly as they are.
-2. Write exactly 2 new exercises, kind "recall", that test this chapter's one idea with brand-new examples, names and numbers that appear nowhere in the chapter. Same shape as the chapter's exercises: "prompt", 3 options with ids a, b, c, "answer", "whyNot" for the two wrong ids, "reteach". Every option answerable from this chapter alone. The same no-giveaway rule applies. Never the words "incorrect" or "wrong".
+2. Write exactly 2 new exercises, kind "recall", that test this chapter's one idea with brand-new examples, names and numbers that appear nowhere in the chapter. Same shape as the chapter's exercises: "prompt", 3 options with ids a, b, c, "answer", "whyRight" (one or two sentences shown after the right pick that add to it, never restating the option), "whyNot" for the two wrong ids, "reteach". Every option answerable from this chapter alone. The same no-giveaway rule applies. Never the words "incorrect" or "wrong".
 
 Return only JSON: {"fixes": [{"card": <index>, "reteach": "<new text, only if it leaked>", "whyNot": {"<id>": "<new text, only the ids that leaked>"}}], "recallQuizzes": [<2 exercise objects with "type": "exercise">]}`;
 
@@ -306,7 +306,7 @@ export function versionsUserMessage(topic: string, title: string, cards: any[], 
 }
 
 // Matching a typed topic to a handbook we already have (7 Oct): a copy opens instantly and costs nothing.
-export const MATCH_PROMPT = `A reader typed what they want to learn. Below is a numbered list of handbooks that already exist. Pick one only if it teaches the same thing at the same scope, so this reader would be just as happy with it as with one written for them. A different angle, a narrower or broader scope, a different audience, or a different country's rules is not a match. When in doubt, it is not a match.
+export const MATCH_PROMPT = `A reader typed what they want to learn. Below is a numbered list of handbooks that already exist. Pick one only if it teaches the same thing at the same scope, so this reader would be just as happy with it as with one written for them. A different angle, a narrower or broader scope, a different audience, or a different country's rules is not a match. A product, a brand, a named service, a version or one specific technique ("Claude managed agents", "n8n", "the iPhone 17 battery", "the butterfly stroke") is its own topic: a general handbook ("AI agents", "automation tools", "swimming") never matches it, and a specific handbook never matches a general line. Match only when the two would get the same plan. When in doubt, it is not a match.
 
 Return JSON only: {"match": <the number, or null>}`;
 export function matchUserMessage(typed: string, options: string[]) {

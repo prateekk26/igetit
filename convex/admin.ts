@@ -389,3 +389,14 @@ export const removeFixedCost = mutation({
   args: { id: v.id("fixedCosts") },
   handler: async (ctx, { id }) => { if (!(await isOwner(ctx)).ok) throw new Error("Owner only"); await ctx.db.delete(id); },
 });
+
+// D39 (Prateek, 9 Oct: "there should be a way to eliminate my requests from the app"): is this phone left out of the
+// numbers, and how many phones and accounts are. The owner accounts are always left out (buildMetrics).
+export const exclusion = query({
+  args: { deviceToken: v.string() },
+  handler: async (ctx, { deviceToken }) => {
+    if (!(await isOwner(ctx)).ok) return null;
+    const rows = await ctx.db.query("statsExcluded").collect();
+    return { excluded: rows.some((r) => r.deviceToken === deviceToken), phones: rows.filter((r) => r.deviceToken).length, accounts: new Set(rows.map((r) => r.userId).filter(Boolean).map(String)).size };
+  },
+});

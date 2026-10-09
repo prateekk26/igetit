@@ -63,6 +63,7 @@ export default function App() {
   const attachToMe = useMutation(api.handbooks.attachToMe)
   const saveProfile = useMutation(api.handbooks.saveProfile)
   const removeHandbook = useMutation(api.handbooks.remove)
+  const takeSuggested = useMutation(api.handbooks.takeSuggested)
   const refreshIfStale = useMutation(api.handbooks.refreshIfStale)
   const compareModels = useMutation(api.handbooks.compareModels)
   const voteModel = useMutation(api.handbooks.voteModel)
@@ -339,6 +340,8 @@ export default function App() {
           status={status as any}
           question={hb?.question}
           intents={(hb as any)?.intents ?? null}
+          suggested={(hb as any)?.suggested ?? null}
+          onTakeSuggested={async () => { if (hb) await takeSuggested({ handbookId: hb._id, deviceToken: token }) }}
           onChooseIntent={async (goal, mode) => { if (hb) await chooseIntent({ handbookId: hb._id, goal, mode, deviceToken: token }) }}
           error={hb?.error}
           examples={examples}

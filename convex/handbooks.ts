@@ -207,7 +207,7 @@ async function fullView(ctx: QueryCtx, h: Doc<"handbooks">) {
   const chapters = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id)).collect();
   const progress = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).unique();
   return {
-    _id: h._id, topic: h.topic, level: h.level, voice: h.voice ?? "friend", status: h.status, question: h.question, intents: h.intents ?? null, plan: h.plan, source: h.source, error: h.error, caution: cautionOf(h), pushback: h.pushback ?? (h.plan as any)?.pushback ?? null, suggestions: h.suggestions ?? [],
+    _id: h._id, topic: h.topic, level: h.level, voice: h.voice ?? "friend", status: h.status, question: h.question, intents: h.intents ?? null, suggested: (h as any).suggested ?? null, plan: h.plan, source: h.source, error: h.error, caution: cautionOf(h), pushback: h.pushback ?? (h.plan as any)?.pushback ?? null, suggestions: h.suggestions ?? [],
     signedIn: !!h.userId,
     total: totalOf(h),
     loggedSets: (await ctx.db.query("sets").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).collect()).reduce((acc: Record<string, number[]>, s) => { (acc[String(s.chapter)] ??= []).push(s.cardIndex); return acc; }, {}),
@@ -487,7 +487,10 @@ export const matchOrIntents = internalAction({
       const r = await ctx.runAction(internal.ai.generate, { kind: "match", system: MATCH_PROMPT, user: matchUserMessage(h.topic, options.map((o) => o.title)), trace: { handbookId } });
       const k = r.ok ? Number(r.json?.match) : NaN;
       const pick = Number.isInteger(k) && k >= 1 && k <= options.length ? options[k - 1] : null;
-      if (pick && (await ctx.runMutation(internal.handbooks.adoptExisting, { handbookId, kind: pick.kind, topic: pick.topic, libraryId: pick.libraryId }))) return;
+      // D40 (Prateek, 9 Oct 17:2x: typed "Claude managed agents", got "AI agents": "It seems like it has completely
+      // misunderstood my request"): a match is offered on the goal screen, never taken for the reader. Their typed
+      // line stays the handbook; one tap opens the ready one instead.
+      if (pick) await ctx.runMutation(internal.handbooks.setSuggested, { handbookId, suggested: { kind: pick.kind, topic: pick.topic, title: pick.title, libraryId: pick.libraryId } });
     }
     // Research runs after the goal (8 Oct, Tanisha; Prateek 8 Oct night: "hers"): started here, it never saw the goal, so
     // a typed goal got generic facts. It costs the reader's pick time (about 16 s typical) and saves research for readers
@@ -504,10 +507,24 @@ export const markResearch = internalMutation({
   args: { handbookId: v.id("handbooks") },
   handler: async (ctx, { handbookId }) => { await ctx.db.patch(handbookId, { researchStartedAt: Date.now() }); },
 });
-// Turn a just-typed handbook into a copy of one we already have.
-export const adoptExisting = internalMutation({
-  args: { handbookId: v.id("handbooks"), kind: v.string(), topic: v.string(), libraryId: v.optional(v.id("library")) },
-  handler: async (ctx, { handbookId, kind, topic, libraryId }) => {
+export const setSuggested = internalMutation({
+  args: { handbookId: v.id("handbooks"), suggested: v.any() },
+  handler: async (ctx, { handbookId, suggested }) => { const h = await ctx.db.get(handbookId); if (h && h.status === "intent") await ctx.db.patch(handbookId, { suggested }); },
+});
+// "Open <that one> instead" on the goal screen (D40): the reader chose the ready handbook, so it becomes theirs.
+export const takeSuggested = mutation({
+  args: { handbookId: v.id("handbooks"), deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { handbookId, deviceToken }) => {
+    const h = await ownedHandbook(ctx, handbookId, deviceToken);
+    const s: any = (h as any).suggested;
+    if (!s || h.status !== "intent") throw new Error("Nothing to open");
+    const ok = await adopt(ctx, { handbookId, kind: String(s.kind), topic: String(s.topic), libraryId: s.libraryId });
+    if (!ok) throw new Error("That handbook isn't available any more");
+    return { ok: true };
+  },
+});
+// Turn a just-typed handbook into a copy of one we already have (now only when the reader taps for it, D40).
+async function adopt(ctx: MutationCtx, { handbookId, kind, topic, libraryId }: { handbookId: Id<"handbooks">; kind: string; topic: string; libraryId?: Id<"library"> }) {
     const h = await ctx.db.get(handbookId);
     if (!h || h.status !== "intent") return false;
     if (kind === "shared" && libraryId) {
@@ -526,7 +543,10 @@ export const adoptExisting = internalMutation({
     }
     await ctx.scheduler.runAfter(0, internal.shelf.countReady, { topic: cached.topic, started: true, handbookId });
     return true;
-  },
+}
+export const adoptExisting = internalMutation({
+  args: { handbookId: v.id("handbooks"), kind: v.string(), topic: v.string(), libraryId: v.optional(v.id("library")) },
+  handler: async (ctx, a) => adopt(ctx, a),
 });
 
 export const NOT_A_TOPIC_Q = "That doesn't look like a topic yet. In a few plain words, what do you want to learn?";

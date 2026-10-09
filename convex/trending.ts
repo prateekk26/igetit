@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+
 // This week's trending handbooks (6 Oct, Prateek: "handbooks for topics popular on social media this week").
 // Every Monday (crons.ts), Claude searches the web for what's trending on Indian social media that makes a good 7-night
 // handbook, then up to 3 new ready topics are written (plan, 7 checked chapters, chapter 1 polish, pictures) and tagged.
@@ -20,9 +21,12 @@ function weekStartIST(t = Date.now()): string {
   return d.toISOString().slice(0, 10);
 }
 
+// D39 (Prateek, 9 Oct: "just give me the trending handbooks and allow me to create one and put it on the shelf"): the
+// weekly job now only finds the topics (suggest) and parks them on /admin; he taps "Build it" on the ones he wants.
+// refresh (search and build up to max by itself) stays for the command line.
 export const refresh = internalAction({
-  args: { max: v.optional(v.number()) },
-  handler: async (ctx, { max = 3 }): Promise<any> => {
+  args: { max: v.optional(v.number()), suggestOnly: v.optional(v.boolean()) },
+  handler: async (ctx, { max = 3, suggestOnly }): Promise<any> => {
     const shelf: any[] = await ctx.runQuery(internal.handbooks.listCache, {});
     const topics = [...new Set(shelf.map((r) => String(r.topic)))];
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -41,7 +45,9 @@ export const refresh = internalAction({
     const picks = m && searches > 0 ? (JSON.parse(m[0]).topics ?? []) : [];
     const lower = topics.map((t) => t.toLowerCase());
     const week = weekStartIST();
-    const chosen = picks.filter((p: any) => p?.line && !lower.some((t) => t.includes(String(p.line).toLowerCase()) || String(p.line).toLowerCase().includes(t))).slice(0, max);
+    const fresh = picks.filter((p: any) => p?.line && !lower.some((t) => t.includes(String(p.line).toLowerCase()) || String(p.line).toLowerCase().includes(t)));
+    await ctx.runMutation(internal.trendingAdmin.remember, { week, picks: fresh.map((p: any) => ({ line: String(p.line).slice(0, 120), goal: String(p.goal ?? "").slice(0, 120), mode: ["skill", "story", "subject"].includes(p.mode) ? p.mode : "", why: String(p.why ?? "").slice(0, 200), state: "found" })) });
+    const chosen = suggestOnly ? [] : fresh.slice(0, max);
     for (const p of chosen) {
       await ctx.scheduler.runAfter(0, internal.ready.build, { topic: String(p.line).slice(0, 120), goal: String(p.goal ?? "").slice(0, 120) || undefined,
         mode: ["skill", "story", "subject"].includes(p.mode) ? p.mode : undefined, trendingWeek: week, aliases: [] });
@@ -50,3 +56,5 @@ export const refresh = internalAction({
     return { week, searches, stop: res?.stop_reason, picks, building: chosen.map((p: any) => p.line), raw: searches ? undefined : text.slice(0, 400) };
   },
 });
+
+export const suggest = internalAction({ args: {}, handler: async (ctx): Promise<any> => ctx.runAction(internal.trending.refresh, { suggestOnly: true }) });

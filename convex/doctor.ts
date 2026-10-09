@@ -206,3 +206,13 @@ export const scanNow = mutation({
   args: {},
   handler: async (ctx) => { if (!(await isOwner(ctx)).ok) throw new Error("Owner only"); await ctx.scheduler.runAfter(0, internal.doctor.scan, {}); },
 });
+
+// D39 (Prateek, 9 Oct: "Should I recreate the chapter? What is the action item?"): rewrite chapter 1 of a ready topic now,
+// as an A/B test, without waiting for the nightly scan. Owner only.
+export const rewriteNow = mutation({
+  args: { topic: v.string() },
+  handler: async (ctx, { topic }) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    await ctx.scheduler.runAfter(0, internal.doctor.diagnose, { topic, evidence: { startedBy: "the owner, from /admin", note: "No quit data was gathered for this run; rewrite chapter 1 for a stronger opening and clearer first cards." } });
+  },
+});

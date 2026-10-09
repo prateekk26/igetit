@@ -738,6 +738,9 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 /* "What's it for?" before a typed topic's plan (6 Oct) */
 .intent { padding-top: var(--l); }
 .intent h1 { margin-top: 6px; }
+.intent-offer { margin: 0 0 14px; padding: 12px 14px; border: var(--stroke) solid var(--ink); border-radius: var(--radius-card); background: var(--paper); display: grid; gap: 10px; }   /* D40: a ready handbook offered, never swapped in */
+.intent-offer p { margin: 0; font: 400 var(--ui)/1.4 var(--serif); }
+.intent-offer .btn { width: 100%; }
 .intent-goals { display: grid; gap: 10px; margin-top: var(--l); }
 .intent-goal { min-height: 60px; width: 100%; text-align: left; padding: 14px 18px; border: var(--stroke) solid var(--ink); border-radius: var(--radius-card); background: var(--paper); font: 700 1.05rem var(--sans); color: var(--ink); box-shadow: var(--press-sm); }
 .intent-goal:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }

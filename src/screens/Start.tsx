@@ -14,6 +14,8 @@ type Props = {
   question?: string
   intents?: { question: string; goals: { label: string; mode: string }[] } | null
   onChooseIntent?: (goal?: string, mode?: string) => Promise<void>
+  suggested?: { title: string; topic: string } | null
+  onTakeSuggested?: () => Promise<void>
   error?: string
   onCreate: (topic: string, level: Level, voice: Voice) => Promise<void>
   onAnswer?: (answer: string) => Promise<void>
@@ -36,7 +38,7 @@ type Props = {
 }
 
 // The first screen, and the empty state of the whole product (DESIGN.md section 4, Start).
-export default function Start({ initialTopic = '', status, question, intents, onChooseIntent, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged }: Props) {
+export default function Start({ initialTopic = '', status, question, intents, onChooseIntent, suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged }: Props) {
   const declined = status === 'declined'
   const [topic, setTopic] = useState(status === 'declined' ? '' : initialTopic)
   // A declined line never stays in the box: the reader starts fresh.
@@ -120,6 +122,13 @@ export default function Start({ initialTopic = '', status, question, intents, on
         <p className="plan-wait-kicker">{topic.trim() || initialTopic}</p>
         <h1>{intents?.question ?? "What's it for?"}</h1>
         <p className="lede">Pick one and the handbook is built around it.</p>
+        {/* D40: a ready handbook that may cover it is offered, never swapped in. Copy (agent). */}
+        {suggested && onTakeSuggested && (
+          <div className="intent-offer">
+            <p><strong>Ready now: {suggested.title}.</strong> It may cover this, in seven chapters, free. Or pick a goal below for one written on “{(topic.trim() || initialTopic)}”.</p>
+            <button type="button" className="btn btn-ghost" onClick={() => { track('submit', { via: 'suggested' }); onTakeSuggested().catch((e) => setLocalError(friendly(e))) }}>Open {suggested.title} instead</button>
+          </div>
+        )}
         <div className="intent-goals">
           {intents ? intents.goals.map((g) => (
             <button key={g.label} type="button" className="intent-goal" onClick={() => choose(g.label, g.mode)}>{g.label}</button>

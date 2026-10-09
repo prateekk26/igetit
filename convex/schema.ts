@@ -24,6 +24,7 @@ export default defineSchema({
     ),
     question: v.optional(v.string()),
     intents: v.optional(v.any()),               // { question, goals: [{ label, mode }] } offered before the plan
+    suggested: v.optional(v.any()),             // D40: a ready or shared handbook offered on the goal screen ({ kind, topic, title, libraryId }); never taken for the reader
     goal: v.optional(v.string()),               // the goal the reader tapped or typed
     mode: v.optional(v.string()),               // "skill" | "story" | "subject" | "decision"
     fromLibrary: v.optional(v.id("library")),   // started from another reader's shared plan and chapter 1

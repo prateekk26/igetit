@@ -158,7 +158,7 @@ export const adminList = query({
   handler: async (ctx) => {
     if (!(await isOwner(ctx)).ok) return null;
     const rows = (await ctx.db.query("shelf").collect()).filter((r) => r.kind === "shared" || r.level === "new");
-    const items = rows.map((r) => ({ id: r._id, kind: r.kind, key: r.key, title: r.title, mode: r.mode ?? null, goal: r.goal ?? null, starts: r.starts, passes: r.passes,
+    const items = rows.map((r) => ({ id: r._id, kind: r.kind, key: r.key, title: r.title, topic: r.topic, mode: r.mode ?? null, goal: r.goal ?? null, starts: r.starts, passes: r.passes,
       on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
     const spot = spotlight(items.filter((i) => i.on));
     return items.map((i) => ({ ...i, spot: spot.indexOf(i.key) + 1 || null }))

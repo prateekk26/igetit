@@ -10,7 +10,10 @@ import { WHYRIGHT_PROMPT } from "./prompts";
 //   npx convex run --prod whyRight:run '{"scope":"cache"}'   then "library", "copies", "readers"
 
 type Target = { table: "cache" | "library" | "chapters"; id: string; n: number };
-const missing = (cards: any[] | undefined) => (cards ?? []).some((c) => c?.type === "exercise" && !c.whyRight);
+const lacks = (cards: any[] | undefined) => (cards ?? []).some((c) => c?.type === "exercise" && !c.whyRight);
+// A chapter's "Remember this?" recall quizzes (recallCards, addressed as 100 and 101) need the line as much as its cards.
+const missing = (cards: any[] | undefined, recall?: any[]) => lacks(cards) || lacks(recall);
+const RECALL = 100;
 
 export const targets = internalQuery({
   args: { scope: v.string() },
@@ -22,13 +25,13 @@ export const targets = internalQuery({
       const seen = new Set<string>();
       for (const r of (await ctx.db.query("cache").collect()).sort((a, b) => a._creationTime - b._creationTime)) {
         if (seen.has(r.topic)) continue; seen.add(r.topic);
-        for (const ch of (r.chapters ?? []) as any[]) if (missing(ch.cards)) out.push({ table: "cache", id: r._id, n: ch.n });
+        for (const ch of (r.chapters ?? []) as any[]) if (missing(ch.cards, ch.recallCards)) out.push({ table: "cache", id: r._id, n: ch.n });
       }
     }
     if (scope === "library") for (const r of await ctx.db.query("library").collect()) {
       if (!r.published) continue;
-      if (missing(r.chapter1?.cards)) out.push({ table: "library", id: r._id, n: 1 });
-      for (const [n, ch] of Object.entries((r.chapters ?? {}) as Record<string, any>)) if (missing(ch?.cards)) out.push({ table: "library", id: r._id, n: Number(n) });
+      if (missing(r.chapter1?.cards, r.chapter1?.recallCards)) out.push({ table: "library", id: r._id, n: 1 });
+      for (const [n, ch] of Object.entries((r.chapters ?? {}) as Record<string, any>)) if (missing(ch?.cards, ch?.recallCards)) out.push({ table: "library", id: r._id, n: Number(n) });
     }
     if (scope === "readers") {
       const since = Date.now() - 7 * 24 * 3600000;
@@ -36,7 +39,7 @@ export const targets = internalQuery({
         if (h.source !== "live" || h.hiddenAt || (h.status as string) === "declined") continue;
         const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).unique();
         if (!p || p.lastOpenedAt < since) continue;
-        for (const ch of await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id)).collect()) if (ch.status === "ready" && missing(ch.cards)) out.push({ table: "chapters", id: ch._id, n: ch.n });
+        for (const ch of await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id)).collect()) if (ch.status === "ready" && missing(ch.cards, ch.recallCards)) out.push({ table: "chapters", id: ch._id, n: ch.n });
       }
     }
     return out;
@@ -50,7 +53,9 @@ export const read = internalQuery({
     if (!doc) return null;
     const ch = table === "cache" ? (doc.chapters ?? []).find((c: any) => c.n === n) : table === "library" ? (n === 1 ? doc.chapter1 : doc.chapters?.[String(n)]) : doc;
     if (!ch?.cards) return null;
-    return { title: ch.title ?? "", cards: ch.cards as any[] };
+    const cards: any[] = [...(ch.cards as any[])];
+    for (const [i, c] of ((ch.recallCards ?? []) as any[]).entries()) cards[RECALL + i] = c;   // sparse: 100, 101 are the recall quizzes
+    return { title: ch.title ?? "", cards };
   },
 });
 
@@ -59,14 +64,16 @@ export const write = internalMutation({
   handler: async (ctx, { table, id, n, lines }) => {
     const doc: any = await ctx.db.get(id as any);
     if (!doc) return 0;
-    const apply = (cards: any[]) => cards.map((c, i) => (c?.type === "exercise" && !c.whyRight && lines[String(i)] ? { ...c, whyRight: lines[String(i)] } : c));
+    const apply = (cards: any[], base = 0) => cards.map((c, i) => (c?.type === "exercise" && !c.whyRight && lines[String(base + i)] ? { ...c, whyRight: lines[String(base + i)] } : c));
     let written = 0;
-    const count = (before: any[], after: any[]) => after.filter((c, i) => c.whyRight && !before[i]?.whyRight).length;
-    if (table === "cache") { const chapters = (doc.chapters ?? []).map((c: any) => { if (c.n !== n) return c; const cards = apply(c.cards ?? []); written += count(c.cards ?? [], cards); return { ...c, cards }; }); await ctx.db.patch(doc._id, { chapters }); }
+    const count = (before: any[], after: any[]) => after.filter((c, i) => c?.whyRight && !before[i]?.whyRight).length;
+    // One chapter object in, the same out with the lines on its cards and its recall cards.
+    const fill = (ch: any) => { const cards = apply(ch.cards ?? []); written += count(ch.cards ?? [], cards); const recallCards = ch.recallCards ? apply(ch.recallCards, RECALL) : undefined; if (recallCards) written += count(ch.recallCards, recallCards); return { ...ch, cards, ...(recallCards ? { recallCards } : {}) }; };
+    if (table === "cache") { const chapters = (doc.chapters ?? []).map((c: any) => (c.n === n ? fill(c) : c)); await ctx.db.patch(doc._id, { chapters }); }
     else if (table === "library") {
-      if (n === 1) { const cards = apply(doc.chapter1?.cards ?? []); written += count(doc.chapter1?.cards ?? [], cards); await ctx.db.patch(doc._id, { chapter1: { ...doc.chapter1, cards } }); }
-      else { const ch = doc.chapters?.[String(n)]; if (ch) { const cards = apply(ch.cards ?? []); written += count(ch.cards ?? [], cards); await ctx.db.patch(doc._id, { chapters: { ...doc.chapters, [String(n)]: { ...ch, cards } } }); } }
-    } else { const cards = apply(doc.cards ?? []); written += count(doc.cards ?? [], cards); await ctx.db.patch(doc._id, { cards }); }
+      if (n === 1) await ctx.db.patch(doc._id, { chapter1: fill(doc.chapter1 ?? {}) });
+      else { const ch = doc.chapters?.[String(n)]; if (ch) await ctx.db.patch(doc._id, { chapters: { ...doc.chapters, [String(n)]: fill(ch) } }); }
+    } else { const f = fill(doc); await ctx.db.patch(doc._id, { cards: f.cards, ...(f.recallCards ? { recallCards: f.recallCards } : {}) }); }
     return written;
   },
 });
@@ -76,8 +83,8 @@ export const fillOne = internalAction({
   handler: async (ctx, { table, id, n }): Promise<{ ok: boolean; written: number; error?: string }> => {
     const r: any = await ctx.runQuery(internal.whyRight.read, { table, id, n });
     if (!r) return { ok: false, written: 0, error: "no chapter" };
-    const teach = r.cards.filter((c: any) => c.type !== "exercise" && typeof c.body === "string").map((c: any) => `${c.title ? c.title + ": " : ""}${c.body}`).join("\n\n").slice(0, 7000);
-    const ex = r.cards.map((c: any, i: number) => ({ c, i })).filter(({ c }: any) => c.type === "exercise" && !c.whyRight)
+    const teach = r.cards.filter((c: any) => c && c.type !== "exercise" && typeof c.body === "string").map((c: any) => `${c.title ? c.title + ": " : ""}${c.body}`).join("\n\n").slice(0, 7000);
+    const ex = r.cards.map((c: any, i: number) => ({ c, i })).filter(({ c }: any) => c && c.type === "exercise" && !c.whyRight)
       .map(({ c, i }: any) => `#${i} (${c.kind ?? "quiz"}): ${c.prompt}\n` + (c.options ?? []).map((o: any) => `  ${o.id}) ${o.text}`).join("\n") + `\n  right: ${c.kind === "poll" ? "(poll, no wrong answer)" : c.answer}`).join("\n\n");
     if (!ex) return { ok: true, written: 0 };
     const g: any = await ctx.runAction(internal.ai.generate, { kind: "whyright", system: WHYRIGHT_PROMPT, user: `Chapter: ${r.title}\n\nThe chapter's cards:\n${teach}\n\nExercises:\n${ex}` });
@@ -90,31 +97,33 @@ export const fillOne = internalAction({
 });
 
 // Readers' copies of a ready topic: take the cache's lines where the exercise prompt matches (no model call).
+// Paged (a page of 25 handbooks and their chapters at a time): reading every chapter in one query is too much.
 export const copyTargets = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    const out: { chapterId: string; cacheId: string; n: number }[] = [];
-    const cache = await ctx.db.query("cache").collect();
-    for (const h of await ctx.db.query("handbooks").collect()) {
+  args: { cursor: v.union(v.string(), v.null()) },
+  handler: async (ctx, { cursor }) => {
+    const page = await ctx.db.query("handbooks").paginate({ cursor, numItems: 25 });
+    const out: { chapterId: string; topicKey: string; level: string; topic: string; n: number }[] = [];
+    for (const h of page.page) {
       if (h.source !== "cache" || h.hiddenAt) continue;
-      const r = cache.find((x) => x.topicKey === h.topicKey && x.level === h.level) ?? cache.find((x) => x.topic === h.topic);
-      if (!r) continue;
-      for (const ch of await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id)).collect()) if (missing(ch.cards)) out.push({ chapterId: ch._id, cacheId: r._id, n: ch.n });
+      for (const ch of await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id)).collect()) if (missing(ch.cards, ch.recallCards)) out.push({ chapterId: ch._id, topicKey: h.topicKey, level: h.level, topic: h.topic, n: ch.n });
     }
-    return out;
+    return { out, cursor: page.continueCursor, done: page.isDone };
   },
 });
 export const copyOne = internalMutation({
-  args: { chapterId: v.id("chapters"), cacheId: v.id("cache"), n: v.number() },
-  handler: async (ctx, { chapterId, cacheId, n }) => {
-    const ch = await ctx.db.get(chapterId), r: any = await ctx.db.get(cacheId);
+  args: { chapterId: v.id("chapters"), topicKey: v.string(), level: v.string(), topic: v.string(), n: v.number() },
+  handler: async (ctx, { chapterId, topicKey, level, topic, n }) => {
+    const ch = await ctx.db.get(chapterId);
+    const r: any = (await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", topicKey).eq("level", level as any)).first())
+      ?? (await ctx.db.query("cache").withIndex("by_topic", (q) => q.eq("topic", topic)).first());
     const src = (r?.chapters ?? []).find((c: any) => c.n === n);
     if (!ch?.cards || !src?.cards) return 0;
     const byPrompt = new Map<string, string>();
-    for (const c of src.cards as any[]) if (c?.type === "exercise" && c.whyRight && c.prompt) byPrompt.set(String(c.prompt), c.whyRight);
+    for (const c of [...(src.cards as any[]), ...((src.recallCards ?? []) as any[])]) if (c?.type === "exercise" && c.whyRight && c.prompt) byPrompt.set(String(c.prompt), c.whyRight);
     let written = 0;
-    const cards = (ch.cards as any[]).map((c) => { if (c?.type !== "exercise" || c.whyRight) return c; const w = byPrompt.get(String(c.prompt)); if (!w) return c; written++; return { ...c, whyRight: w }; });
-    if (written) await ctx.db.patch(chapterId, { cards });
+    const take = (cards: any[]) => cards.map((c) => { if (c?.type !== "exercise" || c.whyRight) return c; const w = byPrompt.get(String(c.prompt)); if (!w) return c; written++; return { ...c, whyRight: w }; });
+    const cards = take(ch.cards as any[]), recallCards = ch.recallCards ? take(ch.recallCards as any[]) : undefined;
+    if (written) await ctx.db.patch(chapterId, { cards, ...(recallCards ? { recallCards } : {}) });
     return written;
   },
 });
@@ -157,9 +166,13 @@ export const run = internalAction({
       console.log(`whyRight cacheCopies: ${list.length} twin rows, ${w} lines copied`); return;
     }
     if (scope === "copies") {
-      const list: any[] = items ?? (await ctx.runQuery(internal.whyRight.copyTargets, {}));
-      let w = 0; for (const t of list) w += await ctx.runMutation(internal.whyRight.copyOne, t);
-      console.log(`whyRight copies: ${list.length} reader chapters looked at, ${w} lines copied`); return;
+      let cursor: string | null = null, looked = 0, w = 0;
+      for (;;) {
+        const p: any = await ctx.runQuery(internal.whyRight.copyTargets, { cursor });
+        for (const t of p.out) { looked++; w += await ctx.runMutation(internal.whyRight.copyOne, t); }
+        cursor = p.cursor; if (p.done) break;
+      }
+      console.log(`whyRight copies: ${looked} reader chapters looked at, ${w} lines copied`); return;
     }
     const list: Target[] = items ?? (await ctx.runQuery(internal.whyRight.targets, { scope })).slice(0, limit ?? 10000);
     const [head, ...rest] = list;
