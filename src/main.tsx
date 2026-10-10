@@ -34,6 +34,16 @@ if (!onStats && !onAdmin && !policy && !onPrint) {
   const utm = new URLSearchParams(window.location.search).get('utm_source')
   const ref = document.referrer && !document.referrer.startsWith(window.location.origin) ? document.referrer : undefined
   convex.mutation(api.stats.recordVisit, { visitor: deviceToken(), source: utm ?? ref }).catch(() => {})
+  // PostHog (11 Oct, D68): page views only, for the sprint's visitors row (convex/analytics.ts). Loaded after the page,
+  // never on a test visit or a phone marked as ours; no clicks, no recordings, no cookies (localStorage only).
+  if (utm !== 'internal') convex.query(api.analytics.config, { deviceToken: deviceToken() }).then(async (c) => {
+    if (!c) return
+    const { default: posthog } = await import('posthog-js')
+    posthog.init(c.key, {
+      api_host: c.host, capture_pageview: 'history_change', capture_pageleave: true, autocapture: false,
+      disable_session_recording: true, disable_surveys: true, capture_performance: false, persistence: 'localStorage', person_profiles: 'identified_only',
+    })
+  }).catch(() => {})
 }
 
 // A crash anywhere used to leave a blank page (8 Oct, found on Public speaking chapter 1). Now: one plain line and a

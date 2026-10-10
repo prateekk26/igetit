@@ -8,7 +8,7 @@ import type { ReactNode } from 'react'
 export const POLICY_PAGES = ['terms', 'privacy', 'refunds', 'contact'] as const
 export type PolicyPage = (typeof POLICY_PAGES)[number]
 
-const UPDATED = '9 October 2026'
+const UPDATED = '11 October 2026'
 
 // Prateek fills these. Shown on every page that needs them.
 const CONTACT = {
@@ -78,7 +78,7 @@ const BODY: Record<PolicyPage, ReactNode> = {
   ),
   privacy: (
     <>
-      <p className="lede">What we keep, why, who else sees it, and how to have it deleted. No ads, no data sold, no outside analytics.</p>
+      <p className="lede">What we keep, why, who else sees it, and how to have it deleted. No ads, no data sold. One outside service counts visits (PostHog, below).</p>
       <h2>What we keep</h2>
       <ul className="policy-list">
         <li><strong>What you type:</strong> your topic (up to 200 characters), level, reading voice, the one-line profile you set, questions you ask on a card, and what you write in "teach it back".</li>
@@ -94,6 +94,7 @@ const BODY: Record<PolicyPage, ReactNode> = {
         <li><strong>Anthropic</strong> (United States) receives your topic, level, profile line and questions so Claude can write and check your chapters. Anthropic doesn't train its models on this data. Some questions are answered with a web search run through Anthropic; the search sees the question, not who asked it.</li>
         <li><strong>Google</strong> (United States) receives the words of a topic you type, the level you picked, the goal you chose for it and, since 8 October, the plan and chapter text as it is written: Google's Gemini model researches the topic with Google Search and writes the plan and the chapters (Anthropic's Claude writes them if Gemini fails, and checks every chapter). It gets nothing else about you. Google may keep and use these words under its API terms.</li>
         <li><strong>Langfuse</strong> (United States) receives the numbers behind each AI call we make for a handbook: which step, which model, how long it took, how many tokens, whether it failed. Never the words you typed, never the chapter text, never anything about you. We use it to see where the writing is slow or failing.</li>
+        <li><strong>PostHog</strong> (United States) counts visits, from 11 October: which page of this site you opened, the link you came from, your browser and kind of device, and the rough location your internet address points to, under a random code kept on your phone (no cookie). Never what you type, never your handbooks, never your email. We use it so outside judges can check our visitor numbers.</li>
         <li><strong>Razorpay</strong> (India) handles payments and sees what you enter in its payment sheet.</li>
         <li><strong>Research before writing:</strong> when you type a topic, Google's Gemini looks it up with Google Search. If Google is busy, the same words go to Anthropic for a web search instead. The topic's words (never anything about you) are also used to look it up on Wikipedia and, for films, series, books and games, to fetch the transcript of a public YouTube recap through <strong>Supadata</strong>.</li>
         <li><strong>Runway</strong> may draw a handbook's cover from its first chapter's text. Other pictures are photos from Wikimedia Commons. Neither gets anything about you.</li>
