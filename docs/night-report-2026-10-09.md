@@ -29,6 +29,9 @@ Caution: /admin's 88 visitors include our own review agents (05 alone ran about 
 
 ## Waits on you (in order)
 
+**Answered 10 Oct 00:0x (D56):** 1 fix now with dc's drafts; 3 go ahead with the ask; 4 (wall sample) 20 hits; D13 landing cut pulled forward; Dot no mascot yet; Instagram professional today; 21 topics' story pictures drawn. Still open: 2 (the webhook secret is now set), Reddit karma question (a2), the posts themselves.
+
+
 1. Live posts and the X ad still say "First 3 free, no sign-up"; false since 20:37 (D14). a2 lists every place below.
 2. Razorpay webhook secret is still unset on prod (RAZORPAY_WEBHOOK_SECRET), so a payment is recorded only if the checkout reply reaches the app. Set it from the Razorpay dashboard: `npx convex env set --prod RAZORPAY_WEBHOOK_SECRET <value>`.
 3. Shaktimaan's two pieces of advice collide and only you can resolve it: on 8 Oct morning he said to read your moonlighting clause before the first real rupee comes in ("the clause is about earning, not only about being seen"); that evening he set today as "the wall, the pricing fix, and one ask". Asking someone to pay ₹199 today invites the event he said to check first. dc's view: read the clause before the ask; if a real rupee is not allowed yet, make the ask a research question ("would you pay ₹199 for this?") and record the yes, not a Razorpay link. I did not put this to Shaktimaan: the permission check blocked a message carrying your employment details to an outside service, so it stays here for you.
