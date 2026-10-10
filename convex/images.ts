@@ -84,13 +84,13 @@ const strip = (html: string) => html.replace(/<[^>]+>/g, "").replace(/\s+/g, " "
 async function commonsPhoto(ctx: ActionCtx, query: string): Promise<{ storageId: Id<"_storage">; credit: string; source: string } | null> {
   const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=10&gsrsearch=${encodeURIComponent(query + " filetype:bitmap")}&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=1024`;
   try {
-    const res = await fetch(url, { headers: { "User-Agent": "IGetIt/1.0 (https://sensible-mongoose-624.convex.site; learning handbooks)" } });
+    const res = await fetch(url, { headers: { "User-Agent": "IGetIt/1.0 (https://www.igetit.now; learning handbooks)" } });
     const pages: any[] = Object.values((await res.json())?.query?.pages ?? {}).sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0));
     for (const p of pages) {
       const ii = p.imageinfo?.[0]; const md = ii?.extmetadata ?? {};
       const license = strip(String(md.LicenseShortName?.value ?? ""));
       if (!ii || !/image\/(jpeg|png)/.test(ii.mime) || (ii.width ?? 0) < 600 || !OPEN.test(license) || /nonfree|fair use/i.test(String(md.NonFree?.value ?? "") + license)) continue;
-      const img = await fetch(ii.thumburl ?? ii.url, { headers: { "User-Agent": "IGetIt/1.0 (https://sensible-mongoose-624.convex.site)" } });
+      const img = await fetch(ii.thumburl ?? ii.url, { headers: { "User-Agent": "IGetIt/1.0 (https://www.igetit.now)" } });
       if (!img.ok) continue;
       // Ink and wash (8 Oct): the photo is restyled to sit with the drawn covers; if the filter fails, the photo as it is.
       const bytes = new Uint8Array(await img.arrayBuffer());

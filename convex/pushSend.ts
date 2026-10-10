@@ -10,7 +10,7 @@ export const sendDue = internalAction({
   handler: async (ctx): Promise<{ sent: number; gone: number }> => {
     const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
     if (!pub || !priv) return { sent: 0, gone: 0 };
-    webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "https://sensible-mongoose-624.convex.site", pub, priv);
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "https://www.igetit.now", pub, priv);
     const due: any[] = await ctx.runQuery(internal.push.due, { now: Date.now() });
     let sent = 0, gone = 0;
     for (const d of due) {
@@ -29,7 +29,7 @@ export const sendDue = internalAction({
 export const test = internalAction({
   args: { endpoint: v.string(), p256dh: v.string(), auth: v.string() },
   handler: async (_ctx, { endpoint, p256dh, auth }) => {
-    webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "https://sensible-mongoose-624.convex.site", process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "https://www.igetit.now", process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
     await webpush.sendNotification({ endpoint, keys: { p256dh, auth } }, JSON.stringify({ title: "I Get It", body: "Reminders work.", url: "/" }));
     return "sent";
   },

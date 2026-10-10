@@ -171,7 +171,7 @@ const SETUP: Record<Version, { prompt: () => string; schema: string; maxSearches
 };
 
 const STORY = new Set(["film", "series", "book", "game", "franchise", "story"]);   // v1's story kinds, and v4's one
-const UA = "IGetIt/1.0 (https://sensible-mongoose-624.convex.site; prateekksubs@gmail.com)";
+const UA = "IGetIt/1.0 (https://www.igetit.now; prateekksubs@gmail.com)";
 
 async function wikipedia(title: string, plot: boolean): Promise<{ title: string; url: string; text: string } | null> {
   try {
