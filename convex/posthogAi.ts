@@ -35,12 +35,16 @@ export const setCursor = internalMutation({
 });
 
 const provider = (model: string) =>
-  /^claude|anthropic/i.test(model) ? "anthropic" : /^gemini/i.test(model) ? "google" : /^gpt|^o\d/i.test(model) ? "openai"
+  /^muse|^gen\d|runway/i.test(model) ? "runway" : /^claude|anthropic/i.test(model) ? "anthropic" : /^gemini/i.test(model) ? "google" : /^gpt|^o\d/i.test(model) ? "openai"
     : /^glm/i.test(model) ? "zhipu" : /^deepseek/i.test(model) ? "deepseek" : model.split(/[-/]/)[0] || "other";
 
-function event(c: Row, h: Info | undefined) {
+async function event(c: Row, h: Info | undefined) {
   const usd = inrOf(c.model, c.ok, c.tokensIn, c.tokensOut) / INR_PER_USD;
+  // A fixed id per call, so a call sent twice (a manual run beside the scheduled one) is kept once by PostHog.
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`ai:${c.id}`)));
+  const h32 = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
   return {
+    uuid: `${h32.slice(0, 8)}-${h32.slice(8, 12)}-4${h32.slice(13, 16)}-8${h32.slice(17, 20)}-${h32.slice(20, 32)}`,
     event: "$ai_generation",
     distinct_id: "igetit-pipeline",
     timestamp: new Date(c.at).toISOString(),
@@ -84,13 +88,14 @@ export const exportNew = internalAction({
       const byId = new Map(infos.map((h) => [h.id, h]));
       // Not model calls (a transcript fetch, a photo search): logged, never sent as generations.
       const batch = rows.filter((c) => c.kind !== "transcript" && c.kind !== "photo").map((c) => event(c, c.handbookId ? byId.get(c.handbookId) : undefined));
-      if (batch.length) {
-        const res = await fetch(`${host}/batch/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: key, batch }) });
+      const events = await Promise.all(batch);
+      if (events.length) {
+        const res = await fetch(`${host}/batch/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: key, batch: events }) });
         // Not sent: keep the cursor where it was, so the next run sends these again.
         if (!res.ok) throw new Error(`PostHog ${res.status}: ${(await res.text().catch(() => "")).slice(0, 300)}`);
       }
       await ctx.runMutation(internal.posthogAi.setCursor, { at: Math.max(...rows.map((c) => c.at)) });
-      sent += batch.length;
+      sent += events.length;
       if (fetched.length <= BATCH) break;
     }
     return { sent };
