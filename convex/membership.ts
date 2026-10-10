@@ -5,6 +5,7 @@ import { query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { DAYS } from "./pricing";
 import { isOwner } from "./admin";
+import { FREE_TEN } from "./freeTen";
 
 // Visitor, signed up, member (Prateek, 7 Oct, afternoon). One place for every number. Each limit is checked in a Convex
 // function; the screens only explain it. "New chapter" means one opened for the first time; going back is always free.
@@ -119,13 +120,14 @@ export async function tryOpen(ctx: MutationCtx, h: Doc<"handbooks">, n: number):
     const bp = b._id === h._id ? p : await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", b._id)).unique();
     for (const o of bp?.opened ?? []) if (o.day === day) today.push({ id: b._id, typed: isTyped(b) });
   }
+  const freeTen = h.source === "cache" && FREE_TEN.has(h.topic);   // D65: no daily limit on the free eleven
   if (member) {
-    if (!sup && today.length >= LIMITS.memberChaptersPerDay) return { ok: false, code: "daily-member" };
+    if (!sup && !freeTen && today.length >= LIMITS.memberChaptersPerDay) return { ok: false, code: "daily-member" };
   } else {
     // By chapter number, on purpose (Prateek, 8 Oct night: "Instagram can't direct anyone to chapter 2 straight away"):
     // a post link to chapter 2 meets the same wall as everyone else.
     if (!h.userId && n > LIMITS.visitorChapters) return { ok: false, code: "signup-more" };
-    if (today.length >= LIMITS.freeChaptersPerDay) return { ok: false, code: "daily-free" };
+    if (!freeTen && today.length >= LIMITS.freeChaptersPerDay) return { ok: false, code: "daily-free" };
   }
   // The first record on older progress keeps whatever was open under the old rule, so nothing locks again.
   const before = p.opened ?? Array.from({ length: p.currentChapter }, (_, i) => i + 1).filter((k) => isOpen(p, k)).map((k) => ({ n: k, day: "before" }));

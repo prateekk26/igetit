@@ -310,3 +310,9 @@ Tapping a book on the Shelf lifts it to the front of the screen: it leaves its r
 
 ## The landing page, cut (10 Oct, D64; Prateek pulled it forward)
 Order now: the top bar; the poster, the box, the free line, the Shelf strip, the carousel (finishes first, then starts; one "Surprise me" link, no sort pills); "Tonight, in twenty minutes" as three text steps; the real chapter 1 demo; one line on price with a link to /pricing; the box again; the footer. Gone: the "saved the reel" block, the seven-night path, the second shelf, the tier table, the step pictures. Target: under five screens at 390 px. Copy (agent) except Prateek's hero lines.
+
+## A month-long handbook (10 Oct, D65; Prateek: "Hold a room for 10 minutes. It will be a 28 day thing")
+- The path groups its 28 chapters into four weeks. Each week is one printed box ("Week N", its title, "N of 7 done"); only the week the reader is in opens by default, the rest open on a tap. Week titles (agent): Your first 2 minutes; Body and voice; Something worth saying; Hold the room for 10.
+- The rung bar keeps one segment a chapter; with more than seven the gaps shrink to 2 px so 28 fit at 390 px.
+- Every day shows its step done on one running example, Ananya (agent), then an optional "Your turn" card. Chapter titles, hooks and the example are (agent) until Prateek rewrites them (convex/showcasePlans.ts).
+- A Try it page that runs longer than its 520 px brief now grows and scrolls inside its frame instead of cutting its own text (src/lib/sandbox.ts, fit).

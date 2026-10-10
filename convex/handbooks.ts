@@ -1,3 +1,4 @@
+import { REDIRECT } from "./freeTen";
 import { ConvexError, v } from "convex/values";
 import { RateLimiter, HOUR } from "@convex-dev/rate-limiter";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -18,15 +19,17 @@ import { COST_INR, LIMITS, isOpen, memberUntil, ownerIsMember, spendFits, tryOpe
 
 const voiceV = v.union(v.literal("friend"), v.literal("straight"), v.literal("stories"));
 
-const CHAPTERS = 7;   // the most a handbook has; a quick one (a recap, one recipe) has 1 to 3 (7 Oct)
-// How many chapters this handbook has: what its plan says, at most 7.
+const CHAPTERS = 7;   // the most a written plan has; a quick one (a recap, one recipe) has 1 to 3 (7 Oct)
+// D65 (Prateek, 10 Oct): a hand-planned showcase (showcase.ts) can run a chapter a day for a month.
+export const LONGEST = 28;
+// How many chapters this handbook has: what its plan says, at most LONGEST.
 // Recaps and quick handbooks carry no quizzes (Prateek, 7 Oct: "we don't need to quiz them like for avengers").
 export function noQuizzes(plan: any) {
   return plan?.format === "quick" || plan?.mode === "story";
 }
 export function totalOf(h: Doc<"handbooks"> | null | undefined) {
   const n = Array.isArray((h?.plan as any)?.chapters) ? (h!.plan as any).chapters.length : 0;
-  return n >= 1 && n <= CHAPTERS ? n : CHAPTERS;
+  return n >= 1 && n <= LONGEST ? n : CHAPTERS;
 }
 const LANGUAGE = "English";
 
@@ -406,7 +409,7 @@ export const create = mutation({
     const clean = topic.trim().slice(0, 200);
     if (clean.length < 2) throw new Error("Type a few words first.");
     const userId = await getAuthUserId(ctx);
-    const topicKey = topicKeyOf(clean);
+    const topicKey = REDIRECT[topicKeyOf(clean)] ?? topicKeyOf(clean);   // D65: a replaced ready topic
     const now = Date.now();
 
     // "Not what you meant? Change what you typed" (UX review 9 Oct, #9): the reader's own typed handbook, not read yet,
@@ -1720,7 +1723,7 @@ export const teachBack = mutation({
   args: { handbookId: v.id("handbooks"), chapter: v.number(), text: v.string(), deviceToken: v.optional(v.string()) },
   handler: async (ctx, { handbookId, chapter, text, deviceToken }) => {
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
-    if (!Number.isInteger(chapter) || chapter < 1 || chapter > CHAPTERS) throw new Error("No such chapter");
+    if (!Number.isInteger(chapter) || chapter < 1 || chapter > totalOf(h)) throw new Error("No such chapter");
     const t = text.trim().slice(0, 600);
     if (t.length < 10) throw new Error("A sentence or two is enough.");
     if (!(h.userId && (await isSuper(ctx, h.userId)))) {   // D36

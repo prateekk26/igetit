@@ -216,7 +216,7 @@ export default function App() {
     const q = new URLSearchParams(window.location.search)
     const t = q.get('t'), ch = Number(q.get('ch') ?? 1), l = q.get('l')
     if (l && /^[a-z0-9]{20,40}$/.test(l)) return { l }
-    return t ? { t: t.toLowerCase(), ch: Number.isInteger(ch) && ch >= 1 && ch <= 7 ? ch : 1 } : null
+    return t ? { t: t.toLowerCase(), ch: Number.isInteger(ch) && ch >= 1 && ch <= 28 ? ch : 1 } : null
   })
   // The book to lift while a ?l= link opens: its title and cover from the Shelf's own list (one query, only on a link).
   const linkShelf = useQuery(api.library.explore, deepLink?.l ? {} : 'skip') as { kind: string; id?: string; key: string; topic: string; cover: string | null }[] | undefined

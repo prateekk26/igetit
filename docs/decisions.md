@@ -11,6 +11,12 @@ One entry per decision: what, why, what it replaced, and when to look at it agai
 
 How to add: at the end of a session, append under today's date. A decision Prateek made says "(Prateek)"; one the agent made in his stead says "(agent, authorised)". Never rewrite an old entry; add a new one that supersedes it.
 
+## 2026-10-10
+
+### Decisions
+
+- **D65. The free eleven, vision titles, and a 28-day Public speaking (Prateek, 10 Oct afternoon).** (1) Eleven ready handbooks free start to finish, "a flavor of what's on offer without restrictions", picked three at a time with proof (docs/free-ten.md). (2) Shelf titles show a vision, not a subject ("Ask for a raise and get it"), "like MasterClass but fun and bite-sized"; the topic's stored name stays for links and matching. (3) The first one built is Public speaking, titled "Hold a room for 10 minutes", as 28 chapters, one a day ("our chapters take less than 5 mins anyway ... real value delivered earlier"). This lifts, for this handbook only, AGENTS.md's "not in v1: days 8 to 28" (its trigger, 20 readers passing chapter 1, stood at 16) and D62's seven-chapter ceiling. Agent pushed back with 7 chapters plus practice days; Prateek chose 28. (4) Every showcase build: the aha within 2 minutes, real value within 5, pictures and interactive cards; video is a separate decision (needs a new service). Revisit: if fewer than 1 in 5 readers who start day 2 reach day 7, the 28-day shape is too long. Open: free sign-up at chapter 3 kept on these (agent's recommendation, not yet answered); old Public speaking kept only for the 7 Oct carousel link (agent default, not yet confirmed).
+
 ## 2026-10-08
 
 ### Decisions

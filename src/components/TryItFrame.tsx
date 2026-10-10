@@ -25,7 +25,7 @@ export default function TryItFrame({ card, done, onDone }: Props) {
       <p className="story-kicker">{card.title ?? 'Try it'}</p>
       <p className="story-text size-md" style={{ marginBottom: 10 }}>{card.idea}</p>
       {card.html ? (
-        <div className="tryit-box"><iframe ref={box} title={card.title ?? 'Try it'} sandbox="allow-scripts" srcDoc={lockDown(card.html)} /></div>
+        <div className="tryit-box"><iframe ref={box} title={card.title ?? 'Try it'} sandbox="allow-scripts" srcDoc={lockDown(card.html, true)} /></div>
       ) : (
         <div className="tryit-box move-pending" aria-label="Being built" />
       )}

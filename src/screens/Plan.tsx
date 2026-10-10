@@ -1,14 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import ActionBar from '../components/ActionBar'
 import { track } from '../lib/track'
 
 type Chapter = { n: number; title: string; covers: string; outcome: string; hook?: string }
+// A month-long handbook (D65, 28 chapters) groups its path into weeks; only the reader's week opens by default.
+type Week = { title: string; from: number; to: number }
 type Props = {
   total?: number   // chapters in this handbook: 7, or 1 to 3 for a quick one (7 Oct)
   onOpenChapter?: (n: number) => void
   nextTopics?: React.ReactNode   // "Jump to next" topics in place of further reading (7 Oct)   // a finished chapter opens again on tap (7 Oct, Prateek); never uses the daily allowance
   topic: string
-  plan: { outcome7: string; horizon14?: string; horizon28?: string; picture?: { name: string; line: string }; chapters: Chapter[]; sources?: { who: string; what: string; why?: string }[]; pushback?: string | null; framing?: string | null; format?: string }
+  plan: { outcome7: string; horizon14?: string; horizon28?: string; picture?: { name: string; line: string }; chapters: Chapter[]; sources?: { who: string; what: string; why?: string }[]; pushback?: string | null; framing?: string | null; format?: string; weeks?: Week[] }
   passed: number[]
   current: number
   chapterReady: boolean
@@ -51,6 +53,9 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
   const resuming = nextUp?.kind === 'resume'
   // "Later, if you keep going: …" under "Later peaks:" read "Later peaks: Later, …" (UX review 9 Oct): the model's own
   // opener is dropped.
+  const weekOf = (n: number) => plan.weeks?.findIndex((w) => n >= w.from && n <= w.to) ?? -1
+  const [openWeeks, setOpenWeeks] = useState<Set<number>>(() => new Set([Math.max(0, weekOf(current))]))
+  const toggleWeek = (i: number) => setOpenWeeks((s) => { const t = new Set(s); if (t.has(i)) t.delete(i); else t.add(i); return t })
   const later = (plan.horizon14 ?? '').replace(/^\s*later\b[\s,:]*(peaks?[\s,:]*)?(if you keep going[\s,:]*)?/i, '').trim()
   return (
     <>
@@ -93,7 +98,18 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
         {plan.chapters.map((c, idx) => {
           const done = passed.includes(c.n)
           const now = c.n === current && !done
-          return (
+          const wk = weekOf(c.n), week = wk >= 0 ? plan.weeks![wk] : null
+          const head = week && c.n === week.from ? (
+            <li key={`w${wk}`} className="week-head">
+              <button type="button" className="week-tap" aria-expanded={openWeeks.has(wk)} onClick={() => toggleWeek(wk)}>
+                <span className="week-n">Week {wk + 1}</span>
+                <span className="week-t">{week.title}</span>
+                <span className="week-count">{plan.chapters.filter((x) => x.n >= week.from && x.n <= week.to && passed.includes(x.n)).length} of {week.to - week.from + 1} done {openWeeks.has(wk) ? '▾' : '›'}</span>
+              </button>
+            </li>
+          ) : null
+          if (week && !openWeeks.has(wk)) return head
+          return [head,
             <li key={c.n} className={`stop ${done ? 'done' : now ? 'now' : 'ahead'} ${idx % 2 ? 'right' : 'left'}`}>
               <span className="node" aria-hidden="true">{done ? '✓' : ''}</span>{/* the card says "Chapter N"; a number here too read as "1 1" (7 Oct) */}
               {(() => {
@@ -114,8 +130,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
                 if (ahead && onTapChapter) return <button type="button" className="stop-card stop-tap" onClick={() => onTapChapter(c.n)} aria-label={`Chapter ${c.n}: ${c.title}. Opens after chapter ${c.n - 1}. Preview`}>{inner}</button>
                 return <div className="stop-card">{inner}</div>
               })()}
-            </li>
-          )
+            </li>]
         })}
         <li className="stop summit">
           <span className="node" aria-hidden="true">★</span>

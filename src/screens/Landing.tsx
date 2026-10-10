@@ -175,7 +175,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
             <h2>Don't take our word for it.</h2>
             <p className="lp-body">This is the real chapter 1 of {c.demo.topic}. Tap the right side to go on, the left to go back.</p>
           </div>
-          <Demo topic={c.demo.topic} title={c.demo.title ?? ''} frames={c.demo.frames as Frame[]} total={c.demo.total} onTry={toBox} />
+          <Demo topic={c.demo.topic} title={c.demo.title ?? ''} frames={c.demo.frames as Frame[]} total={c.demo.total} of={(c.demo as any).of} onTry={toBox} />
         </section>
       )}
 
@@ -208,7 +208,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
 const TONE: Record<string, string> = { picture: 'ink', teach: 'marigold', example: 'cream', mistake: 'coral', try: 'green', exercise: 'ink' }
 const KICKER: Record<string, string> = { example: 'Story time', mistake: 'The mistake everyone makes', exercise: 'Quick guess' }
 
-function Demo({ topic, title, frames, total, onTry }: { topic: string; title: string; frames: Frame[]; total: number; onTry: () => void }) {
+function Demo({ topic, title, frames, total, of, onTry }: { topic: string; title: string; frames: Frame[]; total: number; of?: number; onTry: () => void }) {
   const [i, setI] = useState(0)
   const [picked, setPicked] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
@@ -247,7 +247,7 @@ function Demo({ topic, title, frames, total, onTry }: { topic: string; title: st
         <div className="story-bars" aria-hidden="true">
           {frames.map((_, k) => <span key={k} className={k < i ? 'on' : k === i ? 'now' : ''} />)}
         </div>
-        <div className="story-head"><span className="story-label">Chapter 1 of 7</span><span className="story-topic">{topic}</span></div>
+        <div className="story-head"><span className="story-label">Chapter 1 of {of ?? 7}</span><span className="story-topic">{topic}</span></div>
         <div className="story-body" key={i}>
           {end ? (
             <>

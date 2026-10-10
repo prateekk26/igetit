@@ -5,10 +5,10 @@ import { onShelf } from "./shelf";
 
 // Public content for the landing page, all from the ready topics: a tappable demo of
 // Public speaking chapter 1, its seven-night path, and a shelf of ready topics with cover pictures.
-const DEMO_TOPIC = "public speaking";
+const DEMO_TOPIC = "hold a room for 10 minutes";   // D65: Public speaking, as the 28-day handbook
 // The order of the "start one tonight" row under the box (Prateek, 6 Oct): timely and pop-culture topics first.
 // Matched against each ready topic's name; anything not listed follows.
-const FEATURED = ["odyssey", "iliad", "homer", "avengers", "marvel", "k-pop", "us stock", "abroad", "philosophy", "public speaking", "indian stock", "vibe coding", "swimming"];
+const FEATURED = ["odyssey", "iliad", "homer", "avengers", "marvel", "k-pop", "us stock", "abroad", "philosophy", "hold a room", "public speaking", "indian stock", "vibe coding", "swimming"];
 const rank = (topic: string) => { const t = topic.toLowerCase(); const i = FEATURED.findIndex((f) => t.includes(f)); return i < 0 ? FEATURED.length : i; };
 
 const firstPara = (s: string) => s.split(/\n\n+/)[0]?.trim() ?? "";
@@ -55,7 +55,7 @@ export const content = query({
       }
     }
     return {
-      demo: ch ? { topic: demoRow!.topic, title: ch.title, frames, total: (ch.cards ?? []).length } : null,
+      demo: ch ? { topic: demoRow!.topic, title: ch.title, frames, total: (ch.cards ?? []).length, of: (demoRow!.plan?.chapters ?? []).length || 7 } : null,
       path: demoRow?.plan ? { topic: demoRow.plan.topic, outcome: demoRow.plan.outcome7, chapters: (demoRow.plan.chapters ?? []).map((c: any) => ({ n: c.n, title: c.title, hook: c.hook })) } : null,
       shelf: shelf.sort((x, y) => rank(x.topic) - rank(y.topic) || Number(!x.cover) - Number(!y.cover)),
     };
