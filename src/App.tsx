@@ -7,26 +7,31 @@ import { track } from './lib/track'
 import Start from './screens/Start'
 import Plan from './screens/Plan'
 import Chapter, { type AnswerResult, type Card } from './screens/Chapter'
-import Done from './screens/Done'
-import SignIn from './screens/SignIn'
-import Tune from './screens/Tune'
-import Compare from './screens/Compare'
 import Library from './screens/Library'
-import { PolicyLinks } from './screens/Policy'
+import { PolicyLinks } from './components/PolicyLinks'
 import { isMemberLimit, limitCode, limitMessage } from './lib/limits'
 import NextTopics from './components/NextTopics'
 import Sheet from './components/Sheet'
-import Pricing from './screens/Pricing'
 import Landing from './screens/Landing'
-import Shelf from './screens/Shelf'
 import WhatsNext from './components/WhatsNext'
 import SignupNudge from './components/SignupNudge'
 import { ShelfButton } from './components/ShelfStrip'
 import { nameOf, isId } from './lib/name'
+import { deferred, preloadWhenIdle } from './lib/deferred'
+
+// Screens outside the first screen (11 Oct): fetched in the background once the first screen is up, so they still
+// open instantly; Tune and Compare, rarely opened, load when opened.
+const Done = deferred(() => import('./screens/Done'))
+const SignIn = deferred(() => import('./screens/SignIn'))
+const Pricing = deferred(() => import('./screens/Pricing'))
+const Shelf = deferred(() => import('./screens/Shelf'))
+const Tune = deferred(() => import('./screens/Tune'))
+const Compare = deferred(() => import('./screens/Compare'))
 
 type View = 'auto' | 'plan' | 'chapter' | 'done' | 'signin' | 'start-again' | 'tune' | 'compare' | 'library' | 'pricing' | 'explore'
 
 export default function App() {
+  useEffect(() => preloadWhenIdle([Done, SignIn, Shelf, Pricing]), [])   // the reader's next screens, once this one is up
   const token = useMemo(() => deviceToken(), [])
   const { isAuthenticated } = useConvexAuth()
   const { signOut } = useAuthActions()

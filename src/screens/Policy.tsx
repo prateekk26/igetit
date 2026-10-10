@@ -5,8 +5,7 @@ import type { ReactNode } from 'react'
 // code does today; change the page when the code changes. Copy is (agent) until Prateek rewrites it, and it is
 // not legal advice: worth a lawyer's read before real volume.
 
-export const POLICY_PAGES = ['terms', 'privacy', 'refunds', 'contact'] as const
-export type PolicyPage = (typeof POLICY_PAGES)[number]
+import { PolicyLinks, TITLES, type PolicyPage } from '../components/PolicyLinks'
 
 const UPDATED = '11 October 2026'
 
@@ -16,21 +15,6 @@ const CONTACT = {
   email: 'prateekksubs@gmail.com',
   phone: '',      // TODO(Prateek)
   address: 'Bengaluru, Karnataka, India',
-}
-
-const TITLES: Record<PolicyPage, string> = {
-  terms: 'Terms of use',
-  privacy: 'Privacy',
-  refunds: 'Refunds, cancellation and delivery',
-  contact: 'Contact',
-}
-
-export function PolicyLinks() {
-  return (
-    <span className="policy-links">
-      {POLICY_PAGES.map((p) => <a key={p} href={`/${p}`}>{p === 'refunds' ? 'Refunds' : TITLES[p].replace(' of use', '')}</a>)}
-    </span>
-  )
 }
 
 const Email = () => CONTACT.email ? <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a> : <span>the email on the Contact page</span>

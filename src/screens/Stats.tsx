@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { deviceToken } from '../lib/device'
-import { PolicyLinks } from './Policy'
+import { PolicyLinks } from '../components/PolicyLinks'
 
 // The public numbers page at /stats (counts only). Copy is (agent) until Prateek rewrites it.
 // 8 Oct: a dashboard. Each day's new visitors by channel with chapter 1 finishes, each channel since launch, and our

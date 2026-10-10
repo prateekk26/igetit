@@ -4,7 +4,7 @@ import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { deviceToken } from '../lib/device'
 import Rich from '../components/Rich'
-import { PolicyLinks } from './Policy'
+import { PolicyLinks } from '../components/PolicyLinks'
 
 // /print?h=<handbook>: the whole handbook on one clean page, to print or save as a PDF (members, 7 Oct).
 // The server decides who may see it (handbooks.printable). Copy is (agent) until Prateek rewrites it.

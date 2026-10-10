@@ -1,14 +1,16 @@
-import { Component, StrictMode, type ReactNode } from 'react'
+import { Component, StrictMode, Suspense, lazy, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ConvexReactClient } from 'convex/react'
 import { ConvexAuthProvider } from '@convex-dev/auth/react'
 import './index.css'
 import './screens.css'
 import App from './App.tsx'
-import Stats from './screens/Stats'
-import Admin from './screens/Admin'
-import Policy, { POLICY_PAGES, type PolicyPage } from './screens/Policy'
-import Print from './screens/Print'
+import { POLICY_PAGES, type PolicyPage } from './components/PolicyLinks'
+// Pages a reader rarely opens load only when opened (11 Oct, Prateek: "only download the things for the first screen").
+const Stats = lazy(() => import('./screens/Stats'))
+const Admin = lazy(() => import('./screens/Admin'))
+const Policy = lazy(() => import('./screens/Policy'))
+const Print = lazy(() => import('./screens/Print'))
 import { initTrack, startSession, track } from './lib/track'
 import { registerServiceWorker, captureInstallPrompt } from './lib/push'
 import { api } from '../convex/_generated/api'
@@ -69,7 +71,7 @@ class Safety extends Component<{ children: ReactNode }, { err: string | null }> 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ConvexAuthProvider client={convex}>
-      <Safety>{onPrint ? <Print /> : policy ? <Policy page={policy} /> : onAdmin ? <Admin /> : onStats ? <Stats /> : <App />}</Safety>
+      <Safety><Suspense fallback={<div className="splash" />}>{onPrint ? <Print /> : policy ? <Policy page={policy} /> : onAdmin ? <Admin /> : onStats ? <Stats /> : <App />}</Suspense></Safety>
     </ConvexAuthProvider>
   </StrictMode>,
 )
