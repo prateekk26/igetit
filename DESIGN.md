@@ -307,3 +307,6 @@ Tapping a book on the Shelf lifts it to the front of the screen: it leaves its r
 - "Other handbooks you might like, free to open" on the handbook page. Copy (agent).
 - The side list (laptop) and the ☰ menu (phone): each chapter a full-width row, its number in a 24 px circle, the title beside it; a done chapter a green tick in the circle; the current one tinted marigold and bold with "Start here" (nothing read yet) or "Up next" under the title. Copy (agent).
 - Tap areas: every link and button outside running text is at least 44 by 44 px (footer, both header names, the reading-style control, the policy pages' Back and contact email); links inside policy sentences reach 44 px through padding.
+
+## The landing page, cut (10 Oct, D64; Prateek pulled it forward)
+Order now: the top bar; the poster, the box, the free line, the Shelf strip, the carousel (finishes first, then starts; one "Surprise me" link, no sort pills); "Tonight, in twenty minutes" as three text steps; the real chapter 1 demo; one line on price with a link to /pricing; the box again; the footer. Gone: the "saved the reel" block, the seven-night path, the second shelf, the tier table, the step pictures. Target: under five screens at 390 px. Copy (agent) except Prateek's hero lines.

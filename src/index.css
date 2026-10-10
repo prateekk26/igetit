@@ -571,6 +571,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 /* "start one tonight": ready topics right under the box, one tap starts them */
 .lp-quick { margin-top: 18px; }
 .lp-quick p { font: 700 var(--small) var(--sans); margin: 0 0 8px; }
+.lp-surprise { all: unset; cursor: pointer; font: 700 var(--small) var(--sans); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; padding: 0 2px; margin-left: 6px; }   /* D64: the pills went; one quiet shuffle */
 .lp-field input:focus-visible, .lp-field button:focus-visible, .lp-seg button:focus-visible, .lp-top-cta:focus-visible { outline: 3px solid var(--riso-indigo); outline-offset: 3px; }
 
 /* the itch: an ink spread */
@@ -584,7 +585,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 /* tonight: three steps (a real sequence, so numbered) */
 .lp-steps ol { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 36px; }
 .lp-steps li { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: baseline; }
-.lp-steps img { grid-column: 1 / -1; margin-bottom: 14px; border: 3px solid var(--ink); }
+.lp-steps ol { gap: 22px; }   /* D64: no step pictures */
 .lp-n { font-weight: 800; font-variation-settings: 'wdth' 75, 'opsz' 96; font-size: 3.2rem; line-height: 0.8; color: #c8603f; text-shadow: 0.05em 0.04em 0 rgba(58, 65, 112, 0.5); grid-row: span 2; }   /* the deeper coral (the Shelf's cloth) reads 3.9:1; the print coral read 2.9 */
 .lp-steps h3 { margin: 0; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; }
 .lp-steps p { margin: 4px 0 0; font-family: var(--serif); font-size: 1.05rem; line-height: 1.5; grid-column: 2; }
@@ -622,6 +623,9 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 
 /* the offer: a coral spread with the early-bird tiers */
 .lp-offer { background: var(--riso-coral); display: grid; gap: 28px; }
+.lp-offer-line { padding-top: 28px; padding-bottom: 28px; }   /* D64: one line, the tiers live on /pricing */
+.lp-offer-line .lp-body { margin: 0; max-width: 40rem; }
+.lp-offer-line a { color: inherit; font-weight: 700; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
 
 /* the last ask */
 .lp-final { background: var(--paper); text-align: left; }

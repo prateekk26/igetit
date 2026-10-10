@@ -9,9 +9,11 @@ import ShelfStrip, { ShelfButton } from '../components/ShelfStrip'
 import { freeChaptersText, TYPED_RULE, typedBoxText, type TypedAllowance } from '../lib/free'
 
 // The landing page, for first-time visitors (DESIGN.md, Landing). A printed risograph poster that sells
-// before it asks: the promise, the itch, how tonight works, a real chapter to tap, the seven nights,
-// the ready topics, the price, and the box again. Headline and the line under it are Prateek's words;
-// everything else is (agent) until he rewrites it.
+// before it asks: the promise and the box, the ready topics, how tonight works, a real chapter to tap, one line
+// on price, and the box again. D64 (10 Oct, the cut): it was 10.3 screens tall with 62 tap targets at 390 px and the
+// funnel showed almost nobody past the top; the "saved the reel" block, the seven-night path, the second shelf and the
+// tier table went (each repeated something above it). Headline and the line under it are Prateek's words; everything
+// else is (agent) until he rewrites it.
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
@@ -22,32 +24,20 @@ type Frame =
   | { kind: 'exercise'; prompt: string; options: { id: string; text: string }[]; answer: string; whyNot: Record<string, string> }
 
 type Shelf = { topic: string; outcome: string; cover: string | null; week: number; starts: number; passRate: number | null; trending: boolean; addedAt: number; mode: string | null; improved?: boolean }
-type Pill = 'trending' | 'started' | 'finished' | 'new'
-const PILLS: { key: Pill; label: string }[] = [{ key: 'trending', label: 'Trending this week' }, { key: 'started', label: 'Most started' }, { key: 'finished', label: 'Most finished' }, { key: 'new', label: 'New' }]
-
-// "Or start one tonight" as a carousel (6 Oct): pills sort it by real numbers, Surprise me shuffles it. One tap starts.
+// "Or start one tonight" as a carousel (6 Oct). D64 (10 Oct, the landing cut): the four sort pills went (five controls
+// above the first book, UX critique 8 Oct); the order is the Shelf's Spotlight rule, readers' finishes first, then starts,
+// then trending; "Surprise me" stays as one quiet link. One tap starts.
 function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; busy: boolean; picked: string | null; onPick: (topic: string) => void; onExplore?: () => void }) {
-  const hasTrending = items.some((i) => i.trending)
-  const hasFinished = items.some((i) => i.passRate !== null)
-  const pills = PILLS.filter((p) => (p.key !== 'trending' || hasTrending) && (p.key !== 'finished' || hasFinished))
-  const [pill, setPill] = useState<Pill>(hasTrending ? 'trending' : 'started')
   const [seed, setSeed] = useState(0)
   const sorted = (() => {
     const xs = items.slice()
     if (seed) { for (let i = xs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [xs[i], xs[j]] = [xs[j], xs[i]] } return xs }
-    if (pill === 'trending') return xs.sort((a, b) => Number(b.trending) - Number(a.trending) || b.week - a.week)
-    if (pill === 'started') return xs.sort((a, b) => b.week - a.week || b.starts - a.starts)
-    if (pill === 'finished') return xs.sort((a, b) => (b.passRate ?? -1) - (a.passRate ?? -1))
-    return xs.sort((a, b) => b.addedAt - a.addedAt)
+    return xs.sort((a, b) => (b.passRate !== null && b.starts >= 3 ? b.passRate * b.starts : 0) - (a.passRate !== null && a.starts >= 3 ? a.passRate * a.starts : 0) || b.week - a.week || Number(b.trending) - Number(a.trending))
   })()
-  const tag = (it: Shelf, k: number) => it.trending && k < 3 ? 'Trending' : it.improved ? 'Just improved' : pill === 'started' && it.week ? `${it.week} started this week` : pill === 'finished' && it.passRate !== null ? `${Math.round(it.passRate * 100)}% finish chapter 1` : pill === 'new' && Date.now() - it.addedAt < 7 * 864e5 ? 'New' : ''
+  const tag = (it: Shelf, k: number) => it.trending && k < 3 ? 'Trending' : it.improved ? 'Just improved' : it.passRate !== null && it.starts >= 3 && it.passRate >= 0.3 ? `${Math.round(it.passRate * 100)}% finish chapter 1` : it.week >= 2 ? `${it.week} started this week` : ''
   return (
     <div className="lp-quick">
-      <p>Or start one tonight. It opens instantly:</p>
-      <div className="lp-pills" role="group" aria-label="Sort">
-        {pills.map((p) => <button key={p.key} type="button" aria-pressed={!seed && pill === p.key} onClick={() => { setSeed(0); setPill(p.key) }}>{p.label}</button>)}
-        <button type="button" aria-pressed={!!seed} onClick={() => setSeed((x) => x + 1)}>Surprise me</button>
-      </div>
+      <p>Or start one tonight. It opens instantly. <button type="button" className="lp-surprise" onClick={() => setSeed((x) => x + 1)}>Surprise me</button></p>
       <ul className="lp-carousel">
         {sorted.slice(0, 12).map((it, k) => (
           <li key={it.topic} className={picked === it.topic ? 'lifting' : picked ? 'resting' : undefined}>
@@ -168,21 +158,14 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
         <figure className="lp-hero-art"><img src="/images/landing/hero.jpg" alt="Someone climbing out of the fog toward one bright summit" /></figure>
       </section>
 
-      <section className="lp-saved">
-        <figure className="lp-saved-art"><img src="/images/landing/saved.jpg" alt="Asleep on the sofa, saved videos spilling out of the phone" loading="lazy" /></figure>
-        <div>
-          <p className="lp-big">You saved the reel. And the thread. And the three-hour video for the weekend.</p>
-          <p className="lp-big lp-big-accent">You still can't explain it.</p>
-          <p className="lp-body">Saving feels like learning. It isn't. I Get It takes the thing you keep saving and turns it into seven short chapters, written for you, that you actually finish. One a night. Twenty minutes.</p>
-        </div>
-      </section>
 
       <section className="lp-steps">
         <h2>Tonight, in twenty minutes.</h2>
         <ol>
-          <li><img src="/images/landing/step1.jpg" alt="" loading="lazy" /><span className="lp-n">1</span><h3>Type it.</h3><p>Whatever you keep meaning to learn, in your own words. Your plan of up to seven chapters, and chapter 1, in about two minutes.</p></li>
-          <li><img src="/images/landing/step2.jpg" alt="" loading="lazy" /><span className="lp-n">2</span><h3>Tap through chapter 1.</h3><p>Full-screen frames, one idea each, with pictures. Stuck? Ask it.</p></li>
-          <li><img src="/images/landing/step3.jpg" alt="" loading="lazy" /><span className="lp-n">3</span><h3>Light the first rung.</h3><p>Read to the end of chapter 1 and the first rung lights up. No quizzes tonight: chapter 2 opens with two quick questions on what stuck.</p></li>
+          {/* D64: the three step pictures went (1,500 px of a 390 px screen for three sentences); the demo below shows the real thing. */}
+          <li><span className="lp-n">1</span><h3>Type it.</h3><p>Whatever you keep meaning to learn, in your own words. Your plan and chapter 1 in about two minutes.</p></li>
+          <li><span className="lp-n">2</span><h3>Tap through chapter 1.</h3><p>Full-screen frames, one idea each, with pictures. Stuck? Ask it.</p></li>
+          <li><span className="lp-n">3</span><h3>Light the first rung.</h3><p>Read to the end and the first rung lights up. Chapter 2 opens with two quick questions on what stuck.</p></li>
         </ol>
       </section>
 
@@ -196,61 +179,14 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
         </section>
       )}
 
-      {c?.path && (
-        <section className="lp-path">
-          <h2>Seven nights to the summit, for a full course.</h2>
-          <p className="lp-body">{c.path.outcome}</p>
-          <ol>
-            {c.path.chapters.map((ch: { n: number; title: string; hook: string }) => (
-              <li key={ch.n} className={ch.n === 7 ? 'summit' : ''}>
-                <span className="lp-night">Night {ch.n}</span>
-                <strong>{ch.title}</strong>
-                <span>{ch.hook}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
 
-      {c && c.shelf.length > 0 && (
-        <section className="lp-shelf">
-          <h2>Ready tonight.</h2>
-          <p className="lp-body">These open instantly. Anything else is written for you: the plan and chapter 1 in about two minutes.</p>
-          <ul>
-            {c.shelf.map((s: { topic: string; outcome: string; cover: string | null }) => (
-              <li key={s.topic}>
-                <button type="button" onClick={() => pick(s.topic, 'shelf')}>
-                  <span className="lp-cover">{s.cover && <img src={s.cover} alt="" loading="lazy" />}</span>
-                  <strong>{s.topic}</strong>
-                  <span>{s.outcome}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
+      {/* D64 (10 Oct, the landing cut, pulled forward by Prateek): one line on price; the tiers and the ladder live on /pricing. Copy (agent). */}
       {plans && (() => {
-        // Early-bird tiers (7 Oct): real spots left, from convex/pricing.ts. Copy (agent).
         const open = plans.tiers.find((t: any) => t.open) ?? plans.tiers[plans.tiers.length - 1]
-        const who = ['First 50', 'Next 100', 'Next 200', 'After that']
         return (
-          <section className="lp-offer">
-            <div>
-              <h2>Come early, pay less.</h2>
-              <p className="lp-body">{freeText} of anything, free, no sign-up. A free account opens every ready handbook and one of your own. Members keep 3 of their own on the go, read up to 7 chapters a day and can save any handbook as a PDF. The earlier you join, the less you pay, and your price stays yours while you keep paying. Right now it's {inr(open.month)} a month or {inr(open.year)} a year{open.left !== null ? `, with ${open.left} of ${open.size} spots left` : ''}.</p>
-              <p className="lp-once">One-time payment · No auto-renew</p>
-            </div>
-            <ol className="lp-tiers">
-              {plans.tiers.map((t: any) => (
-                <li key={t.tier} className={t.open ? 'open' : t.left === 0 ? 'full' : ''}>
-                  <span>{who[t.tier - 1]}</span>
-                  <b>{inr(t.month)}<small> a month</small></b>
-                  <span>or {inr(t.year)} a year</span>
-                  <em>{t.left === 0 ? 'Full' : t.open ? (t.left === null ? 'Open now' : `${t.left} left`) : ''}</em>
-                </li>
-              ))}
-            </ol>
+          <section className="lp-offer lp-offer-line">
+            <p className="lp-body"><b>Free to read.</b> {freeText} of anything with no sign-up; a free account opens every ready handbook and one of your own. More of your own from {inr(open.month)} a month early-bird, paid once, no auto-renew. <a href="/pricing">See pricing</a></p>
           </section>
         )
       })()}
