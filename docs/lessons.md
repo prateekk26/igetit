@@ -5,6 +5,19 @@ What each day taught us, not what shipped (that's PROGRESS.md). Every build day 
 Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-of-sprint write-up. A message that starts with "learned:" lands under "Noted during the day" at the bottom; fold those into the day before the session ends.
 
 
+## Sat 10 Oct, the day (day 9; the free eleven and Hold a room for 10 minutes)
+
+### Product/Tech
+- **Thought:** the plan's blocks decide the card types. **Learned:** Gemini Flash wrote a plain "try" card for 4 of the 5 "tryit" blocks in the 28-day build, even with a line saying "type exactly tryit"; the fact check spotted it, but its shape guard skipped the fix, so those days read "unchecked". **Now:** the showcase build converts the card after writing and builds its page (showcase.fixTryit).
+- **Thought:** a running example stays the same person if it has a name. **Learned:** with only "Ananya, 26, a data analyst in Pune", day 1 had her on shipping delays and day 2 on retail checkout data; the ledger carries names, not facts. **Now:** her fixed facts (her one line, her proudest result, her team talk) go into every day's must-haves; 28 days held.
+- **Thought:** replacing a ready topic means overwriting its row. **Learned:** a newer cache version swaps unread chapters into readers' own copies, so overwriting Public speaking would have put 28-day chapters under 47 readers' 7-chapter plans. **Now:** a new row, the old one off the shelf but kept, and a redirect for new starts only (freeTen.ts).
+- **Thought:** a Try it page fits the 520 px it is asked for. **Learned:** day 1's page squeezed its buttons to fit and cut its own text; its content needed 618 px. **Now:** the wrapper lets any Try it page grow and scroll (sandbox.ts fit), for every reader's pages.
+- **Thought:** the topic with the most hits is the best topic. **Learned:** Public speaking had 47 starts in 14 days against 6 for the next, but 36% passed chapter 1 against 3 of 6 for IPOs; it is the landing demo, first on Featured and the carousel, so placement explains part of it.
+
+### GTM
+- **Thought:** proof of demand is proof it will work. **Learned:** 8 of the 11 free picks have strong Indian numbers (7.8 crore ITRs, 18.3 crore CIBIL checks, 100M weekly ChatGPT users, SEBI's 91% of F&O traders losing), but none of it says a reader finishes in our app. **Now:** watch each pick's chapter 1 pass rate; procrastination went in on instinct with weak proof.
+- **Thought:** "I hear and I forget, I do and I understand" is learning science. **Learned:** it is Xunzi, 3rd century BCE, popularised in the 1960s; the "learning styles" reading has no evidence (Pashler 2008) and the 10%/90% pyramid has no source, but doing has strong evidence (Freeman 2014: 33.8% failed lecture-only classes against 21.8% with active learning). **Now:** a post can use the true version.
+
 ## Sat 10 Oct, the night (day 9, 00:00 to 05:00; session e2)
 
 ### Product/Tech
