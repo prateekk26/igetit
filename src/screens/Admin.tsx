@@ -253,29 +253,52 @@ function Metrics({ days, sources }: { days: number; sources: { source: string; v
   )
 }
 
+// Owner sign-in by emailed code (11 Oct: the old email-and-password form here could never open /admin for an owner
+// without a password, such as Tanisha, and only a code-verified email passes ownerUser since the 8 Oct audit).
+// Same Convex Auth "email-otp" provider as the reader's sign-in; once signed in, the dashboard query re-runs by itself.
 function OwnerSignIn({ signedIn }: { signedIn: boolean }) {
   const { signIn, signOut } = useAuthActions()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
+  const [step, setStep] = useState<'email' | 'code'>('email')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [flow, setFlow] = useState<'signIn' | 'signUp'>('signIn')
   if (signedIn) return (
     <section className="adm-card"><h2>Owner only</h2><p className="note">This account isn't on the owner list.</p>
       <button type="button" className="quiet" onClick={() => signOut()}>Sign out and use another account</button></section>
   )
+  const send = async () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) { setError('Check the email: it needs an @ and a dot.'); return }
+    setBusy(true); setError(null)
+    try { await signIn('email-otp', { email: email.trim() }); setStep('code'); setCode('') }
+    catch (e: any) { setError(String(e?.message ?? e).includes('too many') ? "That's a few codes in a row. Wait a few minutes, then try again." : "Couldn't send the code just now. Try again in a minute.") }
+    finally { setBusy(false) }
+  }
+  const check = async () => {
+    setBusy(true); setError(null)
+    try { await signIn('email-otp', { email: email.trim(), code: code.trim() }) }
+    catch { setCode(''); setError("That code didn't work. A code works for 10 minutes and only the newest one counts.") }
+    finally { setBusy(false) }
+  }
   return (
     <section className="adm-card" style={{ maxWidth: 420 }}>
       <h2>Owner only</h2>
-      <p className="note">{flow === 'signIn' ? 'Sign in with the owner email.' : 'Create the account for the owner email. Use at least 8 characters for the password.'}</p>
-      <form onSubmit={async (e) => { e.preventDefault(); setBusy(true); setError(null); try { await signIn('password', { email: email.trim(), password, flow }) } catch { setError(flow === 'signIn' ? "That email and password don't match." : "Couldn't create it. The password needs at least 8 characters, or this email already has an account.") } finally { setBusy(false) } }}>
-        <input className="input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" style={{ marginTop: 12 }} />
-        <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" style={{ marginTop: 10 }} />
-        {error && <p className="error">{error}</p>}
-        <button className="btn" type="submit" disabled={busy} style={{ marginTop: 14 }}>{busy ? 'One moment…' : flow === 'signIn' ? 'Sign in' : 'Create the owner account'}</button>
-      </form>
-      {/* "No account yet? Create the owner account" was offered to any visitor (UX review 9 Oct); the owner accounts exist. */}
-      {flow === 'signUp' && <button type="button" className="quiet" onClick={() => { setFlow('signIn'); setError(null) }}>Already have one? Sign in</button>}
+      {step === 'email' ? (
+        <form onSubmit={(e) => { e.preventDefault(); send() }}>
+          <p className="note">Sign in with an owner email. We email you a 6-digit code; no password.</p>
+          <input className="input" type="email" placeholder="Email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null) }} autoComplete="email" style={{ marginTop: 12 }} />
+          {error && <p className="error">{error}</p>}
+          <button className="btn" type="submit" disabled={busy} style={{ marginTop: 14 }}>{busy ? 'One moment…' : 'Email me a code'}</button>
+        </form>
+      ) : (
+        <form onSubmit={(e) => { e.preventDefault(); check() }}>
+          <p className="note">The code is on its way to {email.trim()}. It works for 10 minutes.</p>
+          <input className="input" inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" value={code} onChange={(e) => { setCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(null) }} style={{ marginTop: 12 }} />
+          {error && <p className="error">{error}</p>}
+          <button className="btn" type="submit" disabled={busy || code.length !== 6} style={{ marginTop: 14 }}>{busy ? 'One moment…' : 'Sign in'}</button>
+          <button type="button" className="quiet" onClick={() => { setStep('email'); setError(null) }}>Use another email, or send a new code</button>
+        </form>
+      )}
     </section>
   )
 }

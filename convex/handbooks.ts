@@ -679,6 +679,7 @@ export const generatePlan = internalAction({
     // failure and we see what Flash does with the prompts. planOnly stops after the plan (no chapters are written).
     const flashOnly = !!(h as any).test?.flashOnly, planOnly = !!(h as any).test?.planOnly;
     let r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: h.writer ?? PLAN_MODEL, effort: h.writer ? undefined : PLAN_EFFORT, trace: { handbookId } });
+    if (!r.ok && !h.writer && PLAN_MODEL && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: PLAN_MODEL, trace: { handbookId } }); }   // see generateChapter
     if (!r.ok && !h.writer && PLAN_MODEL && !flashOnly) r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, ...PLAN_BACKUP, trace: { handbookId } });
     // Claude's own safety check said no: say so plainly, never "try again".
     if (!r.ok && /^declined/.test(r.error)) {
@@ -888,6 +889,10 @@ export const markRewrite = internalMutation({
 // CHAPTER_MODEL = undefined (Opus medium, the 6 Oct setting).
 // D62 (10 Oct): writer v6 (own facts, "already taught", must-haves first, length from the plan's reading minutes).
 // Switch back: CHAPTER_PROMPT. D41: Flash writes, Opus 5.5 medium is the backup; undefined = Opus medium (the JOB default).
+// A Gemini failure worth one more try on the same model: overloaded or rate-limited (503, 429, 500, 502), or a dropped
+// connection that failed fast. Not a timeout ("time budget"), a refusal or a broken reply.
+export const quickFail = (error: unknown) => { const e = String(error ?? ""); return /Gemini (429|500|502|503)\b|fetch failed|ECONNRESET|socket hang up/i.test(e) && !/time budget|timeout|aborted/i.test(e); };
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const CHAPTER_LIVE = CHAPTER_PROMPT_V6;
 const CHAPTER_MODEL: string | undefined = "gemini-3.8-flash";
 const CHAPTER_BACKUP = { model: "claude-opus-5-5", effort: "medium" as const };
@@ -922,6 +927,10 @@ export const generateChapter = internalAction({
     let r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: CHAPTER_LIVE, user, model: pinned ?? CHAPTER_MODEL, trace });
     // Why a chapter left Flash, for the call log: "budget" (Gemini's time ran out), "error" (any other failure), "floor" (too short twice).
     let bounce: string | undefined;
+    // A quick Gemini failure (503 "high demand", 429, a dropped connection) gets one more Gemini try after 5 s before
+    // Opus; a timeout goes straight to Opus, since a retry would add another 150 s (11 Oct: 2 of 10 bounces on the
+    // 28-day build were 503s at 16 s, 8 were timeouts). Same model, so no change to who writes.
+    if (!r.ok && !pinned && CHAPTER_MODEL && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: CHAPTER_LIVE, user, model: CHAPTER_MODEL, trace }); }
     if (!r.ok && !pinned && CHAPTER_MODEL && !(h as any).test?.flashOnly) { bounce = /time budget/i.test(String(r.error)) ? "budget" : "error"; r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: CHAPTER_LIVE, user, ...CHAPTER_BACKUP, trace }); }
     if (!r.ok) { await ctx.runMutation(internal.handbooks.setChapterFailed, { handbookId, n, error: r.error }); return; }
     // D27's length floor (30 paragraphs and 800 words, else a retry and then Opus) is left out on feat/handbook-shape
