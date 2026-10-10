@@ -29,7 +29,7 @@ Caution: /admin's 88 visitors include our own review agents (05 alone ran about 
 
 ## Waits on you (in order)
 
-**Answered 10 Oct 00:0x (D56):** 1 fix now with dc's drafts; 3 go ahead with the ask; 4 (wall sample) 20 hits; D13 landing cut pulled forward; Dot no mascot yet; Instagram professional today; 21 topics' story pictures drawn. Still open: 2 (the webhook secret is now set), Reddit karma question (a2), the posts themselves.
+**Answered 10 Oct 00:0x (D63):** 1 fix now with dc's drafts; 3 go ahead with the ask; 4 (wall sample) 20 hits; D13 landing cut pulled forward; Dot no mascot yet; Instagram professional today; 21 topics' story pictures drawn. Still open: 2 (the webhook secret is now set), Reddit karma question (a2), the posts themselves.
 
 
 1. Live posts and the X ad still say "First 3 free, no sign-up"; false since 20:37 (D14). a2 lists every place below.
