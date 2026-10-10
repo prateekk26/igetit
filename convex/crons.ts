@@ -11,4 +11,6 @@ crons.daily("handbook doctor", { hourUTC: 22, minuteUTC: 30 }, internal.doctor.s
 // Every 2 minutes: new AI calls go to Langfuse as traces, one per handbook (convex/langfuse.ts). Does nothing
 // without the Langfuse keys, so a deployment without them is unaffected.
 crons.interval("export to Langfuse", { minutes: 2 }, internal.langfuse.exportNew, {});
+// Every 2 minutes: the same calls, numbers only, to PostHog's LLM analytics (convex/posthogAi.ts, D69). Nothing without POSTHOG_KEY.
+crons.interval("export to PostHog AI", { minutes: 2 }, internal.posthogAi.exportNew, {});
 export default crons;

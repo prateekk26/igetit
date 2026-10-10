@@ -47,6 +47,7 @@ import type * as pictureCards from "../pictureCards.js";
 import type * as pictures from "../pictures.js";
 import type * as pipeline from "../pipeline.js";
 import type * as polish from "../polish.js";
+import type * as posthogAi from "../posthogAi.js";
 import type * as pricing from "../pricing.js";
 import type * as prompts from "../prompts.js";
 import type * as push from "../push.js";
@@ -115,6 +116,7 @@ declare const fullApi: ApiFromModules<{
   pictures: typeof pictures;
   pipeline: typeof pipeline;
   polish: typeof polish;
+  posthogAi: typeof posthogAi;
   pricing: typeof pricing;
   prompts: typeof prompts;
   push: typeof push;
