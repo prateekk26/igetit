@@ -150,3 +150,11 @@ The three "thinking" sections of the handbook are saved verbatim (Advanced block
 - `docs/product-thinking/` — overview + 5 chapters (`00-overview.md` to `05-cutting-to-v1.md`). Holds the empty PRODUCT.md template, per-chapter agent prompts and the Shaktimaan lock prompt. Read before writing or changing PRODUCT.md.
 - `docs/design-thinking/` — overview + 4 chapters (learning to see, screens and states, words and type, teaching your AI). Holds the DESIGN.md template. Read before any UI work or DESIGN.md changes.
 - `docs/tech-thinking/` — overview + 4 chapters (four parts, your agent, ship it, connecting the AI). Holds the AGENTS.md, PLAN.md and PROGRESS.md templates, the deploy chain and the AI-call cost caps. Read before changing the backend, deploy or the AI call.
+
+## Evals (added 11 Oct 2026)
+
+The handbook's "Eval basics" (2 chapters, 7 Oct class) and "Advanced evals" (added 10 Oct) are kept as notes in our own words, not verbatim (the repo is public), under `docs/evals/`:
+
+- `docs/evals/basics.md`: define quality (one output, its input levers, a rubric in levels) and improve it (log and score every output, fix the rubric on a miss).
+- `docs/evals/advanced.md`: read and count what broke, a test set in two lists, three runs a case, check the scorer, run the set before every change, live misses become cases.
+- `docs/evals/where-we-stand.md`: each step against what I Get It already has, and the three gaps to close first.
