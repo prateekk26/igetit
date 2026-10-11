@@ -315,13 +315,18 @@ export async function claudeResearch(ask: string, version: Version = LIVE): Prom
 }
 
 // Gemini first, Claude when Gemini fails. Every attempt is logged with its own model, so costs stay true.
+const factCount = (a: Attempt) => (Array.isArray((a.decided as any)?.facts) ? (a.decided as any).facts.length : 0);
+const thin = (a: Attempt | undefined) => !!a && !a.error && factCount(a) < 6 && !(Array.isArray((a.decided as any)?.sources) && (a.decided as any).sources.length);
 export async function researchFor(ctx: any, ask: string, opts: { claudeOnly?: boolean; geminiOnly?: boolean; trace?: Trace } = {}): Promise<{ used: Attempt | null; attempts: Attempt[] }> {
   const attempts: Attempt[] = [];
   if (!opts.claudeOnly) attempts.push(await geminiResearch(GEMINI_RESEARCHER, ask));
   // geminiOnly (9 Oct): a benchmark handbook stays on Gemini: its fallback is Gemini 3.1 Pro (which can also search), never Claude.
   if ((!attempts.length || attempts[attempts.length - 1].error)) attempts.push(opts.geminiOnly ? await geminiResearch(GEMINI_FALLBACK, ask) : await claudeResearch(ask));
+  // D76 (11 Oct night): a Gemini brief with under 6 facts and no sources is thin, not a success ("past multibaggers"
+  // came back with 2 and then 3 facts from 5 searches, twice); the Claude backup runs too and the richer brief is used.
+  else if (!opts.geminiOnly && !opts.claudeOnly && thin(attempts[0])) attempts.push(await claudeResearch(ask));
   for (const a of attempts) await ctx.runMutation(internal.handbooks.logAiCall, { ...(opts.trace ?? {}), attempts: attempts.indexOf(a) + 1, kind: "research", model: a.model, input: ask, output: a.decided ? JSON.stringify(a.decided).slice(0, 4000) : "", tokensIn: a.tokensIn, tokensOut: a.tokensOut, ms: a.ms, ok: !a.error, error: a.error });
-  const used = attempts.find((a) => !a.error) ?? null;
+  const used = attempts.filter((a) => !a.error).sort((a, b) => factCount(b) - factCount(a))[0] ?? null;
   return { used, attempts };
 }
 

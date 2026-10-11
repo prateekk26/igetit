@@ -940,7 +940,10 @@ export const generateChapter = internalAction({
     await ctx.runMutation(internal.handbooks.noteChapterSize, { handbookId, n, paragraphs: size.paragraphs, words: size.words, floorTries: 1, bounced: !!bounce, bounce });
     const ch = r.json;
     // A one-sitting handbook opens with its "What you need" checklist (D23); a writer that put a picture first is corrected here.
-    if (quick && Array.isArray(ch.cards)) { const k = ch.cards.findIndex((c: any) => c?.type === "doit" && c.kind === "checklist"); if (k > 0) { const [c] = ch.cards.splice(k, 1); ch.cards.unshift(c); } }
+    // Only the "What you need" list moves up (11 Oct night, read-and-count: a "Do it now" checklist was moved ahead of
+    // the card that sets it up in 2 of 11 chapter 1s).
+    const needsList = (c: any) => c?.type === "doit" && c.kind === "checklist" && /\bneed|ingredient|you'll want|gather|before you start/i.test(`${c.title ?? ""} ${c.instruction ?? ""}`);
+    if (quick && Array.isArray(ch.cards)) { const k = ch.cards.findIndex(needsList); if (k > 0) { const [c] = ch.cards.splice(k, 1); ch.cards.unshift(c); } }
 
     // The chapter comes first (8 Oct, Tanisha: "the quiz is an addition, it cannot be a holdup"). A quiz is kept only when
     // it is sound (goodQuiz); a bad one is dropped, never failing the chapter. Chapter 1, quick and story chapters keep none.
