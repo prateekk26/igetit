@@ -120,7 +120,7 @@ export function AdminQuality() {
 // Check the scorer (D75): one chapter the scorer graded, the owner's own level per lever and a one-line note first; the
 // scorer's levels show only after saving. The agreement table counts how many of the owner's worst-scored chapters the
 // scorer also scored worst (Advanced evals: "look hardest at the bad ones").
-export function AdminCheckScorer() {
+export function AdminCheckScorer({ progress }: { progress?: { checked: number; goal: number } } = {}) {
   const [skip, setSkip] = useState<string[]>([])
   const next = useQuery(api.rubric.reviewNext, { skip })
   const agree = useQuery(api.rubric.agreement, {})
@@ -132,8 +132,14 @@ export function AdminCheckScorer() {
   const reset = () => { setLevels({}); setNote(''); setShown(null) }
   return (
     <section className="adm-card adm-wide">
-      <h2>Check the scorer</h2>
-      <p className="note">Score a chapter yourself before you see what the scorer said. 30 chapters, a mix of good and bad, tell you how far to trust it, above all on the bad ones.</p>
+      <h2>Check the grader</h2>
+      <p className="note">Grade a chapter yourself before you see what the AI grader said. 30 chapters, a mix of good and bad, tell you how far to trust it, above all on the bad ones.</p>
+      {progress && (
+        <div className="adm-progress" aria-label={`${progress.checked} of ${progress.goal} chapters graded`}>
+          <span className="adm-fbar"><i style={{ width: `${Math.min(100, (progress.checked / progress.goal) * 100)}%` }} /></span>
+          <small>{progress.checked} of {progress.goal}{progress.checked >= progress.goal ? ', enough to judge it' : ''}</small>
+        </div>
+      )}
       {agree && agree.chapters > 0 && (
         <div className="adm-scroll"><table className="adm-table">
           <thead><tr><th>Lever</th><th>Scored by both</th><th>Same level</th><th>Within 1</th><th>Your worst (L1-2) it also caught</th></tr></thead>

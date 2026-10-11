@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import AdminPipeline from '../components/AdminPipeline'
 import AdminReview from '../components/AdminReview'
-import { AdminAlerts, AdminRuns, AdminQuality, AdminCheckScorer } from '../components/AdminWatch'
+import { AdminAlerts, AdminRuns } from '../components/AdminWatch'
+import AdminEvals from '../components/AdminEvals'
 import { SECTIONS } from '../../convex/shelfSections'
 import { deviceToken } from '../lib/device'
 import { useConvexAuth, useMutation, useQuery } from 'convex/react'
@@ -12,7 +13,7 @@ import { api } from '../../convex/_generated/api'
 // (STATS_OWNER_EMAILS); anyone else gets the sign-in box and nothing else.
 // D39 (Prateek, 9 Oct: "we need to have some scroll bars in different sections or create tabs"): one tab at a time,
 // remembered in the address (#shelf), so a reload lands on the same one.
-const TABS = [{ k: 'matters', label: 'What matters' }, { k: 'shelf', label: 'Shelf and review' }, { k: 'trending', label: 'Trending and rewrites' }, { k: 'payments', label: 'Payments' }, { k: 'ai', label: 'AI and cost' }, { k: 'people', label: 'People and funnel' }]
+const TABS = [{ k: 'matters', label: 'What matters' }, { k: 'shelf', label: 'Shelf and review' }, { k: 'trending', label: 'Trending and rewrites' }, { k: 'payments', label: 'Payments' }, { k: 'ai', label: 'AI and cost' }, { k: 'evals', label: 'Evals' }, { k: 'people', label: 'People and funnel' }]
 const WINDOWS = [{ d: 1, label: 'Today' }, { d: 7, label: '7 days' }, { d: 30, label: '30 days' }, { d: 0, label: 'All time' }]
 const SECTION_NAMES: Record<string, string> = { hero: 'Top (box)', saved: '"You saved the reel"', steps: 'How tonight works', demo: 'Demo chapter', path: 'Seven nights', shelf: 'Ready tonight shelf', offer: 'Price', final: 'Box again (bottom)' }
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0)
@@ -50,7 +51,9 @@ export default function Admin() {
           {tab === 'trending' && <><TrendingCard /><ExperimentsCard /></>}
           {tab === 'payments' && <PaymentsCard />}
           {/* AI and cost together (8 Oct, Tanisha): what every step takes and costs, by handbook, then spend by day. */}
-          {tab === 'ai' && <><AdminAlerts /><ProviderSwitch /><AdminPipeline /><AdminRuns /><AdminQuality /><AdminCheckScorer /><CostsCard /></>}
+          {tab === 'ai' && <><AdminAlerts /><ProviderSwitch /><AdminPipeline /><AdminRuns /><CostsCard /></>}
+          {/* D82 (Prateek, 11 Oct): everything that judges chapter quality has its own tab. */}
+          {tab === 'evals' && <AdminEvals />}
 
           {tab === 'people' && <>
           <PeopleCard rows={d.recent as any} />

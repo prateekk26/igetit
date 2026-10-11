@@ -387,6 +387,15 @@ export default defineSchema({
     name: v.string(), list: v.union(v.literal("fix"), v.literal("keep")), topic: v.string(), level: v.union(v.literal("new"), v.literal("some")),
     goal: v.optional(v.string()), mode: v.optional(v.string()), expect: v.any(), source: v.string(), note: v.optional(v.string()), createdAt: v.number(),
   }).index("by_name", ["name"]),
+  // D82 (11 Oct): each eval run's summary, sent by scripts/eval-run.mjs to prod so /admin Evals shows the last test run.
+  // Case names, levels and cost only; the typed lines live in evals/cases.json, never a reader's data.
+  evalRuns: defineTable({
+    stamp: v.string(), at: v.number(), rubric: v.string(), runs: v.number(), full: v.boolean(), gate: v.union(v.literal("pass"), v.literal("fail"), v.literal("baseline")), inr: v.number(),
+    cases: v.array(v.object({
+      name: v.string(), list: v.string(), floorHeld: v.boolean(), passes: v.number(), runs: v.number(), errored: v.boolean(),
+      levels: v.array(v.any()), floor: v.any(), expect: v.any(), failedChecks: v.array(v.string()), before: v.union(v.boolean(), v.null()),
+    })),
+  }).index("by_at", ["at"]).index("by_stamp", ["stamp"]),
   aiCalls: defineTable({
     kind: v.string(),
     model: v.string(),

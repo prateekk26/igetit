@@ -26,6 +26,7 @@ import type * as evalPlanPrompt from "../evalPlanPrompt.js";
 import type * as evalResearch from "../evalResearch.js";
 import type * as evalResearchPrompt from "../evalResearchPrompt.js";
 import type * as evalReview from "../evalReview.js";
+import type * as evalRuns from "../evalRuns.js";
 import type * as evalShape from "../evalShape.js";
 import type * as events from "../events.js";
 import type * as freeTen from "../freeTen.js";
@@ -109,6 +110,7 @@ declare const fullApi: ApiFromModules<{
   evalResearch: typeof evalResearch;
   evalResearchPrompt: typeof evalResearchPrompt;
   evalReview: typeof evalReview;
+  evalRuns: typeof evalRuns;
   evalShape: typeof evalShape;
   events: typeof events;
   freeTen: typeof freeTen;

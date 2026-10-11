@@ -9,6 +9,7 @@
 import { execFile } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from "node:fs";
 import { promisify } from "node:util";
+import { summarise, record } from "./eval-record.mjs";
 
 const run = promisify(execFile);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
@@ -101,5 +102,7 @@ const L = [`# Eval run ${stamp}`, "", `${rows.length} cases, ${RUNS} run(s) each
   ...rows.map((r) => `| ${r.name} | ${r.list} | ${r.floorHeld ? "yes" : "**no**"} | ${r.passes}/${r.runs.length} | ${r.before === null ? "-" : r.before ? "pass" : "fail"}${r.errored ? " (this run errored)" : r.before !== null && r.before !== r.passed ? (r.passed ? " (fixed)" : " (broke)") : ""} | ${r.runs.map((x) => Object.entries(x.levels ?? {}).map(([l, v]) => `${l} ${v}`).join(", ") || x.status || x.error || "-").join(" / ")} | ${[...new Set(r.runs.flatMap((x) => x.failedChecks ?? []))].join(", ") || "-"} |`),
   "", "Fix next cases that pass all runs here and in the next run move to keep (edit evals/cases.json)."];
 writeFileSync(`${OUT}/report.md`, L.join("\n") + "\n");
+// D82: the summary goes to prod too, for /admin Evals ("Last test run"). A failure here never changes the gate.
+try { log("sent to /admin Evals, gate", await record(summarise({ at: stamp, runs: RUNS, rubric: file.rubric, cases: rows.map((r) => ({ ...r, floor: cases.find((c) => c.name === r.name)?.floor })) }, file))); } catch (e) { log("could not send the summary to prod:", String(e).slice(0, 120)); }
 log(`report: ${OUT}/report.md`, keepFails.length ? `GATE FAIL: ${keepFails.map((r) => r.name).join(", ")}` : "GATE PASS");
 process.exit(keepFails.length ? 1 : 0);
