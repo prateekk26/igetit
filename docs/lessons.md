@@ -5,6 +5,21 @@ What each day taught us, not what shipped (that's PROGRESS.md). Every build day 
 Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-of-sprint write-up. A message that starts with "learned:" lands under "Noted during the day" at the bottom; fold those into the day before the session ends.
 
 
+## Sun 11 Oct, the night (day 10, 05:00 to 13:00; the agent alone, Prateek asleep)
+
+### Product/Tech
+- **Thought:** the writer's "unchecked" chapters had unchecked facts. **Learned:** on the ten new handbooks, 28 chapters were "unchecked" and every one was a shape problem, not a fact problem: the checker wanted a plain "try" card typed "tryit" (the build fixes that afterwards) or didn't know the "picture" type, and the guard refuses a fix that changes a card's type. Checked again with Try it cards shown as their idea line, all 28 came back "fixed", with 2 to 6 real fixes each. **Now:** showcase.recheck after every showcase build; the same guard will hide real fixes on readers' chapters until the checker knows every card type.
+- **Thought:** a Try it card's caption is the writer's idea line. **Learned:** 5 of 31 captions were wrong for the page under them: two empty, two described a paper task ("Draw two columns"), one gave the answer away; readers see the caption above every page. **Now:** read every caption against its page before a handbook goes live (the tidy step lists them side by side).
+- **Thought:** research always finds something. **Learned:** "Spot what India's past multibaggers had in common" came back with 2, then 3 facts from 5 searches and no sources, twice; every other topic got 14 to 28. **Now:** a thin brief means a full read before going live; research needs a "thin" signal that triggers the Claude backup, not only an outright failure.
+- **Thought:** a rubric score tells you a chapter is good. **Learned:** the first live scores quote the line that decided them, and that is what makes them usable: "the reader never does it themselves" on chapter 1 of a regular handbook (L3), against L4 for the hand-built ones with a Try it card. The baseline run shows the same on compound interest and chess (outcome 3). **Now:** the writer change ("do it once inside every chapter") goes through the gate before it ships.
+- **Thought:** fixing live text means copying the chapter again. **Learned:** a ready topic's pictures are drawn on prod after the copy, so a second copy from dev wipes them. **Now:** live fixes go through repairData.editChapterText (body text in the stored row and every reader's copy, pictures kept): 3 fixes, 7 copies each.
+- **Thought:** Convex file names are free-form. **Learned:** a hyphen in convex/plans/lands-your-job.ts stopped the whole push ("Path component ... can only contain alphanumeric characters, underscores, or periods"). **Now:** underscores in every file under convex/.
+
+### GTM
+- **Thought:** our 269 visitors count for the sprint. **Learned:** the Virality rubric counts unique visitors only from PostHog, Plausible, GA4 or Datafast, and caps the 10x row at L2 without read-only access; we had none of the four until 04:20 today, so 9 days of visitors don't count there. **Now:** PostHog from today, with a public read-only dashboard; the lesson for any sprint: wire accepted analytics on day 1.
+- **Thought:** Virality was our track. **Learned:** scored row by row, AI Agent as a Service fits what the product already does (a researcher, a planner, a writer, a fact checker, an illustrator and an interaction builder working per reader, observed in Langfuse and PostHog, scored and tested): about 131 to 151 of 164, against about 35 plus social numbers on Virality and 57 on Revenue. **Now:** Prateek picks; docs/sprint/scorecard.md has every row with its evidence.
+- **Thought:** the handbook's selling steps are writing tasks. **Learned:** the handbook says never write posts with AI, and the sprint's next badges (watch three people, ask someone to pay, the launch video) need Prateek in person. **Now:** the agent prepares raw material with real numbers (docs/sprint/); the words and the asking are his.
+
 ## Sat 10 Oct, the day (day 9; the free eleven and Hold a room for 10 minutes)
 
 ### Product/Tech
