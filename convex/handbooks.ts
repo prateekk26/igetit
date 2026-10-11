@@ -899,7 +899,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const chapterLive = () => (promptTrial() === "writerV6" ? CHAPTER_PROMPT_V6 : CHAPTER_PROMPT_SAYBACK);
 const checkPrompt = (withScenes: boolean) => (promptTrial() === "noWrong" ? (withScenes ? CHECK_SCENES_PROMPT_NOWRONG : CHECK_PROMPT_NOWRONG) : withScenes ? CHECK_SCENES_PROMPT_V3 : CHECK_PROMPT_V3);
 const CHAPTER_MODEL: string | undefined = "gemini-3.8-flash";
+const CHAPTER_SECOND = "gemini-3.7-flash";   // D89: when 3.8 fails, before Opus
 const CHAPTER_BACKUP = { model: "claude-opus-5-5", effort: "medium" as const };
+// A Gemini step that used up its time budget (or was cut off by it), as opposed to one that failed fast.
+export const timedOut = (error: unknown) => /time budget|timeout|aborted/i.test(String(error ?? ""));
 // Paragraphs (one swipe each) and words across the body-bearing cards of a chapter reply (D27).
 export function chapterSize(json: any) {
   const bodies: string[] = (Array.isArray(json?.cards) ? json.cards : []).map((c: any) => (typeof c?.body === "string" ? c.body : "")).filter(Boolean);
@@ -931,11 +934,15 @@ export const generateChapter = internalAction({
     let r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: pinned ?? CHAPTER_MODEL, trace });
     // Why a chapter left Flash, for the call log: "budget" (Gemini's time ran out), "error" (any other failure), "floor" (too short twice).
     let bounce: string | undefined;
-    // A quick Gemini failure (503 "high demand", 429, a dropped connection) gets one more Gemini try after 5 s before
-    // Opus; a timeout goes straight to Opus, since a retry would add another 150 s (11 Oct: 2 of 10 bounces on the
-    // 28-day build were 503s at 16 s, 8 were timeouts). Same model, so no change to who writes.
-    if (!r.ok && !pinned && CHAPTER_MODEL && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: CHAPTER_MODEL, trace }); }
-    if (!r.ok && !pinned && CHAPTER_MODEL && !(h as any).test?.flashOnly) { bounce = /time budget/i.test(String(r.error)) ? "budget" : "error"; r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, ...CHAPTER_BACKUP, trace }); }
+    // D89 (Prateek, 11 Oct evening: "If Gemini 3.8 Flash is overloaded, then we can fall back to Gemini 3.7 Flash. If
+    // that does not work, then ... Opus"): a 3.8 failure goes to 3.7 Flash, then to Opus. A 3.8 that ran out of time
+    // goes straight to Opus: a second Flash wait (up to 300 s) would leave Opus too little of the action's 10 minutes.
+    // A Flash-only benchmark keeps its old rule: one more 3.8 try after 5 s on a quick failure, never another model.
+    const flashOnly = !!(h as any).test?.flashOnly;
+    const firstError = r.ok ? undefined : r.error;
+    if (!r.ok && !pinned && CHAPTER_MODEL && flashOnly && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: CHAPTER_MODEL, trace }); }
+    if (!r.ok && !pinned && CHAPTER_MODEL && !flashOnly && !timedOut(r.error)) r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: CHAPTER_SECOND, trace });
+    if (!r.ok && !pinned && CHAPTER_MODEL && !flashOnly) { bounce = timedOut(firstError) ? "budget" : "error"; r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, ...CHAPTER_BACKUP, trace }); }
     if (!r.ok) { await ctx.runMutation(internal.handbooks.setChapterFailed, { handbookId, n, error: r.error }); return; }
     // D27's length floor (30 paragraphs and 800 words, else a retry and then Opus) is left out on feat/handbook-shape
     // (9 Oct): a chapter's length is what the shape work decides. Its size is still logged for /admin.

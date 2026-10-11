@@ -210,7 +210,13 @@ async function transcript(url: string): Promise<string | null> {
 // one corrective retry. If Gemini still fails, Claude Sonnet 5.5 with Anthropic web search (the researcher until 8 Oct)
 // does it, under the same schema check. Grounded links are Google redirects that expire, so each is resolved first.
 export const GEMINI_RESEARCHER = "gemini-3.8-flash";
-export const CLAUDE_RESEARCHER = "claude-sonnet-5-5";
+// D89 (Prateek, 11 Oct evening): 3.8 Flash, then 3.7 Flash, then Opus (Sonnet until now) for research, as for chapters.
+export const GEMINI_SECOND = "gemini-3.7-flash";
+// 3.7 Flash with Google Search and JSON reply mode together hung past 170 s twice, or answered without searching (99 s,
+// 0 searches); with search alone it answered in 19 s after 2 searches (11 Oct). So it gets plain text, and the JSON is
+// read out of it and checked against the same schema.
+const structuredFor = (model: string) => model !== GEMINI_SECOND;
+export const CLAUDE_RESEARCHER = "claude-opus-5-5";
 export const GEMINI_FALLBACK = "gemini-3.1-pro-preview";   // tests only (geminiOnly)
 // How hard Gemini thinks before answering (8 Oct). Uncapped, one run spent 15,413 thinking tokens; "medium" bounds cost
 // and latency. "low" and the uncapped default were measured against it: evals/research-thinking/.
@@ -288,6 +294,10 @@ export async function geminiResearch(model: string, ask: string, version: Versio
   return { decided: error ? null : decided, searches, grounded, queries, tokensIn, tokensOut, error, model, ms: Date.now() - started };
 }
 
+// 11 Oct (D89): a reply can carry a tool_use block (id "toolu_...") for a tool we never gave it; sending that reply back
+// unanswered got a 400 ("tool_use ids were found without tool_result blocks") and lost the brief (pocket money, 11 Oct).
+// Each one is answered as an error, so the conversation can go on.
+const stray = (content: any[]) => (content ?? []).filter((b: any) => b?.type === "tool_use").map((b: any) => ({ type: "tool_result", tool_use_id: b.id, content: "There is no such tool here. Use web search only, then reply with the JSON object.", is_error: true }));
 export async function claudeResearch(ask: string, version: Version = LIVE): Promise<Attempt> {
   const started = Date.now();
   const { prompt, schema, maxSearches } = SETUP[version];
@@ -297,18 +307,18 @@ export async function claudeResearch(ask: string, version: Version = LIVE): Prom
     const messages: any[] = [{ role: "user", content: ask }];
     let res: any;
     for (let i = 0; i < 4; i++) {
-      res = await client.beta.messages.create({ model: CLAUDE_RESEARCHER, max_tokens: 4000, system: prompt(), messages,
+      res = await client.beta.messages.create({ model: CLAUDE_RESEARCHER, max_tokens: 8000, system: prompt(), messages,
         tools: [{ type: "web_search_20260209", name: "web_search", max_uses: maxSearches } as any], output_config: { effort: "low" } as any } as any);
       searches += res.usage?.server_tool_use?.web_search_requests ?? 0;
       tokensIn += res.usage?.input_tokens ?? 0; tokensOut += res.usage?.output_tokens ?? 0;
-      if (res.stop_reason === "pause_turn") { messages.push({ role: "assistant", content: res.content }); continue; }
+      if (res.stop_reason === "pause_turn") { messages.push({ role: "assistant", content: res.content }); if (stray(res.content).length) messages.push({ role: "user", content: stray(res.content) }); continue; }
       decided = parse((res?.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join(""));
       const wrong = decided ? problems(schema, decided) : "no JSON object in the reply";
       if (!wrong) { error = undefined; break; }
       error = `schema: ${wrong.replace(/\n/g, " ").slice(0, 200)}`;
       if (i >= 2) break;
       // One corrective turn: the same conversation, told exactly what to fix.
-      messages.push({ role: "assistant", content: res.content }, { role: "user", content: `Your reply did not match the required JSON shape:\n${wrong}\nReturn only the whole JSON object again, with these fixed.` });
+      messages.push({ role: "assistant", content: res.content }, { role: "user", content: [...stray(res.content), { type: "text", text: `Your reply did not match the required JSON shape:\n${wrong}\nReturn only the whole JSON object again, with these fixed.` }] });
     }
   } catch (e: any) { error = String(e?.message ?? e).slice(0, 300); }
   return { decided: error ? null : decided, searches, tokensIn, tokensOut, error, model: CLAUDE_RESEARCHER, ms: Date.now() - started };
@@ -317,16 +327,24 @@ export async function claudeResearch(ask: string, version: Version = LIVE): Prom
 // Gemini first, Claude when Gemini fails. Every attempt is logged with its own model, so costs stay true.
 const factCount = (a: Attempt) => (Array.isArray((a.decided as any)?.facts) ? (a.decided as any).facts.length : 0);
 const thin = (a: Attempt | undefined) => !!a && !a.error && factCount(a) < 6 && !(Array.isArray((a.decided as any)?.sources) && (a.decided as any).sources.length);
-export async function researchFor(ctx: any, ask: string, opts: { claudeOnly?: boolean; geminiOnly?: boolean; trace?: Trace } = {}): Promise<{ used: Attempt | null; attempts: Attempt[] }> {
+export async function researchFor(ctx: any, ask: string, opts: { claudeOnly?: boolean; geminiOnly?: boolean; trace?: Trace; models?: string[] } = {}): Promise<{ used: Attempt | null; attempts: Attempt[] }> {
   const attempts: Attempt[] = [];
-  if (!opts.claudeOnly) attempts.push(await geminiResearch(GEMINI_RESEARCHER, ask));
+  const best = () => attempts.filter((a) => !a.error).sort((a, b) => factCount(b) - factCount(a))[0];
+  // models: the Gemini models to try, in order (tests only; preview). Default: 3.8 Flash, then 3.7 Flash (D89).
+  const [first, second] = opts.models ?? [GEMINI_RESEARCHER, GEMINI_SECOND];
+  if (!opts.claudeOnly) attempts.push(await geminiResearch(first, ask, LIVE, structuredFor(first)));
   // geminiOnly (9 Oct): a benchmark handbook stays on Gemini: its fallback is Gemini 3.1 Pro (which can also search), never Claude.
-  if ((!attempts.length || attempts[attempts.length - 1].error)) attempts.push(opts.geminiOnly ? await geminiResearch(GEMINI_FALLBACK, ask) : await claudeResearch(ask));
-  // D76 (11 Oct night): a Gemini brief with under 6 facts and no sources is thin, not a success ("past multibaggers"
-  // came back with 2 and then 3 facts from 5 searches, twice); the Claude backup runs too and the richer brief is used.
-  else if (!opts.geminiOnly && !opts.claudeOnly && thin(attempts[0])) attempts.push(await claudeResearch(ask));
+  if (opts.geminiOnly) { if (attempts[0].error) attempts.push(await geminiResearch(GEMINI_FALLBACK, ask)); }
+  else {
+    // D89: 3.7 Flash runs when 3.8 failed or came back thin, unless 3.8 used its whole time budget (then Opus, so the
+    // step stays inside the action's 10 minutes). D76 (11 Oct night): under 6 facts and no sources is thin, not a success.
+    const a0 = attempts[0];
+    if (a0 && second && (a0.error ? !/time budget|timeout|aborted/i.test(a0.error) : thin(a0))) attempts.push(await geminiResearch(second, ask, LIVE, structuredFor(second)));
+    // Opus when no Gemini brief came back, or the best one is still thin; the richer brief is used.
+    if (!best() || thin(best())) attempts.push(await claudeResearch(ask));
+  }
   for (const a of attempts) await ctx.runMutation(internal.handbooks.logAiCall, { ...(opts.trace ?? {}), attempts: attempts.indexOf(a) + 1, kind: "research", model: a.model, input: ask, output: a.decided ? JSON.stringify(a.decided).slice(0, 4000) : "", tokensIn: a.tokensIn, tokensOut: a.tokensOut, ms: a.ms, ok: !a.error, error: a.error });
-  const used = attempts.filter((a) => !a.error).sort((a, b) => factCount(b) - factCount(a))[0] ?? null;
+  const used = best() ?? null;
   return { used, attempts };
 }
 
@@ -390,9 +408,9 @@ export const run = internalAction({
 // Test the research step on a topic without a handbook (8 Oct). Nothing is stored except the call log.
 // npx convex run --prod research:preview '{"topic":"...","claudeOnly":false}'
 export const preview = internalAction({
-  args: { topic: v.string(), goal: v.optional(v.string()), mode: v.optional(v.string()), level: v.optional(v.string()), claudeOnly: v.optional(v.boolean()) },
-  handler: async (ctx, { topic, goal, mode, level = "new", claudeOnly }) => {
-    const { used, attempts } = await researchFor(ctx, askFor({ topic, goal, mode, level }), { claudeOnly });
+  args: { topic: v.string(), goal: v.optional(v.string()), mode: v.optional(v.string()), level: v.optional(v.string()), claudeOnly: v.optional(v.boolean()), models: v.optional(v.array(v.string())) },
+  handler: async (ctx, { topic, goal, mode, level = "new", claudeOnly, models }) => {
+    const { used, attempts } = await researchFor(ctx, askFor({ topic, goal, mode, level }), { claudeOnly, models });
     return {
       used: used?.model ?? null,
       attempts: attempts.map((a) => ({ model: a.model, ms: a.ms, searches: a.searches, tokensIn: a.tokensIn, tokensOut: a.tokensOut, error: a.error ?? null })),

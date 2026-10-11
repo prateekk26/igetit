@@ -166,7 +166,8 @@ export const pingInference = internalAction({
 // model id starting "gemini-". Keys in the Convex env: GEMINI_API_KEY, then GEMINI_API_KEY_BACKUP on 503 or 429 (as
 // research does). The job's JSON schema goes with the request; Flash thinks at "medium" (bounded cost and time, measured
 // on research). A safety block comes back as "declined (...)", like Claude's refusals.
-const GEMINI_THINKING: Record<string, string> = { "gemini-3.8-flash": "medium" };
+// 3.7 Flash (11 Oct evening): the second choice when 3.8 is overloaded (D89), at the same thinking level.
+const GEMINI_THINKING: Record<string, string> = { "gemini-3.8-flash": "medium", "gemini-3.7-flash": "medium" };
 // Time budget: all Gemini tries for one step (keys, waits, the JSON and schema retries) share one budget. Past it the
 // step fails here and the caller's backup (Opus, for plans and chapters) writes it instead. Measured on Flash: plans
 // 17 to 34 s, so 90 s (typical plus 60 s, room for one schema retry); chapters 27 to 70 s, so 150 s.
