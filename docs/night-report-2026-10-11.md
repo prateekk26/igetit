@@ -68,6 +68,8 @@ What the agent did not do on its own, by rule: anything published or sent in Pra
 4. Shoot the launch video (docs/sprint/launch-video.md).
 5. Ask someone to pay (the next badge): send the price or the payment link to a real prospect.
 6. Show Shaktimaan the proofs for the next badges.
-7. Optional: `npx convex env set ALERT_EMAIL <your email> --prod` so alerts are also emailed.
+7. ~~Alerts by email~~ Decided 11 Oct: no, /admin is enough.
 8. Read one or two of the new handbooks on his phone; their copy is (agent) until he rewrites it.
 9. Tanisha: sign in at www.igetit.now/admin with her email and the code.
+10. Test the /admin email-code sign-in, then grade about 30 chapters in Evals → Check the grader (D75, D82).
+11. Decided 11 Oct: "wrong"/"incorrect" stay banned everywhere (D83; the fact check should enforce it, after the gate); a "say it back" line for recaps (D84, after the gate); "can't tell" flagged, not failed (D85, done).
