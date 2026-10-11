@@ -393,7 +393,7 @@ export default defineSchema({
     stamp: v.string(), at: v.number(), rubric: v.string(), runs: v.number(), full: v.boolean(), gate: v.union(v.literal("pass"), v.literal("fail"), v.literal("baseline")), inr: v.number(),
     cases: v.array(v.object({
       name: v.string(), list: v.string(), floorHeld: v.boolean(), passes: v.number(), runs: v.number(), errored: v.boolean(),
-      levels: v.array(v.any()), floor: v.any(), expect: v.any(), failedChecks: v.array(v.string()), before: v.union(v.boolean(), v.null()),
+      levels: v.array(v.any()), floor: v.any(), expect: v.any(), failedChecks: v.array(v.string()), before: v.union(v.boolean(), v.null()), unsure: v.optional(v.array(v.string())),
     })),
   }).index("by_at", ["at"]).index("by_stamp", ["stamp"]),
   aiCalls: defineTable({

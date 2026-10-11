@@ -59,14 +59,16 @@ function CaseRow({ c }: { c: Case }) {
               {SHORT[l] ?? l}:{' '}
               {c.levels.map((x: Record<string, number | null> | null, i: number) => {
                 const v = x?.[l]
-                const low = typeof floor === 'number' && x !== null && (typeof v !== 'number' || v < floor)
-                return <span key={i} className={low ? 'adm-down' : typeof v === 'number' && typeof target === 'number' && v >= target ? 'adm-up' : ''}>{i ? ' · ' : ''}{x === null ? 'error' : v ?? "can't tell"}</span>
+                const low = typeof v === 'number' && typeof floor === 'number' && v < floor
+                const unsure = x !== null && v == null && typeof floor === 'number'
+                return <span key={i} className={low ? 'adm-down' : unsure ? 'adm-warn' : typeof v === 'number' && typeof target === 'number' && v >= target ? 'adm-up' : ''}>{i ? ' · ' : ''}{x === null ? 'error' : v ?? "can't tell"}</span>
               })}
               {' '}({typeof floor === 'number' ? `floor ${floor}` : 'no floor'}{typeof target === 'number' ? `, target ${target}` : ''})
             </small>
           )
         })}
         {!levers.length && <small className="adm-case-lever">Safety check only</small>}
+        {(c.unsure?.length ?? 0) > 0 && <small className="adm-case-lever adm-warn">The grader couldn't tell on "{c.unsure!.map((x) => (SHORT[x] ?? x).toLowerCase()).join(", ")}" in a run: look at it</small>}
         {c.failedChecks.length > 0 && <small className="adm-case-lever adm-down">Failed a check: {c.failedChecks.map((x) => CHECKS[x] ?? x).join('; ')}</small>}
       </span>
       <small className="adm-case-target" title="Runs that met every target">{c.passes}/{c.runs}<br />on target</small>
@@ -89,7 +91,7 @@ function LastRun({ o }: { o: NonNullable<ReturnType<typeof useOverview>> }) {
       <h2>Last test run <span className={`adm-pill ${r.gate}`}>{r.gate === 'pass' ? 'Gate passed' : r.gate === 'fail' ? 'Gate failed' : 'Baseline'}</span></h2>
       <p className="note">{when(r.at)} · {r.cases.length} cases × {r.runs} run{r.runs === 1 ? '' : 's'} · rubric {r.rubric} · ₹{r.inr.toLocaleString('en-IN')}{r.full ? '' : ' · a partial run'}</p>
       <div className="adm-chain adm-chain-sm">
-        <div className={`adm-tile ${r.gate === 'baseline' ? '' : held === r.cases.length ? 'adm-tile-good' : 'adm-tile-bad'}`}><b>{held} of {r.cases.length}</b><span>Held their floor</span><small>{r.gate === 'baseline' ? "The floors were set from this run. A grade the grader couldn't decide counts as below the floor" : 'The gate: a release is blocked when any case falls below the level it reached on 11 Oct, or fails a safety check'}</small></div>
+        <div className={`adm-tile ${r.gate === 'baseline' ? '' : held === r.cases.length ? 'adm-tile-good' : 'adm-tile-bad'}`}><b>{held} of {r.cases.length}</b><span>Held their floor</span><small>{r.gate === 'baseline' ? "The floors were set from this run. A grade the grader couldn't decide is left out and flagged" : 'The gate: a release is blocked when any case falls below the level it reached on 11 Oct, or fails a safety check'}</small></div>
         <div className="adm-tile"><b>{met} of {r.cases.length}</b><span>Met their target every run</span><small>What we're working toward; a fix-next case moves to keep after three runs in a row</small></div>
       </div>
       <h3>Must keep working · {keep.length}</h3>
@@ -101,7 +103,7 @@ function LastRun({ o }: { o: NonNullable<ReturnType<typeof useOverview>> }) {
           <ul className="adm-list">{o.earlier.map((e) => <li key={e.stamp}><span>{when(e.at)} · {e.cases} cases × {e.runs}{e.full ? '' : ' (partial)'}</span><small>{e.held} of {e.cases} held · gate {e.gate}</small></li>)}</ul>
         </details>
       )}
-      <p className="note">The levels per run read left to right; red is below the floor, green at or above the target. Cases and floors: evals/cases.json. Full report: evals/runs/{r.stamp}/report.md.</p>
+      <p className="note">The levels per run read left to right; red is below the floor, green at or above the target, amber a grade the grader couldn't decide (left out of the gate unless every run is one). Cases and floors: evals/cases.json. Full report: evals/runs/{r.stamp}/report.md.</p>
     </section>
   )
 }

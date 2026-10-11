@@ -70,10 +70,13 @@ async function oneRun(c, k) {
   // The floor (11 Oct night, after the baseline): the lowest level each lever reached in the baseline run. Falling below
   // it, or failing a hard check (safety and leaks), is what fails the gate; the target ("expect") is what we work toward.
   const HARD = new Set(["pushbackOrDeclined", "noPromptLeak", "caution"]);
-  const floorPass = (!needsChapter || ch?.status === "ready") && Object.entries(c.floor ?? {}).every(([lever, min]) => { const lv = levels?.[lever]; return (typeof lv === "number" && lv >= min) || (lever === "taught" && lv == null && noQuiz); }) && chk.every((x) => x[1] || !HARD.has(x[0]));
+  // D85 (Prateek, 11 Oct): a "can't tell" grade is left out of the floor and flagged ("unsure") for a look; a case fails
+  // only when every run of it is "can't tell" on a floored lever (rows below), since then the grader can't see it at all.
+  const unsure = Object.keys(c.floor ?? {}).filter((lever) => levels?.[lever] == null && !(lever === "taught" && noQuiz));
+  const floorPass = (!needsChapter || ch?.status === "ready") && Object.entries(c.floor ?? {}).every(([lever, min]) => { const lv = levels?.[lever]; return (typeof lv === "number" && lv >= min) || lv == null; }) && chk.every((x) => x[1] || !HARD.has(x[0]));
   const cost = await convex("evalShape:cost", { handbookId: id }).catch(() => null);
   log(`${c.name} run ${k + 1}: ${pass ? "PASS" : "FAIL"} ${leverPass.map(([l, v]) => `${l}=${v}`).join(" ")} ${chk.filter((x) => !x[1]).map((x) => `!${x[0]}`).join(" ")} (${h?.status}${ch ? `, ch1 ${ch.status}` : ""})`);
-  return { handbookId: id, pass, floorPass, status: h?.status ?? null, chapter: ch?.status ?? null, levels: Object.fromEntries(leverPass.map(([l, v]) => [l, v])), failedChecks: chk.filter((x) => !x[1]).map((x) => x[0]), cost };
+  return { handbookId: id, pass, floorPass, unsure, status: h?.status ?? null, chapter: ch?.status ?? null, levels: Object.fromEntries(leverPass.map(([l, v]) => [l, v])), failedChecks: chk.filter((x) => !x[1]).map((x) => x[0]), cost };
 }
 
 const jobs = cases.flatMap((c) => Array.from({ length: RUNS }, (_, k) => ({ c, k })));
@@ -90,8 +93,10 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
 // The previous run, for a case-by-case comparison (a same total can hide fixed and broken cases).
 const prevDir = existsSync("evals/runs") ? readdirSync("evals/runs").filter((d) => d < stamp).sort().pop() : null;
 const prev = prevDir ? JSON.parse(readFileSync(`evals/runs/${prevDir}/results.json`, "utf8")) : null;
+// D85: a floored lever the grader couldn't grade in any run is a failure, not noise.
+const blind = (r) => { const ok = r.runs.filter((x) => !x.error); return ok.length > 0 && [...new Set(ok.flatMap((x) => x.unsure ?? []))].some((l) => ok.every((x) => x.unsure?.includes(l))); };
 // A run that errored before scoring (a network blip in the CLI) is retried by the next run, not counted against the floor.
-const rows = Object.values(results).map((r) => ({ ...r, errored: r.runs.every((x) => x.error), passed: r.runs.every((x) => x.pass), passes: r.runs.filter((x) => x.pass).length, floorHeld: r.runs.filter((x) => !x.error).every((x) => x.floorPass), before: prev?.cases?.find((p) => p.name === r.name)?.passed ?? null }));
+const rows = Object.values(results).map((r) => ({ ...r, errored: r.runs.every((x) => x.error), passed: r.runs.every((x) => x.pass), passes: r.runs.filter((x) => x.pass).length, floorHeld: r.runs.filter((x) => !x.error).every((x) => x.floorPass) && !blind(r), unsure: [...new Set(r.runs.flatMap((x) => x.unsure ?? []))], before: prev?.cases?.find((p) => p.name === r.name)?.passed ?? null }));
 const keepFails = rows.filter((r) => !r.floorHeld);
 mkdirSync(OUT, { recursive: true });
 writeFileSync(`${OUT}/results.json`, JSON.stringify({ at: stamp, runs: RUNS, rubric: file.rubric, previous: prevDir, cases: rows }, null, 2));
@@ -99,7 +104,7 @@ const L = [`# Eval run ${stamp}`, "", `${rows.length} cases, ${RUNS} run(s) each
   `Floors held: ${rows.filter((r) => r.floorHeld).length} of ${rows.length} (the gate). Targets met in every run: ${rows.filter((r) => r.passed).length} of ${rows.length} (keep ${rows.filter((r) => r.list === "keep" && r.passed).length} of ${rows.filter((r) => r.list === "keep").length}, fix next ${rows.filter((r) => r.list === "fix" && r.passed).length} of ${rows.filter((r) => r.list === "fix").length}).`,
   keepFails.length ? `**Gate: FAIL** (${keepFails.map((r) => r.name).join(", ")})` : "**Gate: PASS**", "",
   "| Case | List | Floor held | Target met | Before | Levels per run | Failed checks |", "|---|---|---|---|---|---|---|",
-  ...rows.map((r) => `| ${r.name} | ${r.list} | ${r.floorHeld ? "yes" : "**no**"} | ${r.passes}/${r.runs.length} | ${r.before === null ? "-" : r.before ? "pass" : "fail"}${r.errored ? " (this run errored)" : r.before !== null && r.before !== r.passed ? (r.passed ? " (fixed)" : " (broke)") : ""} | ${r.runs.map((x) => Object.entries(x.levels ?? {}).map(([l, v]) => `${l} ${v}`).join(", ") || x.status || x.error || "-").join(" / ")} | ${[...new Set(r.runs.flatMap((x) => x.failedChecks ?? []))].join(", ") || "-"} |`),
+  ...rows.map((r) => `| ${r.name} | ${r.list} | ${r.floorHeld ? "yes" : "**no**"} | ${r.passes}/${r.runs.length} | ${r.before === null ? "-" : r.before ? "pass" : "fail"}${r.errored ? " (this run errored)" : r.before !== null && r.before !== r.passed ? (r.passed ? " (fixed)" : " (broke)") : ""} | ${r.runs.map((x) => Object.entries(x.levels ?? {}).map(([l, v]) => `${l} ${v}`).join(", ") || x.status || x.error || "-").join(" / ")} | ${[...new Set(r.runs.flatMap((x) => x.failedChecks ?? []))].join(", ") || "-"}${r.unsure.length ? ` (can't tell: ${r.unsure.join(", ")}; look at it)` : ""} |`),
   "", "Fix next cases that pass all runs here and in the next run move to keep (edit evals/cases.json)."];
 writeFileSync(`${OUT}/report.md`, L.join("\n") + "\n");
 // D82: the summary goes to prod too, for /admin Evals ("Last test run"). A failure here never changes the gate.

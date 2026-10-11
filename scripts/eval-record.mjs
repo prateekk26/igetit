@@ -14,7 +14,8 @@ function floorPass(run, floor) {
   if (run.error) return true;
   const needsChapter = Object.keys(floor ?? {}).length > 0;
   if (needsChapter && run.chapter !== "ready") return false;
-  const ok = Object.entries(floor ?? {}).every(([lever, min]) => { const lv = run.levels?.[lever]; return (typeof lv === "number" && lv >= min) || (lever === "taught" && lv == null); });
+  // D85: "can't tell" (null) is left out of the floor; summarise() fails a lever no run could grade.
+  const ok = Object.entries(floor ?? {}).every(([lever, min]) => { const lv = run.levels?.[lever]; return (typeof lv === "number" && lv >= min) || lv == null; });
   return ok && !(run.failedChecks ?? []).some((c) => HARD.has(c));
 }
 
@@ -28,7 +29,8 @@ export function summarise(results, caseFile) {
     return {
       // The baseline's lists were re-sorted after it ran (D80); show it under today's lists, like its floors.
       name: r.name, list: baseline ? byName[r.name]?.list ?? r.list : r.list, floor, expect: r.expect ?? {},
-      floorHeld: typeof r.floorHeld === "boolean" ? r.floorHeld : r.runs.every((x) => floorPass(x, floor)),
+      floorHeld: typeof r.floorHeld === "boolean" ? r.floorHeld : r.runs.every((x) => floorPass(x, floor)) && !Object.keys(floor).some((l) => { const ok = r.runs.filter((x) => !x.error); return ok.length > 0 && ok.every((x) => x.levels?.[l] == null); }),
+      unsure: r.unsure ?? Object.keys(floor).filter((l) => r.runs.some((x) => !x.error && x.levels?.[l] == null)),
       passes: r.runs.filter((x) => x.pass).length, runs: r.runs.length, errored: !!r.errored,
       levels: r.runs.map((x) => (x.error ? null : x.levels ?? {})),
       failedChecks: [...new Set(r.runs.flatMap((x) => x.failedChecks ?? []))],
