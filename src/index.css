@@ -571,6 +571,8 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 /* "start one tonight": ready topics right under the box, one tap starts them */
 .lp-quick { margin-top: 18px; }
 .lp-quick p { font: 700 var(--small) var(--sans); margin: 0 0 8px; }
+.lp-quick .lp-free-head { font-weight: 500; }
+.lp-quick .lp-carousel + p { margin-top: 18px; }   /* the free row, then the rest (11 Oct) */
 .lp-surprise { all: unset; cursor: pointer; font: 700 var(--small) var(--sans); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; padding: 0 2px; margin-left: 6px; }   /* D64: the pills went; one quiet shuffle */
 .lp-field input:focus-visible, .lp-field button:focus-visible, .lp-seg button:focus-visible, .lp-top-cta:focus-visible { outline: 3px solid var(--riso-indigo); outline-offset: 3px; }
 

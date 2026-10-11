@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from 'convex/react'
+import { FREE_TEN } from '../../convex/freeTen'
 import { api } from '../../convex/_generated/api'
 import Rich, { inline } from '../components/Rich'
 import { track } from '../lib/track'
@@ -29,14 +30,31 @@ type Shelf = { topic: string; outcome: string; cover: string | null; week: numbe
 // then trending; "Surprise me" stays as one quiet link. One tap starts.
 function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; busy: boolean; picked: string | null; onPick: (topic: string) => void; onExplore?: () => void }) {
   const [seed, setSeed] = useState(0)
+  // The free eleven get their own row above this one (Prateek, 11 Oct: highlighted on the homepage), in FREE_TEN's order,
+  // the 28-day "Hold a room" first; this row keeps the rest. Copy (agent).
+  const free = [...FREE_TEN].map((t) => items.find((it) => it.topic === t)).filter((it): it is Shelf => !!it)
   const sorted = (() => {
-    const xs = items.slice()
+    const xs = items.filter((it) => !FREE_TEN.has(it.topic))
     if (seed) { for (let i = xs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [xs[i], xs[j]] = [xs[j], xs[i]] } return xs }
     return xs.sort((a, b) => (b.passRate !== null && b.starts >= 3 ? b.passRate * b.starts : 0) - (a.passRate !== null && a.starts >= 3 ? a.passRate * a.starts : 0) || b.week - a.week || Number(b.trending) - Number(a.trending))
   })()
   const tag = (it: Shelf, k: number) => it.trending && k < 3 ? 'Trending' : it.improved ? 'Just improved' : it.passRate !== null && it.starts >= 3 && it.passRate >= 0.3 ? `${Math.round(it.passRate * 100)}% finish chapter 1` : it.week >= 2 ? `${it.week} started this week` : ''
   return (
     <div className="lp-quick">
+      {free.length > 0 && <>
+        <p className="lp-free-head"><b>Free, every chapter.</b> {free.length === 11 ? 'Eleven' : free.length} complete courses, nothing to pay.</p>
+        <ul className="lp-carousel">
+          {free.map((it) => (
+            <li key={it.topic} className={picked === it.topic ? 'lifting' : picked ? 'resting' : undefined}>
+              <button type="button" onClick={() => onPick(it.topic)} disabled={busy} aria-busy={picked === it.topic || undefined}>
+                {picked === it.topic && <span className="lp-visually-hidden" role="status">Opening…</span>}
+                <span className="lp-carousel-pic">{it.cover && <img src={it.cover} alt="" loading="lazy" />}<em>{`Free · ${it.topic === 'Hold a room for 10 minutes' ? 28 : 7} days`}</em></span>
+                <strong>{it.topic}</strong>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>}
       <p>Or start one tonight. It opens instantly. <button type="button" className="lp-surprise" onClick={() => setSeed((x) => x + 1)}>Surprise me</button></p>
       <ul className="lp-carousel">
         {sorted.slice(0, 12).map((it, k) => (

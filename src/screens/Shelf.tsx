@@ -96,6 +96,35 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
   }
   const mine = (it: Item) => have[it.topic.trim().toLowerCase()]
 
+  // One shelf of books on planks. The free eleven's shelf is drawn above the Spotlight (Prateek, 11 Oct), the rest below.
+  const shelfSection = (s: (typeof shelves)[number]) => (
+    <section key={s.key} id={`shelf-${s.key}`} className="shelf-sec" aria-label={s.label}>
+      <div className="shelf-head"><h2>{s.label}</h2>{s.note && <p className="note">{s.note}</p>}</div>
+      {rowsOf(s.books).map((row, r) => (
+        <div key={r} className="shelf-row">
+          <ul className="shelf-books">
+            {row.map((it) => (
+              <li key={it.key} className={lifting === it.key ? 'lifting' : lifting ? 'resting' : undefined} style={{ ['--lean' as any]: `${lean(it.key)}deg` }}>
+                <button type="button" className={`book cloth-${cloth(it.key)}`} onClick={() => { if (!lifting) open(it) }} aria-label={`${it.topic}.${mine(it) ? ` ${mine(it)}.` : ''} ${it.outcome}`} aria-busy={lifting === it.key || undefined}>
+                  {lifting === it.key && <span className="lp-visually-hidden" role="status">Opening…</span>}
+                  <span className="book-spine" aria-hidden="true" />
+                  <span className="book-cover">
+                    {it.cover ? <img src={it.cover} alt="" loading="lazy" /> : <span className="book-cover-blank">{it.topic.slice(0, 1)}</span>}
+                  </span>
+                  {/* The goal line was cut to "for: Understa…" on a 90 px plate (UX review 9 Oct); the title is the name. */}
+                  <span className="book-plate"><span className="book-title">{it.topic}</span>{mine(it) && <span className="book-mine">{mine(it)}</span>}</span>
+                  {/* "Finished" read as "you finished it" (UX review 9 Oct): the ribbon means most readers finish chapter 1. */}
+                  {(it.hot || it.loved || it.pick) && <span className="book-ribbon">{it.hot ? 'Hot' : it.loved ? 'Most finished' : 'Our pick'}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="shelf-plank" aria-hidden="true" />
+        </div>
+      ))}
+    </section>
+  )
+
   return (
     <div ref={pageRef} className={`shelf-page${lifting ? ' lifting' : ''}`}>
       <button type="button" className="quiet" onClick={onBack}>← Back</button>
@@ -108,10 +137,12 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
       {/* The jump row comes first, so its first chips are not for sections already scrolled past (UX review 9 Oct). */}
       <div className="shelf-tools">
         <button type="button" className="chip" onClick={surprise}>Surprise me</button>
+        {shelves.filter((s) => s.key === 'free' && s.books.length).map((s) => <button type="button" key={s.key} className="chip" onClick={() => jump(`shelf-${s.key}`)}>{s.label}</button>)}
         {spots.length > 0 && <button type="button" className="chip" onClick={() => jump('shelf-spotlight')}>Spotlight</button>}
         {awards.length > 0 && <button type="button" className="chip" onClick={() => jump('shelf-awards')}>The Awards</button>}
-        {shelves.map((s) => <button type="button" key={s.key} className="chip" onClick={() => jump(`shelf-${s.key}`)}>{s.label}</button>)}
+        {shelves.filter((s) => s.key !== 'free').map((s) => <button type="button" key={s.key} className="chip" onClick={() => jump(`shelf-${s.key}`)}>{s.label}</button>)}
       </div>
+      {items && shelves.filter((s) => s.key === 'free' && s.books.length).map(shelfSection)}
       {spots.length > 0 && (
         <section id="shelf-spotlight" className="spot" aria-label="Spotlight">
           <div className="spot-head">
@@ -157,33 +188,7 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
           </ul>
         </section>
       )}
-      {!items ? <p className="note" role="status">{online ? 'Dusting the shelves…' : "No connection. The Shelf opens when you're back online."}</p> : shelves.map((s) => (
-        <section key={s.key} id={`shelf-${s.key}`} className="shelf-sec" aria-label={s.label}>
-          <div className="shelf-head"><h2>{s.label}</h2>{s.note && <p className="note">{s.note}</p>}</div>
-          {rowsOf(s.books).map((row, r) => (
-            <div key={r} className="shelf-row">
-              <ul className="shelf-books">
-                {row.map((it) => (
-                  <li key={it.key} className={lifting === it.key ? 'lifting' : lifting ? 'resting' : undefined} style={{ ['--lean' as any]: `${lean(it.key)}deg` }}>
-                    <button type="button" className={`book cloth-${cloth(it.key)}`} onClick={() => { if (!lifting) open(it) }} aria-label={`${it.topic}.${mine(it) ? ` ${mine(it)}.` : ''} ${it.outcome}`} aria-busy={lifting === it.key || undefined}>
-                      {lifting === it.key && <span className="lp-visually-hidden" role="status">Opening…</span>}
-                      <span className="book-spine" aria-hidden="true" />
-                      <span className="book-cover">
-                        {it.cover ? <img src={it.cover} alt="" loading="lazy" /> : <span className="book-cover-blank">{it.topic.slice(0, 1)}</span>}
-                      </span>
-                      {/* The goal line was cut to "for: Understa…" on a 90 px plate (UX review 9 Oct); the title is the name. */}
-                      <span className="book-plate"><span className="book-title">{it.topic}</span>{mine(it) && <span className="book-mine">{mine(it)}</span>}</span>
-                      {/* "Finished" read as "you finished it" (UX review 9 Oct): the ribbon means most readers finish chapter 1. */}
-                      {(it.hot || it.loved || it.pick) && <span className="book-ribbon">{it.hot ? 'Hot' : it.loved ? 'Most finished' : 'Our pick'}</span>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="shelf-plank" aria-hidden="true" />
-            </div>
-          ))}
-        </section>
-      ))}
+      {!items ? <p className="note" role="status">{online ? 'Dusting the shelves…' : "No connection. The Shelf opens when you're back online."}</p> : shelves.filter((s) => s.key !== 'free').map(shelfSection)}
     </div>
   )
 }
