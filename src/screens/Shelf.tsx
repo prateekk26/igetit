@@ -15,7 +15,7 @@ import { useOnline } from '../lib/online'
 // 3). D34a ("funny award categories for the creative handbooks people are requesting"): the Awards row, the owner's
 // award title and citation on reader-typed handbooks. A book in either row is not repeated on the shelves below.
 type Award = { title: string; line: string }
-type Item = { kind: 'ready' | 'shared'; id?: Id<'library'>; key: string; topic: string; goal?: string | null; outcome: string; mode: string | null; cover: string | null; hot: boolean; loved: boolean; pick?: boolean; week: number; finishedWeek?: number; trending?: boolean; addedAt?: number; starts?: number | null; passes?: number | null; spot?: number | null; award?: Award | null; section?: string | null }
+type Item = { kind: 'ready' | 'shared'; id?: Id<'library'>; key: string; free?: boolean; topic: string; goal?: string | null; outcome: string; mode: string | null; cover: string | null; hot: boolean; loved: boolean; pick?: boolean; week: number; finishedWeek?: number; trending?: boolean; addedAt?: number; starts?: number | null; passes?: number | null; spot?: number | null; award?: Award | null; section?: string | null }
 // notice: why the reader landed here, e.g. a shared link that no longer opens (UX review 9 Oct). have: the handbooks
 // already on this phone or account, by lowercased name, with how far they got.
 type Props = { onReady: (topic: string) => Promise<void>; onShared: (id: Id<'library'>) => Promise<void>; onBack: () => void; notice?: string | null; have?: Record<string, string> }
@@ -24,6 +24,8 @@ type Props = { onReady: (topic: string) => Promise<void>; onShared: (id: Id<'lib
 // in a fixed order; a book sits on the shelf the server sorted it onto (or the owner moved it to). The popularity
 // shelves are gone: the Spotlight does that. Books with no shelf yet wait on "More".
 const SHELVES: { key: string; label: string; note: string; pick: (i: Item) => boolean }[] = [
+  // The free eleven (D65, D74): complete courses anyone can finish without paying, first on the Shelf. Copy (agent).
+  { key: 'free', label: 'Free, every chapter', note: 'Complete courses, free to the last chapter. Chapter 1 needs no sign-up.', pick: (i: Item) => !!i.free },
   ...SECTIONS.map((s) => ({ key: s.key, label: s.label, note: s.note, pick: (i: Item) => i.section === s.key })),
   { key: 'more', label: 'More', note: 'Not sorted yet.', pick: () => true },
 ]
