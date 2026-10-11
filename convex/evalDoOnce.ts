@@ -51,3 +51,50 @@ export const compare = internalAction({
     return out;
   },
 });
+
+// The same question one step up (11 Oct night): the writer follows the plan's blocks, so the rule goes in the plan.
+// For a test handbook with a brief: plan with the live plan prompt and with PLAN_DO_ONCE appended (Gemini 3.8 Flash),
+// write chapter 1 from each plan with the live writer, score outcome and facts.
+//   npx convex run evalDoOnce:comparePlan '{"handbookId":"..."}'
+export const PLAN_DO_ONCE = `
+
+DO IT ONCE (every chapter): every chapter's blocks include one block where the reader does the chapter's one thing once, inside the chapter: "tryit" (a small interactive page), "try" (a task they finish in under 2 minutes on paper, out loud or on their phone) or "doit" (for body skills). In chapter 1 it sits within the first three blocks. A quiz alone does not count as doing it.`;
+
+export const handbookFor = internalQuery({
+  args: { handbookId: v.id("handbooks") },
+  handler: async (ctx, { handbookId }) => {
+    const h: any = await ctx.db.get(handbookId);
+    return h ? { topic: h.topic, level: h.level, language: h.language ?? "English", voice: h.voice ?? "friend", goal: h.goal, mode: h.mode, brief: h.brief ?? null } : null;
+  },
+});
+
+export const comparePlan = internalAction({
+  args: { handbookId: v.id("handbooks") },
+  handler: async (ctx, { handbookId }): Promise<any> => {
+    const { planUserMessage, briefForPlan, PLAN_PROMPT_V9 } = await import("./prompts");
+    const h: any = await ctx.runQuery(internal.evalDoOnce.handbookFor, { handbookId });
+    if (!h?.brief) return { error: "no brief" };
+    const facts = Array.isArray(h.brief?.facts) ? h.brief.facts.map((f: any) => (typeof f === "string" ? f : f?.fact ?? JSON.stringify(f))).join("\n") : null;
+    const planUser = planUserMessage(h.topic, h.level, h.language, h.voice, undefined, h.goal, h.mode) + briefForPlan(h.brief);
+    const out: any = { topic: h.topic };
+    for (const [arm, system] of [["live", PLAN_PROMPT_V9], ["doOnce", PLAN_PROMPT_V9 + PLAN_DO_ONCE]] as const) {
+      const p: any = await ctx.runAction(internal.ai.generate, { kind: "plan", system, user: planUser, model: "gemini-3.8-flash", logAs: "eval plan" });
+      if (!p.ok) { out[arm] = { error: String(p.error).slice(0, 100) }; continue; }
+      const plan = p.json;
+      const blocks1 = (plan?.chapters?.[0]?.blocks ?? []).join(",");
+      const pieces = Array.isArray(plan.chapters?.[0]?.pieces) ? plan.chapters[0].pieces.map(String) : undefined;
+      const user = chapterUserMessage(plan, h.level, h.language, h.voice, 1) + chapterContext(h.brief, plan, 1, []) + briefForChapter(h.brief, pieces);
+      const c: any = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: CHAPTER_PROMPT_V6, user, model: "gemini-3.8-flash", logAs: "eval chapter" });
+      if (!c.ok) { out[arm] = { blocks1, error: String(c.error).slice(0, 100) }; continue; }
+      const cards = Array.isArray(c.json?.cards) ? c.json.cards : [];
+      const levels: Record<string, number | null> = {};
+      for (const lever of ["outcome", "facts"] as const) {
+        const s: any = await ctx.runAction(internal.ai.generate, { kind: "score", system: SCORE_SYSTEM, user: scorerUser(lever, plan, 1, cards, facts), logAs: "eval score" });
+        levels[lever] = s.ok && typeof s.json?.level === "number" ? s.json.level : null;
+      }
+      const withDoing = (plan?.chapters ?? []).filter((ch: any) => (ch.blocks ?? []).some((b: string) => ["try", "tryit", "doit"].includes(b))).length;
+      out[arm] = { ...levels, blocks1, cards: cards.map((x: any) => x?.type).join(","), chaptersWithDoing: `${withDoing}/${plan?.chapters?.length ?? 0}` };
+    }
+    return out;
+  },
+});
