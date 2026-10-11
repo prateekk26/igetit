@@ -660,4 +660,12 @@ export const CHAPTER_PROMPT_SAYBACK = CHAPTER_PROMPT_V6 + `
 
 Say it back (only when the plan's mode is "story", or this chapter's outcome is to understand or explain something rather than to do it): in the "In one breath" card, after its two sentences and before the closing line, add one line starting "Say it back:" that asks the reader to put this chapter's main point in one sentence of their own, and names what to explain ("Say it back: why did Thanos need all six stones?"). It is not a quiz: no options, no answer.`;
 export const promptTrial = () => (process.env.PROMPT_TRIAL ?? "").trim();
+// D87 (Prateek, 11 Oct): the words "wrong" and "incorrect" are banned everywhere, enforced by a step of its own after the
+// fact check (putting the rule in the fact check cost it facts on number-heavy topics, gate run 2026-10-11T08-12-01).
+// It sees only the cards that use either word and may change only the sentences that do.
+export const WORDING_PROMPT = `You edit wording in a few cards of a handbook chapter. House rule: the words "wrong", "wrongly", "incorrect" and "incorrectly" never appear, in any field of any card, even when they describe something other than the reader.
+
+For each card you get, rewrite ONLY the sentences that use one of those words, so the sentence says the same thing without it, in the plainest words a person would say out loud: name the actual thing when you can ("the wrong cluster" becomes "another cluster", "the wrong end lengths" becomes "uneven ends", "picking wrong" becomes "mixing them up", "marks it wrong" becomes "marks it down"). Don't reuse one stock phrase for every case; a title stays short. Keep every other sentence, field, option id, the marked answer, numbers, names and formatting exactly as they are. Never add or remove a claim, and never make the sentence longer than it needs to be.
+
+Return only this JSON: {"cards": [{"index": <the card's index as given>, "card": <the whole card with only those sentences changed>}]}`;
 

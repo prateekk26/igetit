@@ -153,7 +153,9 @@ export const researchV8 = researchV7.extend({
 
 // D72 (11 Oct): the rubric scorer's verdict on one lever of one chapter (convex/rubric.ts).
 const score = z.looseObject({ level: z.number().int().min(1).max(5).nullable(), quote: str, why: str, cantTell: z.boolean().optional() });
-export const SCHEMAS: Record<string, z.ZodType> = { plan, chapter, check, versions, scenes, intent, match, teach, research, artifact, move, researchV4, researchV6, researchV7, researchV8, library, stories, score };
+// D87 (11 Oct): the wording step returns whole cards, by index, with only the banned words rewritten.
+const wording = z.looseObject({ cards: z.array(z.looseObject({ index: z.number().int().min(0), card: z.looseObject({ type: str }) })) });
+export const SCHEMAS: Record<string, z.ZodType> = { plan, chapter, check, versions, scenes, intent, match, teach, research, artifact, move, researchV4, researchV6, researchV7, researchV8, library, stories, score, wording };
 
 // The problems with a reply, in a few short lines the model can act on; null when it fits.
 export function problems(kind: string, json: unknown): string | null {

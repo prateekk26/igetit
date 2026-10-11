@@ -5,7 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V3, CHECK_SCENES_PROMPT_V3, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
+import { briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V3, CHECK_SCENES_PROMPT_V3, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
 import { addCost, inrOf } from "./costs";
 import { pictureCards } from "./pictureCards";
 import type { Trace } from "./trace";
@@ -784,7 +784,34 @@ function validFix(orig: any, fixed: any): boolean {
 }
 type Scene = { card: number; scene: string; real?: string };
 // With opts.pictures, the same call also writes the picture scenes for the listed cards (8 Oct, Tanisha: one call, not two).
-export async function factCheck(ctx: any, topic: string, level: string, title: string, cards: any[], opts: { model?: string; effort?: "low" | "medium" | "high" | "xhigh" | "max"; trace?: Trace; pictures?: { cards: number[]; analogy: string }; reference?: string; delivery?: string; mainCount?: number } = {}): Promise<{ cards: any[]; report: FactReport; scenes: Scene[]; added: number }> {
+// D87 (Prateek, 11 Oct): "wrong" and "incorrect" never reach a reader. After the fact check, a small call rewrites only the
+// cards that use either word (about 1 chapter in 7); a rewrite is kept only when it keeps the card's shape and answer and
+// no longer uses the words. A failed call keeps the cards as they were.
+const BANNED_WORDS = /\b(wrong|wrongly|incorrect|incorrectly)\b/i;
+export async function cleanWording(ctx: any, cards: any[], trace?: Trace): Promise<{ cards: any[]; fixed: number }> {
+  const hit = cards.map((c, i) => ({ c, i })).filter(({ c }) => BANNED_WORDS.test(JSON.stringify(c)));
+  // Runs only where the env variable WORDING_STEP is "on" (dev until Prateek approves it for prod).
+  if (!hit.length || (process.env.WORDING_STEP ?? "").trim() !== "on") return { cards, fixed: 0 };
+  const user = `Cards that use a banned word (JSON, each with its index):\n${JSON.stringify(hit.map(({ c, i }) => ({ index: i, card: c })), null, 1)}`;
+  const r = await ctx.runAction(internal.ai.generate, { kind: "wording", system: WORDING_PROMPT, user, ...(trace ? { trace } : {}) });
+  if (!r.ok) return { cards, fixed: 0 };
+  const out = cards.slice();
+  let fixed = 0;
+  for (const f of Array.isArray(r.json?.cards) ? r.json.cards : []) {
+    const i = Number(f?.index), orig = cards[i];
+    if (!orig || !hit.some((h) => h.i === i) || !validFix(orig, f?.card) || BANNED_WORDS.test(JSON.stringify(f.card))) continue;
+    if ("answer" in orig && f.card.answer !== orig.answer) continue;
+    out[i] = f.card; fixed++;
+  }
+  return { cards: out, fixed };
+}
+export async function factCheck(...args: Parameters<typeof factCheckOnly>): ReturnType<typeof factCheckOnly> {
+  const checked = await factCheckOnly(...args);
+  const clean = await cleanWording(args[0], checked.cards, args[5]?.trace);
+  if (!clean.fixed) return checked;
+  return { ...checked, cards: clean.cards, report: { ...checked.report, notes: [...checked.report.notes, `Wording: rewrote ${clean.fixed} card${clean.fixed === 1 ? "" : "s"} that used "wrong" or "incorrect".`] } };
+}
+async function factCheckOnly(ctx: any, topic: string, level: string, title: string, cards: any[], opts: { model?: string; effort?: "low" | "medium" | "high" | "xhigh" | "max"; trace?: Trace; pictures?: { cards: number[]; analogy: string }; reference?: string; delivery?: string; mainCount?: number } = {}): Promise<{ cards: any[]; report: FactReport; scenes: Scene[]; added: number }> {
   const { pictures, reference, delivery, mainCount, ...callOpts } = opts;
   const withScenes = !!pictures?.cards.length;
   // reference (D29c): material the cards must agree with (a handbook's own chapters, for its wait stories).
