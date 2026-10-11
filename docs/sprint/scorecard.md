@@ -2,7 +2,7 @@
 
 Agent's self-score, night of 11 Oct, for Prateek to check (Submit: "picked my primary track and scored myself on its rubric; know which row I'd fix with two more hours"). Numbers from prod /admin (last 30 days, our own phones left out) unless marked. Points = (L − 1) × weight. Rows marked "?" need Prateek's own numbers (social impressions and reactions live in his accounts).
 
-## Recommendation: AI Agent as a Service as the primary track
+## Primary track: AI Agent as a Service (picked by Prateek, 11 Oct, D81)
 
 It scores highest on what we can prove without new traffic, and its root row (real output on a real surface) is what the product does every time someone types a line: a pipeline of agents researches, plans, writes, fact-checks, illustrates and builds interactive pages for a real reader on the live site. Virality and Revenue both hinge on numbers we don't have yet (1 sign-up with an email, ₹0 paid). Bonus from the other tracks (0.5x, cap 50) still counts.
 

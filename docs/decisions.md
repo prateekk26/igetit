@@ -11,6 +11,12 @@ One entry per decision: what, why, what it replaced, and when to look at it agai
 
 How to add: at the end of a session, append under today's date. A decision Prateek made says "(Prateek)"; one the agent made in his stead says "(agent, authorised)". Never rewrite an old entry; add a new one that supersedes it.
 
+## 2026-10-11
+
+### Decisions
+
+- **D81. Primary track: AI Agent as a Service (Prateek, 11 Oct).** Scored about 131 (safe) to 151 (claim) of 164 against about 57 for Revenue and 35 plus social for Virality (docs/sprint/scorecard.md); even a strong week on sign-ups and a first payment leaves the other two near 80. Its rows are evidenced by the product itself, the other two by numbers from other people that are still small. Virality and Revenue rows still count as the cross-track bonus (about 39, cap 50). Look again only if paid users arrive in numbers before Saturday.
+
 ## 2026-10-10
 
 ### Decisions

@@ -21,7 +21,7 @@ Prepared by the agent, night of 11 Oct. Prateek submits; nothing here is sent. R
 
 ## Track
 
-Recommended: AI Agent as a Service (docs/sprint/scorecard.md: about 131 to 151 of 164, plus about 39 bonus). Prateek decides.
+AI Agent as a Service, picked by Prateek on 11 Oct (D81; docs/sprint/scorecard.md: about 131 to 151 of 164, plus about 39 bonus).
 
 ## The honest paragraph (draft, agent; Prateek rewrites in his voice)
 
@@ -35,6 +35,6 @@ I Get It turns "I keep meaning to learn this" into a short handbook written for 
 | Data survives closing and reopening | Checked by prove-path's reload step and the device token (progress is stored in Convex) | Re-run Friday |
 | Repo is public, link opens in a private window | Checked 11 Oct (HTTP 200 signed out; gh says PUBLIC) | Re-check Friday |
 | Numbers written down with screenshots | Table above; screenshots to take Friday | — |
-| Picked a track, scored myself, know the row to fix | docs/sprint/scorecard.md | Prateek to confirm the track |
+| Picked a track, scored myself, know the row to fix | docs/sprint/scorecard.md | Done: AI Agent as a Service (D81) |
 | One honest paragraph ready | Above (agent draft) | Prateek to rewrite |
 | Submitted before 11:00 AM IST | Not yet | Prateek |

@@ -49,7 +49,7 @@ What the agent did not do on its own, by rule: anything published or sent in Pra
 | Users & distribution | Watch 3 people; distribute; daily note, one blocker | Daily note written from data and the blocker addressed in every new handbook; watching people and sending DMs are Prateek's (users-week.md) |
 | Build in Public | Idea list; three posts this week; reply to every reply; numbers noted | Idea list and raw material ready; the posts are Prateek's words (the handbook: never write posts with AI) |
 | Product Launch Video | Hook, two story parts, promise or offer, a minute, posted with two more hooks | Script, hooks and shot list ready; shooting and posting are Prateek's |
-| Scoring | Pick a track, score yourself, know the row to fix | Done (scorecard.md); Prateek picks the track |
+| Scoring | Pick a track, score yourself, know the row to fix | Done (scorecard.md); track picked: AI Agent as a Service (D81) |
 | Submit | Live URL, public repo, numbers with screenshots, paragraph, submitted by 11:00 on 17 Oct | Pack ready (submission.md); screenshots and submitting are Prateek's |
 
 ## Proposals (measured, not changed: Prateek's call)
@@ -62,7 +62,7 @@ What the agent did not do on its own, by rule: anything published or sent in Pra
 
 ## Waiting on Prateek
 
-1. Pick the primary track (recommended: AI Agent as a Service; docs/sprint/scorecard.md).
+1. ~~Pick the primary track~~ Done 11 Oct: AI Agent as a Service (D81).
 2. Watch three people use it, and send ten DMs (docs/sprint/users-week.md).
 3. Write and post this week's three posts from docs/sprint/build-in-public.md, in his words.
 4. Shoot the launch video (docs/sprint/launch-video.md).
