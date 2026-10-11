@@ -198,7 +198,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       </section>
 
       <footer className="lp-foot">
-        <p>I Get It is built in public for the GrowthX Build Sprint, October 2026. <a href="/stats">See the live numbers</a>. <a href="https://github.com/prateekk26/igetit" target="_blank" rel="noopener noreferrer">Read the code</a>.</p>
+        <p>I Get It is built in public for the GrowthX Build Sprint, October 2026. <a href="/stats">See the live numbers</a>.</p>
         <p><PolicyLinks /></p>
       </footer>
     </div>
