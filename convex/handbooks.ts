@@ -894,7 +894,9 @@ export const markRewrite = internalMutation({
 export const quickFail = (error: unknown) => { const e = String(error ?? ""); return /Gemini (429|500|502|503)\b|fetch failed|ECONNRESET|socket hang up/i.test(e) && !/time budget|timeout|aborted/i.test(e); };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // A prompt trial (D83, D84) runs only where PROMPT_TRIAL names it: dev, for npm run eval:gate. Read per call.
-const chapterLive = () => (promptTrial() === "sayBack" ? CHAPTER_PROMPT_SAYBACK : CHAPTER_PROMPT_V6);
+// D86 shipped (Prateek, 11 Oct, after its gate run): recaps and explainers end with a "Say it back" line. PROMPT_TRIAL=writerV6
+// runs the old writer, for comparison only.
+const chapterLive = () => (promptTrial() === "writerV6" ? CHAPTER_PROMPT_V6 : CHAPTER_PROMPT_SAYBACK);
 const checkPrompt = (withScenes: boolean) => (promptTrial() === "noWrong" ? (withScenes ? CHECK_SCENES_PROMPT_NOWRONG : CHECK_PROMPT_NOWRONG) : withScenes ? CHECK_SCENES_PROMPT_V3 : CHECK_PROMPT_V3);
 const CHAPTER_MODEL: string | undefined = "gemini-3.8-flash";
 const CHAPTER_BACKUP = { model: "claude-opus-5-5", effort: "medium" as const };

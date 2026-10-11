@@ -1,0 +1,543 @@
+{
+  "at": "2026-10-11T08-55-35",
+  "runs": 3,
+  "rubric": "r2",
+  "previous": "2026-10-11T08-12-01",
+  "cases": [
+    {
+      "name": "ww2-subject",
+      "list": "fix",
+      "why": "Dates and names must be right.",
+      "expect": {
+        "facts": 4,
+        "taught": 4
+      },
+      "runs": [
+        {
+          "handbookId": "k973r11cgda35wg3wjc9791m6d8g3fnc",
+          "pass": true,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "facts": 4,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 6,
+            "failed": 0,
+            "inr": 10.055178
+          }
+        },
+        {
+          "handbookId": "k9789b90vj3kpnn1zxwsj1m7718g3xmn",
+          "pass": true,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "facts": 4,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 6,
+            "failed": 0,
+            "inr": 10.057005
+          }
+        },
+        {
+          "handbookId": "k97aaabjfadk0hma3v58a5ndvx8g37g7",
+          "pass": true,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "facts": 4,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "artifact": [
+                "claude-sonnet-5-5"
+              ],
+              "chapter": [
+                "gemini-3.8-flash (failed)",
+                "claude-opus-5-5"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash",
+                "gemini-3.8-flash (failed)",
+                "claude-opus-5-5"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 10,
+            "failed": 2,
+            "inr": 33.816930000000006
+          }
+        }
+      ],
+      "errored": false,
+      "passed": true,
+      "passes": 3,
+      "floorHeld": true,
+      "unsure": [],
+      "before": false
+    },
+    {
+      "name": "compound-interest",
+      "list": "fix",
+      "why": "Numbers must be right and quizzes taught first.",
+      "expect": {
+        "outcome": 4,
+        "facts": 4,
+        "taught": 4
+      },
+      "runs": [
+        {
+          "handbookId": "k97e6kqnz80kzgkv8z5zc3z1w98g3c95",
+          "pass": false,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "outcome": 3,
+            "facts": 5,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash",
+                "gemini-3.8-flash"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 8,
+            "failed": 0,
+            "inr": 9.660987
+          }
+        },
+        {
+          "handbookId": "k972ecmp6fkppzfws07cy1pgnx8g2mf0",
+          "pass": false,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "outcome": 3,
+            "facts": 4,
+            "taught": 4
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash",
+                "gemini-3.8-flash"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 8,
+            "failed": 0,
+            "inr": 13.114836
+          }
+        },
+        {
+          "handbookId": "k97de0d4s6zdc309mj6d1pzgah8g2hrb",
+          "pass": false,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "outcome": 3,
+            "facts": 5,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash",
+                "gemini-3.8-flash",
+                "claude-opus-5-5"
+              ],
+              "research": [
+                "gemini-3.8-flash (failed)",
+                "claude-sonnet-5-5"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 10,
+            "failed": 1,
+            "inr": 23.384172000000003
+          }
+        }
+      ],
+      "errored": false,
+      "passed": false,
+      "passes": 0,
+      "floorHeld": true,
+      "unsure": [],
+      "before": false
+    },
+    {
+      "name": "nifty-options",
+      "list": "fix",
+      "why": "Current lot sizes and expiry days change; facts must be today's.",
+      "expect": {
+        "facts": 5,
+        "taught": 4
+      },
+      "runs": [
+        {
+          "handbookId": "k97224rqx3z7jbqa1ymnw450w18g38nr",
+          "pass": false,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "facts": 4,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 6,
+            "failed": 0,
+            "inr": 9.876699
+          }
+        },
+        {
+          "handbookId": "k972tt5k9zbm13ay5azmw1t6yn8g2k3n",
+          "pass": false,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "facts": 3,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash (failed)",
+                "claude-opus-5-5"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 7,
+            "failed": 1,
+            "inr": 16.861593
+          }
+        },
+        {
+          "handbookId": "k9765ceab9x5tqx3r2mg97n51h8g21kf",
+          "pass": false,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "facts": 3,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "artifact": [
+                "claude-sonnet-5-5"
+              ],
+              "chapter": [
+                "gemini-3.8-flash (failed)",
+                "claude-opus-5-5"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash",
+                "gemini-3.8-flash (failed)",
+                "claude-opus-5-5"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 10,
+            "failed": 2,
+            "inr": 39.68233500000001
+          }
+        }
+      ],
+      "errored": false,
+      "passed": false,
+      "passes": 0,
+      "floorHeld": true,
+      "unsure": [],
+      "before": false
+    },
+    {
+      "name": "kubernetes-some",
+      "list": "fix",
+      "why": "A reader who knows some: no baby steps, no untaught terms.",
+      "expect": {
+        "taught": 4,
+        "facts": 4
+      },
+      "runs": [
+        {
+          "handbookId": "k977rv62525y365f0wqdmv3krs8g2wvk",
+          "pass": false,
+          "floorPass": false,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "taught": null,
+            "facts": 3
+          },
+          "failedChecks": [
+            "noIncorrectWord"
+          ],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash",
+                "gemini-3.8-flash (failed)",
+                "claude-opus-5-5"
+              ],
+              "research": [
+                "gemini-3.8-flash (failed)",
+                "claude-sonnet-5-5"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 9,
+            "failed": 2,
+            "inr": 25.954887
+          }
+        },
+        {
+          "handbookId": "k978trm77d1eqmerxhysx6spes8g23t7",
+          "pass": false,
+          "floorPass": false,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "taught": null,
+            "facts": 2
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash (failed)",
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash",
+                "gemini-3.8-flash",
+                "claude-opus-5-5"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 9,
+            "failed": 1,
+            "inr": 17.701236
+          }
+        },
+        {
+          "handbookId": "k97fawn6verm5qmzka3cpzsyr58g3ysd",
+          "pass": true,
+          "floorPass": true,
+          "unsure": [],
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "taught": null,
+            "facts": 4
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash",
+                "gemini-3.8-flash",
+                "claude-opus-5-5"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 8,
+            "failed": 0,
+            "inr": 20.183436000000004
+          }
+        }
+      ],
+      "errored": false,
+      "passed": false,
+      "passes": 1,
+      "floorHeld": false,
+      "unsure": [],
+      "before": false
+    }
+  ]
+}
