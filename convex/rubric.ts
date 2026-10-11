@@ -4,7 +4,8 @@
 // call (Advanced evals: "one lever per call"), quoting the line it scored. Sonnet at low effort, about ₹1 a lever.
 // The rubric grows by edge cases: when a score is wrong, add the case to the level's text here and bump RUBRIC_VERSION.
 import { v } from "convex/values";
-import { internalAction, internalMutation, internalQuery, query } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import { isOwner } from "./admin";
 
@@ -115,5 +116,79 @@ export const dashboard = query({
       levers: Object.entries(LEVERS).map(([k, L]) => ({ lever: k, name: L.name, counts: per[k] ?? [0, 0, 0, 0, 0] })),
       low: low.map((r) => ({ handbookId: r.handbookId as string, topic: topics.get(r.handbookId) ?? "?", n: r.n, lever: r.lever, level: r.level, quote: r.quote, why: r.why, at: r.at })),
     };
+  },
+});
+
+// ---------- Check the scorer (D75, 11 Oct; Advanced evals: "score them yourself, without looking at the scorer's level") ----------
+// The next chapter the scorer graded that this owner hasn't, the cards as text (no Try it pages), and the levers; the
+// scorer's own levels come back only after the owner saves theirs (agreement below).
+async function ownerEmail(ctx: any): Promise<string | null> {
+  const who = await isOwner(ctx);
+  if (!who.ok) return null;
+  const id = await getAuthUserId(ctx);
+  const user: any = id ? await ctx.db.get(id) : null;
+  return user?.email ?? null;
+}
+
+export const reviewNext = query({
+  args: { skip: v.optional(v.array(v.string())) },
+  handler: async (ctx, { skip }) => {
+    const me = await ownerEmail(ctx);
+    if (!me) return null;
+    const recent = await ctx.db.query("scores").withIndex("by_at").order("desc").take(800);
+    const seen = new Set<string>();
+    for (const s of recent) {
+      const key = `${s.handbookId}#${s.n}`;
+      if (seen.has(key) || skip?.includes(key)) continue;
+      seen.add(key);
+      const mine = (await ctx.db.query("humanScores").withIndex("by_handbook_n", (q) => q.eq("handbookId", s.handbookId).eq("n", s.n)).collect()).filter((h) => h.by === me);
+      if (mine.length) continue;
+      const ch: any = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", s.handbookId).eq("n", s.n)).unique();
+      const h: any = await ctx.db.get(s.handbookId);
+      if (!ch?.cards || !h) continue;
+      const done = (await ctx.db.query("humanScores").collect()).filter((x) => x.by === me).length;
+      return {
+        key, handbookId: s.handbookId as string, n: s.n, topic: String(h.plan?.topic ?? h.topic).slice(0, 80), title: ch.title ?? "", outcome: h.plan?.chapters?.[s.n - 1]?.outcome ?? "",
+        cards: (ch.cards as any[]).map((c) => ({ type: c.type, title: c.title ?? null, body: c.body ?? c.idea ?? c.instruction ?? null, prompt: c.prompt ?? null, options: Array.isArray(c.options) ? c.options.map((o: any) => ({ id: o.id, text: o.text })) : null, answer: c.answer ?? null })),
+        levers: Object.entries(LEVERS).map(([k, L]) => ({ lever: k, name: L.name, levels: L.levels })),
+        reviewedSoFar: Math.round(done / Object.keys(LEVERS).length),
+      };
+    }
+    return { done: true as const };
+  },
+});
+
+export const saveHuman = mutation({
+  args: { handbookId: v.id("handbooks"), n: v.number(), levels: v.record(v.string(), v.union(v.number(), v.null())), note: v.optional(v.string()) },
+  handler: async (ctx, { handbookId, n, levels, note }) => {
+    const me = await ownerEmail(ctx);
+    if (!me) throw new Error("Owner only");
+    for (const old of (await ctx.db.query("humanScores").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", n)).collect()).filter((x) => x.by === me)) await ctx.db.delete(old._id);
+    for (const [lever, level] of Object.entries(levels)) {
+      if (!(lever in LEVERS)) continue;
+      await ctx.db.insert("humanScores", { handbookId, n, lever, level: typeof level === "number" ? Math.max(1, Math.min(5, Math.round(level))) : null, ...(note ? { note: note.slice(0, 300) } : {}), by: me, at: Date.now() });
+    }
+    const scorer = await ctx.db.query("scores").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", n)).collect();
+    return scorer.map((s) => ({ lever: s.lever, level: s.level, quote: s.quote, why: s.why }));
+  },
+});
+
+// How often the scorer gives the owner's level, and, above all, how many of the chapters the owner scored worst
+// (L1 or L2) the scorer also scored L1 or L2. Per lever, over every chapter both have scored.
+export const agreement = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isOwner(ctx)).ok) return null;
+    const human = await ctx.db.query("humanScores").collect();
+    const out: Record<string, { both: number; same: number; within1: number; bad: number; badCaught: number }> = {};
+    for (const hs of human) {
+      if (hs.level === null) continue;
+      const s = (await ctx.db.query("scores").withIndex("by_handbook_n", (q) => q.eq("handbookId", hs.handbookId).eq("n", hs.n)).collect()).find((x) => x.lever === hs.lever);
+      if (!s || s.level === null) continue;
+      const r = (out[hs.lever] ??= { both: 0, same: 0, within1: 0, bad: 0, badCaught: 0 });
+      r.both++; if (s.level === hs.level) r.same++; if (Math.abs(s.level - hs.level) <= 1) r.within1++;
+      if (hs.level <= 2) { r.bad++; if (s.level <= 2) r.badCaught++; }
+    }
+    return { chapters: new Set(human.map((h) => `${h.handbookId}#${h.n}`)).size, levers: Object.entries(LEVERS).map(([k, L]) => ({ lever: k, name: L.name, ...(out[k] ?? { both: 0, same: 0, within1: 0, bad: 0, badCaught: 0 }) })) };
   },
 });

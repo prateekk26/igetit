@@ -377,6 +377,11 @@ export default defineSchema({
     handbookId: v.id("handbooks"), n: v.number(), lever: v.string(), level: v.union(v.number(), v.null()),
     quote: v.string(), why: v.string(), model: v.string(), rubric: v.string(), at: v.number(),
   }).index("by_handbook_n", ["handbookId", "n"]).index("by_at", ["at"]),
+  // D75 (11 Oct): the owner's own levels on chapters the scorer graded, to check the scorer (Advanced evals, "Check your
+  // scorer"): one row per lever per chapter; note is the owner's one line on the first thing that went wrong.
+  humanScores: defineTable({
+    handbookId: v.id("handbooks"), n: v.number(), lever: v.string(), level: v.union(v.number(), v.null()), note: v.optional(v.string()), by: v.string(), at: v.number(),
+  }).index("by_handbook_n", ["handbookId", "n"]),
   // D72: the eval test set. list "fix" (fails today, what we work on) or "keep" (passes today; one failure blocks a release).
   evalCases: defineTable({
     name: v.string(), list: v.union(v.literal("fix"), v.literal("keep")), topic: v.string(), level: v.union(v.literal("new"), v.literal("some")),

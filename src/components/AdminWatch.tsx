@@ -116,3 +116,65 @@ export function AdminQuality() {
     </section>
   )
 }
+
+// Check the scorer (D75): one chapter the scorer graded, the owner's own level per lever and a one-line note first; the
+// scorer's levels show only after saving. The agreement table counts how many of the owner's worst-scored chapters the
+// scorer also scored worst (Advanced evals: "look hardest at the bad ones").
+export function AdminCheckScorer() {
+  const [skip, setSkip] = useState<string[]>([])
+  const next = useQuery(api.rubric.reviewNext, { skip })
+  const agree = useQuery(api.rubric.agreement, {})
+  const save = useMutation(api.rubric.saveHuman)
+  const [levels, setLevels] = useState<Record<string, number | null>>({})
+  const [note, setNote] = useState('')
+  const [shown, setShown] = useState<{ key: string; scorer: { lever: string; level: number | null; quote: string; why: string }[] } | null>(null)
+  if (!next) return null
+  const reset = () => { setLevels({}); setNote(''); setShown(null) }
+  return (
+    <section className="adm-card adm-wide">
+      <h2>Check the scorer</h2>
+      <p className="note">Score a chapter yourself before you see what the scorer said. 30 chapters, a mix of good and bad, tell you how far to trust it, above all on the bad ones.</p>
+      {agree && agree.chapters > 0 && (
+        <div className="adm-scroll"><table className="adm-table">
+          <thead><tr><th>Lever</th><th>Scored by both</th><th>Same level</th><th>Within 1</th><th>Your worst (L1-2) it also caught</th></tr></thead>
+          <tbody>{agree.levers.map((l) => <tr key={l.lever}><td>{l.name}</td><td>{l.both}</td><td>{l.same}</td><td>{l.within1}</td><td>{l.bad ? <b>{l.badCaught} of {l.bad}</b> : '—'}</td></tr>)}</tbody>
+        </table></div>
+      )}
+      {'done' in next ? <p className="note">Every scored chapter has your levels. New ones arrive as readers' chapters are written.</p> : (
+        <>
+          <h3>{next.topic} · chapter {next.n}: {next.title}</h3>
+          <p className="note">You reviewed {next.reviewedSoFar} so far. The plan's outcome: "{next.outcome}"</p>
+          <ol className="adm-list" style={{ listStyle: 'decimal', paddingLeft: 20 }}>
+            {next.cards.map((c, i) => (
+              <li key={i} style={{ display: 'block' }}><small>{c.type}{c.title ? ` · ${c.title}` : ''}</small><br />
+                {c.body && <span style={{ whiteSpace: 'pre-wrap' }}>{c.body}</span>}
+                {c.prompt && <><b>{c.prompt}</b><br />{(c.options ?? []).map((o: { id: string; text: string }) => <span key={o.id}>{o.id}) {o.text}{c.answer === o.id ? ' ✓' : ''}<br /></span>)}</>}
+              </li>
+            ))}
+          </ol>
+          {next.levers.map((l) => (
+            <div key={l.lever} style={{ margin: '10px 0' }}>
+              <b>{l.name}</b>
+              <div className="adm-tabs" role="group" aria-label={l.name} style={{ marginTop: 6 }}>
+                {[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" aria-pressed={levels[l.lever] === n} onClick={() => setLevels((x) => ({ ...x, [l.lever]: n }))}>L{n}</button>)}
+                <button type="button" aria-pressed={levels[l.lever] === null} onClick={() => setLevels((x) => ({ ...x, [l.lever]: null }))}>n/a</button>
+              </div>
+              <details><summary><small>The levels</small></summary><small>{l.levels.map((t) => <span key={t}>{t}<br /></span>)}</small></details>
+            </div>
+          ))}
+          <input className="input" placeholder="One line: the first thing that went wrong (or 'fine')" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
+          {!shown ? (
+            <button type="button" className="btn" style={{ marginTop: 12 }} disabled={next.levers.some((l) => !(l.lever in levels))}
+              onClick={async () => { const scorer = await save({ handbookId: next.handbookId as Id<'handbooks'>, n: next.n, levels, note: note.trim() || undefined }); setShown({ key: next.key, scorer }) }}>Save, then show the scorer's</button>
+          ) : (
+            <>
+              <ul className="adm-list">{shown.scorer.map((s) => <li key={s.lever}><span><b>{s.lever}</b>: scorer L{s.level ?? '?'}, you {levels[s.lever] === null ? 'n/a' : `L${levels[s.lever]}`}<br /><small>"{s.quote}" · {s.why}</small></span></li>)}</ul>
+              <button type="button" className="btn" onClick={reset}>Next chapter</button>
+            </>
+          )}
+          {!shown && <button type="button" className="quiet" onClick={() => { setSkip((x) => [...x, next.key]); reset() }}>Skip this one</button>}
+        </>
+      )}
+    </section>
+  )
+}
