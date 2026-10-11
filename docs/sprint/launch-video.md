@@ -30,6 +30,10 @@ Length: about 55 to 60 seconds.
 1. Imagine a coffee shop table, my laptop open on a course page that says "4% complete", while the Windows error sound plays, and I say: "This is the [nth] course I've bought and not finished." (his real count)
 2. Imagine my phone on the table showing "Chapter 1 of 28", the camera shot from below so the phone looks huge, while a drum roll plays, and I say: "An AI wrote me a 28-day course on public speaking. Day 1 took four minutes."
 
+## Ready now
+
+A 35-second screen recording of the live app, 1080x1920: docs/launch/screens/hold-a-room-day1.mp4 (Hold a room day 1 on a fresh phone: card 1 with its picture, the teaching cards, the Try it tap on B with "Test it" turning it green, Ananya's example, "Chapter 1 of 28: done"). It is the --screen input for docs/launch/edit/edit.py (shots 3 to 6 below), or a visuals-only cut on its own with captions. Recorder: the agent's scratch script record-day1.mjs (any ready topic's slug). docs/launch/ stays out of git on purpose.
+
 ## Shot list
 
 | # | Shot | Seconds | Caption on screen |
