@@ -653,11 +653,13 @@ export const chooseIntent = mutation({
 const PLAN_LIVE = PLAN_PROMPT_V9;
 const PLAN_MODEL: string | undefined = "gemini-3.8-flash";
 const PLAN_EFFORT = "medium" as const;   // used only when the plan runs on Claude
+const PLAN_SECOND = "gemini-3.7-flash";   // D89 (Prateek, 11 Oct evening: "Yes", the plan too): when 3.8 fails, before Opus
 const PLAN_BACKUP = { model: "claude-opus-5-5", effort: "medium" as const };
 
 export const generatePlan = internalAction({
   args: { handbookId: v.id("handbooks"), clarification: v.optional(v.string()) },
   handler: async (ctx, { handbookId, clarification }) => {
+    const t0 = Date.now();
     let h = await ctx.runQuery(internal.handbooks.readHandbook, { handbookId });
     if (!h || h.hiddenAt) return;   // removed or replaced (UX review 9 Oct): nothing more is written for it
     // Research first (research.ts): what kind of handbook this needs, and the facts and sources it rests on. It runs
@@ -679,7 +681,10 @@ export const generatePlan = internalAction({
     // failure and we see what Flash does with the prompts. planOnly stops after the plan (no chapters are written).
     const flashOnly = !!(h as any).test?.flashOnly, planOnly = !!(h as any).test?.planOnly;
     let r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: h.writer ?? PLAN_MODEL, effort: h.writer ? undefined : PLAN_EFFORT, trace: { handbookId } });
-    if (!r.ok && !h.writer && PLAN_MODEL && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: PLAN_MODEL, trace: { handbookId } }); }   // see generateChapter
+    // D89: as for chapters, a 3.8 failure goes to 3.7 Flash, then Opus. 3.7 is skipped when 3.8 ran out of time, or when
+    // research and 3.8 have used 4 of this action's 10 minutes, so Opus always has time. Flash-only benchmarks keep the old rule.
+    if (!r.ok && !h.writer && PLAN_MODEL && flashOnly && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: PLAN_MODEL, trace: { handbookId } }); }
+    if (!r.ok && !h.writer && PLAN_MODEL && !flashOnly && !timedOut(r.error) && Date.now() - t0 < 240000) r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: PLAN_SECOND, trace: { handbookId } });
     if (!r.ok && !h.writer && PLAN_MODEL && !flashOnly) r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, ...PLAN_BACKUP, trace: { handbookId } });
     // Claude's own safety check said no: say so plainly, never "try again".
     if (!r.ok && /^declined/.test(r.error)) {
