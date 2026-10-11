@@ -645,3 +645,19 @@ export function chapterContext(b: any, plan: any, n: number, ledgers: { n: numbe
   L.push(next ? `Next chapter: "${next.title}": ${next.covers ?? ""}` : "Next chapter: none (Last chapter).");
   return `\n\n${L.join("\n")}`;
 }
+
+// Trials (11 Oct, Prateek; D83, D84), each tested on its own with npm run eval:gate before it ships. They run only where
+// the Convex env variable PROMPT_TRIAL names them (dev); prod keeps check v3 and writer v6 until Prateek approves.
+// D83: "wrong" and "incorrect" stay banned everywhere, so the fact check rewrites any sentence that uses either word.
+const NO_WRONG_EDITS: [string, string][] = [
+  [`has its precaution beside it; add it if it is missing.`, `has its precaution beside it; add it if it is missing.
+- House rule: the words "wrong" and "incorrect" (and "wrongly", "incorrectly") never appear, in any card or field, even describing something other than the reader. A card that uses one is a problem: rewrite only that sentence without the word, same meaning ("the wrong cluster" becomes "a cluster that doesn't fit").`],
+];
+export const CHECK_PROMPT_NOWRONG = edited(CHECK_PROMPT_V3, NO_WRONG_EDITS);
+export const CHECK_SCENES_PROMPT_NOWRONG = edited(CHECK_SCENES_PROMPT_V3, NO_WRONG_EDITS);
+// D84: a story recap or an explainer has no task by design, so its summary card asks the reader to say the point back.
+export const CHAPTER_PROMPT_SAYBACK = CHAPTER_PROMPT_V6 + `
+
+Say it back (only when the plan's mode is "story", or this chapter's outcome is to understand or explain something rather than to do it): in the "In one breath" card, after its two sentences and before the closing line, add one line starting "Say it back:" that asks the reader to put this chapter's main point in one sentence of their own, and names what to explain ("Say it back: why did Thanos need all six stones?"). It is not a quiz: no options, no answer.`;
+export const promptTrial = () => (process.env.PROMPT_TRIAL ?? "").trim();
+

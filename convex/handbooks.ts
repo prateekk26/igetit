@@ -5,7 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V3, CHECK_SCENES_PROMPT_V3, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
+import { briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V3, CHECK_SCENES_PROMPT_V3, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
 import { addCost, inrOf } from "./costs";
 import { pictureCards } from "./pictureCards";
 import type { Trace } from "./trace";
@@ -790,7 +790,7 @@ export async function factCheck(ctx: any, topic: string, level: string, title: s
   // reference (D29c): material the cards must agree with (a handbook's own chapters, for its wait stories).
   // Today (9 Oct, after the outside reviews): the checker has no date of its own, so it took recent facts for errors.
   const user = checkUserMessage(topic, level, { title, cards }, withScenes ? pictures : undefined) + `\nToday: ${new Date().toISOString().slice(0, 10)}` + (reference ? `\n\nReference material these cards must agree with (names and numbers in the cards should trace to it or to a named source):\n${reference}` : "") + (delivery ? `\n\nThis chapter must deliver:\n${delivery}` : "");
-  const r = await ctx.runAction(internal.ai.generate, { kind: "check", system: withScenes ? CHECK_SCENES_PROMPT_V3 : CHECK_PROMPT_V3, user, ...callOpts });
+  const r = await ctx.runAction(internal.ai.generate, { kind: "check", system: checkPrompt(withScenes), user, ...callOpts });
   if (!r.ok) return { cards, report: { status: "unchecked", fixes: 0, notes: [r.error], at: Date.now() }, scenes: [], added: 0 };
   const scenes: Scene[] = [];
   for (const x of withScenes && Array.isArray(r.json?.scenes) ? r.json.scenes : []) {
@@ -815,7 +815,7 @@ export async function factCheck(ctx: any, topic: string, level: string, title: s
   if (broken.length) {
     const again = `Topic: ${topic}\nThese cards had a real problem but your corrected version did not keep the card's shape (same "type", same fields; an exercise keeps exactly three options with ids a, b, c and "answer" one of them). Return the corrected WHOLE card for each, same shape as the original, in the same JSON format as before.\n` +
       broken.map(({ i, problem }) => `Card ${i} (problem: ${problem}):\n${JSON.stringify(out[i])}`).join("\n\n") + `\n\nReturn only this JSON: {"ok": false, "fixes": [{"card": <index>, "problem": "...", "fixed": <the corrected card>}]}`;
-    const r2 = await ctx.runAction(internal.ai.generate, { kind: "check", system: CHECK_PROMPT_V3, user: again, ...callOpts });
+    const r2 = await ctx.runAction(internal.ai.generate, { kind: "check", system: checkPrompt(false), user: again, ...callOpts });
     stillBroken = [];
     for (const b of broken) {
       const f = r2.ok ? (Array.isArray(r2.json?.fixes) ? r2.json.fixes : []).find((x: any) => Number(x?.card) === b.i) : null;
@@ -893,7 +893,9 @@ export const markRewrite = internalMutation({
 // connection that failed fast. Not a timeout ("time budget"), a refusal or a broken reply.
 export const quickFail = (error: unknown) => { const e = String(error ?? ""); return /Gemini (429|500|502|503)\b|fetch failed|ECONNRESET|socket hang up/i.test(e) && !/time budget|timeout|aborted/i.test(e); };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const CHAPTER_LIVE = CHAPTER_PROMPT_V6;
+// A prompt trial (D83, D84) runs only where PROMPT_TRIAL names it: dev, for npm run eval:gate. Read per call.
+const chapterLive = () => (promptTrial() === "sayBack" ? CHAPTER_PROMPT_SAYBACK : CHAPTER_PROMPT_V6);
+const checkPrompt = (withScenes: boolean) => (promptTrial() === "noWrong" ? (withScenes ? CHECK_SCENES_PROMPT_NOWRONG : CHECK_PROMPT_NOWRONG) : withScenes ? CHECK_SCENES_PROMPT_V3 : CHECK_PROMPT_V3);
 const CHAPTER_MODEL: string | undefined = "gemini-3.8-flash";
 const CHAPTER_BACKUP = { model: "claude-opus-5-5", effort: "medium" as const };
 // Paragraphs (one swipe each) and words across the body-bearing cards of a chapter reply (D27).
@@ -924,14 +926,14 @@ export const generateChapter = internalAction({
     const pieces: string[] | undefined = Array.isArray(planCh.pieces) ? planCh.pieces.map(String) : undefined;
     const ledgers = await ctx.runQuery(internal.handbooks.readLedgers, { handbookId });
     const user = chapterUserMessage(h.plan, h.level, h.language, h.voice ?? "friend", n, shareable ? undefined : prof.line, howTheyDid ?? undefined) + chapterContext((h as any).brief, h.plan, n, ledgers) + briefForChapter((h as any).brief, pieces);
-    let r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: CHAPTER_LIVE, user, model: pinned ?? CHAPTER_MODEL, trace });
+    let r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: pinned ?? CHAPTER_MODEL, trace });
     // Why a chapter left Flash, for the call log: "budget" (Gemini's time ran out), "error" (any other failure), "floor" (too short twice).
     let bounce: string | undefined;
     // A quick Gemini failure (503 "high demand", 429, a dropped connection) gets one more Gemini try after 5 s before
     // Opus; a timeout goes straight to Opus, since a retry would add another 150 s (11 Oct: 2 of 10 bounces on the
     // 28-day build were 503s at 16 s, 8 were timeouts). Same model, so no change to who writes.
-    if (!r.ok && !pinned && CHAPTER_MODEL && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: CHAPTER_LIVE, user, model: CHAPTER_MODEL, trace }); }
-    if (!r.ok && !pinned && CHAPTER_MODEL && !(h as any).test?.flashOnly) { bounce = /time budget/i.test(String(r.error)) ? "budget" : "error"; r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: CHAPTER_LIVE, user, ...CHAPTER_BACKUP, trace }); }
+    if (!r.ok && !pinned && CHAPTER_MODEL && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: CHAPTER_MODEL, trace }); }
+    if (!r.ok && !pinned && CHAPTER_MODEL && !(h as any).test?.flashOnly) { bounce = /time budget/i.test(String(r.error)) ? "budget" : "error"; r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, ...CHAPTER_BACKUP, trace }); }
     if (!r.ok) { await ctx.runMutation(internal.handbooks.setChapterFailed, { handbookId, n, error: r.error }); return; }
     // D27's length floor (30 paragraphs and 800 words, else a retry and then Opus) is left out on feat/handbook-shape
     // (9 Oct): a chapter's length is what the shape work decides. Its size is still logged for /admin.
@@ -1680,7 +1682,7 @@ export const writeVariant = internalAction({
     const h = await ctx.runQuery(internal.handbooks.readHandbook, { handbookId });
     if (!h?.plan) return;
     const prof = await ctx.runQuery(internal.handbooks.readProfileLine, { handbookId });
-    const r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: CHAPTER_LIVE, user: chapterUserMessage(h.plan, h.level, h.language, h.voice ?? "friend", n, prof.line), model });
+    const r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user: chapterUserMessage(h.plan, h.level, h.language, h.voice ?? "friend", n, prof.line), model });
     const ok = r.ok && Array.isArray(r.json?.cards) && r.json.cards.length >= 5;
     await ctx.runMutation(internal.handbooks.setVariant, { handbookId, n, key, model, chapter: ok ? r.json : null, error: ok ? undefined : (r.ok ? "shape" : r.error) });
   },
