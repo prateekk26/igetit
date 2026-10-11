@@ -20,6 +20,7 @@ import type * as doctor from "../doctor.js";
 import type * as evalArtifact from "../evalArtifact.js";
 import type * as evalCases from "../evalCases.js";
 import type * as evalChapterPrompt from "../evalChapterPrompt.js";
+import type * as evalDoOnce from "../evalDoOnce.js";
 import type * as evalModels from "../evalModels.js";
 import type * as evalPlanPrompt from "../evalPlanPrompt.js";
 import type * as evalResearch from "../evalResearch.js";
@@ -102,6 +103,7 @@ declare const fullApi: ApiFromModules<{
   evalArtifact: typeof evalArtifact;
   evalCases: typeof evalCases;
   evalChapterPrompt: typeof evalChapterPrompt;
+  evalDoOnce: typeof evalDoOnce;
   evalModels: typeof evalModels;
   evalPlanPrompt: typeof evalPlanPrompt;
   evalResearch: typeof evalResearch;

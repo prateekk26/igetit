@@ -966,7 +966,12 @@ export const generateChapter = internalAction({
     const cards = checked.cards.slice(0, kept.length + checked.added), recallCards = checked.cards.slice(kept.length + checked.added);
     const report = dropped ? { ...checked.report, notes: [...checked.report.notes, `${dropped} quiz${dropped === 1 ? "" : "zes"} dropped (malformed, or not wanted in this chapter)`] } : checked.report;
     await drawMoves(ctx, h.plan?.topic ?? h.topic, title, cards, trace);
-    const ledger = typeof ch.ledger === "string" ? ch.ledger.trim().slice(0, 1500) || undefined : ch.ledger && typeof ch.ledger === "object" ? ch.ledger : undefined;
+    // The ledger is the writer's own record of what it taught; when the fact check corrected a claim, the ledger still
+    // carried the old one and the next chapter's writer was told it had been taught (11 Oct night, read-and-count).
+    // The corrections ride along, so later chapters build on the fixed version. No extra model call.
+    const fixedNotes = report.notes.filter((x: string) => /^card \d+:/.test(x) && !/fix skipped/.test(x)).slice(0, 3).map((x: string) => x.replace(/^card \d+:\s*/, "").slice(0, 200));
+    const baseLedger = typeof ch.ledger === "string" ? ch.ledger.trim() : "";
+    const ledger = typeof ch.ledger === "string" ? `${baseLedger}${fixedNotes.length ? `\nCorrected by the fact check (build on the corrected version, never the old claim): ${fixedNotes.join(" | ")}` : ""}`.slice(0, 1500) || undefined : ch.ledger && typeof ch.ledger === "object" ? ch.ledger : undefined;
     await ctx.runMutation(internal.handbooks.setChapter, { handbookId, n, title, cards, recallCards, outcomeLine: String(ch.outcomeLine ?? ""), model: r.model, factCheck: report, scenes: checked.scenes.length ? checked.scenes : undefined, ...(ledger ? { ledger } : {}) });
     // A quick handbook's next chapter starts now, so it is written with this one's record (writer v6, 9 Oct). Only when
     // the next chapter does not exist yet: a rewrite of one chapter never rewrites the rest.
