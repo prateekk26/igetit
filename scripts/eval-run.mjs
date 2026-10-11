@@ -53,7 +53,10 @@ async function oneRun(c, k) {
   let ch = h?.chapters?.find((x) => x.n === 1);
   if (h?.plan && !ch) { await convex("evalShape:runChapter", { handbookId: id, n: 1 }); for (let i = 0; i < 60; i++) { await sleep(10000); h = await convex("evalShape:read", { handbookId: id }); ch = h?.chapters?.find((x) => x.n === 1); if (ch && ch.status !== "writing") break; } }
   const levels = ch?.status === "ready" && Object.keys(c.expect ?? {}).length ? await convex("rubric:scoreChapter", { handbookId: id, n: 1, levers: Object.keys(c.expect) }) : {};
-  const leverPass = Object.entries(c.expect ?? {}).map(([lever, min]) => [lever, levels?.[lever] ?? null, typeof levels?.[lever] === "number" && levels[lever] >= min]);
+  // "Teaches before it tests" can't apply to a chapter with no quiz: the scorer says "can't tell" (null) and that counts
+  // as not applicable when the chapter really has no exercise; any other null is a failure to look at.
+  const noQuiz = !(ch?.cards ?? []).some((x) => x?.type === "exercise");
+  const leverPass = Object.entries(c.expect ?? {}).map(([lever, min]) => [lever, levels?.[lever] ?? null, (typeof levels?.[lever] === "number" && levels[lever] >= min) || (lever === "taught" && levels?.[lever] == null && noQuiz)]);
   const chk = checks(c, h, ch);
   const needsChapter = Object.keys(c.expect ?? {}).length > 0;
   const pass = (!needsChapter || ch?.status === "ready") && leverPass.every((x) => x[2]) && chk.every((x) => x[1]);

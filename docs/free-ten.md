@@ -8,7 +8,7 @@ ai-first: true
 # The free ten
 
 ## For future agent
-Prateek picks one topic per round from three offered; record the pick under Picked, keep the rest in the Pool, stop at ten. Nothing here is built yet.
+Prateek picks one topic per round from three offered; record the pick under Picked, keep the rest in the Pool, stop at ten. All eleven are built and live (Hold a room on 10 Oct; the other ten on the night of 11 Oct, D74: hand plans in convex/plans/, built on dev with showcase.ts, tidied, read, copied to prod; redirects from the subject words in convex/freeTen.ts; the old "How Indian IPOs work" is off the Shelf but kept for its readers).
 
 Ten ready handbooks anyone can read start to finish, free (Prateek, 10 Oct: "make it free, the complete course ... a flavor of what's on offer"). Each shows a vision title on the shelf, not the subject (Prateek: "something like what MasterClass does but in a fun bite-sized manner"). Titles are (agent) placeholders until Prateek rewrites them.
 
