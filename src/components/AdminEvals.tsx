@@ -44,26 +44,26 @@ type Case = NonNullable<NonNullable<ReturnType<typeof useOverview>>['last']>['ca
 
 // One case: a tick when every run stayed at or above its floor, then each lever's level per run against floor and target.
 function CaseRow({ c }: { c: Case }) {
-  const levers = [...new Set([...Object.keys(c.expect ?? {}), ...Object.keys(c.floor ?? {})])]
+  const levers = [...new Set([...Object.keys(c.expect ?? {}), ...Object.keys(c.base ?? {})])]
   return (
     <li className="adm-case">
-      <span className={c.floorHeld ? 'adm-ok' : 'adm-bad'} aria-label={c.floorHeld ? 'Floor held' : 'Fell below its floor'}>{c.floorHeld ? '✓' : '✗'}</span>
+      <span className={c.failed ? 'adm-bad' : c.floorHeld ? 'adm-ok' : 'adm-warn'} aria-label={c.failed ? 'Failed a safety check or wrote no chapter' : c.floorHeld ? 'Steady' : 'Dropped a full level or more: look at it'}>{c.failed ? '✗' : c.floorHeld ? '✓' : '⚑'}</span>
       <span>
-        <b>{c.name}</b>{c.errored && <small> · this run errored</small>}
+        <b>{c.name}</b>{c.errored && <small> · this run errored</small>}{(c.crashed ?? 0) > 0 && <small className="adm-warn"> · {c.crashed} run{c.crashed === 1 ? '' : 's'} crashed before chapter 1</small>}
         {c.before !== null && c.before !== (c.passes === c.runs) && <small className={c.before ? 'adm-down' : 'adm-up'}> · {c.before ? 'broke' : 'fixed'} since last run</small>}
         <br />
         {levers.map((l) => {
-          const floor = c.floor?.[l], target = c.expect?.[l]
+          const base = c.base?.[l], avg = c.avg?.[l], target = c.expect?.[l], dropped = c.drops?.includes(l)
           return (
             <small key={l} className="adm-case-lever">
               {SHORT[l] ?? l}:{' '}
               {c.levels.map((x: Record<string, number | null> | null, i: number) => {
                 const v = x?.[l]
-                const low = typeof v === 'number' && typeof floor === 'number' && v < floor
-                const unsure = x !== null && v == null && typeof floor === 'number'
-                return <span key={i} className={low ? 'adm-down' : unsure ? 'adm-warn' : typeof v === 'number' && typeof target === 'number' && v >= target ? 'adm-up' : ''}>{i ? ' · ' : ''}{x === null ? 'error' : v ?? "can't tell"}</span>
+                const unsure = x !== null && v == null && typeof base === 'number'
+                return <span key={i} className={unsure ? 'adm-warn' : typeof v === 'number' && typeof target === 'number' && v >= target ? 'adm-up' : ''}>{i ? ' · ' : ''}{x === null ? 'error' : v ?? "can't tell"}</span>
               })}
-              {' '}({typeof floor === 'number' ? `floor ${floor}` : 'no floor'}{typeof target === 'number' ? `, target ${target}` : ''})
+              {typeof avg === 'number' && <> → <em className={dropped ? 'adm-warn' : ''}>avg {avg}</em></>}
+              {' '}({typeof base === 'number' ? `last night ${base}` : 'not graded last night'}{typeof target === 'number' ? `, target ${target}` : ''})
             </small>
           )
         })}
@@ -85,25 +85,29 @@ function LastRun({ o }: { o: NonNullable<ReturnType<typeof useOverview>> }) {
     </section>
   )
   const keep = r.cases.filter((c) => c.list === 'keep'), fix = r.cases.filter((c) => c.list !== 'keep')
-  const held = r.cases.filter((c) => c.floorHeld).length, met = r.cases.filter((c) => c.passes === c.runs).length
+  const flagged = r.cases.filter((c) => !c.floorHeld && !c.failed).length, met = r.cases.filter((c) => c.passes === c.runs).length
   return (
     <section className="adm-card adm-wide">
       <h2>Last test run <span className={`adm-pill ${r.gate}`}>{r.gate === 'pass' ? 'Gate passed' : r.gate === 'fail' ? 'Gate failed' : 'Baseline'}</span></h2>
       <p className="note">{when(r.at)} · {r.cases.length} cases × {r.runs} run{r.runs === 1 ? '' : 's'} · rubric {r.rubric} · ₹{r.inr.toLocaleString('en-IN')}{r.full ? '' : ' · a partial run'}</p>
       <div className="adm-chain adm-chain-sm">
-        <div className={`adm-tile ${r.gate === 'baseline' ? '' : held === r.cases.length ? 'adm-tile-good' : 'adm-tile-bad'}`}><b>{held} of {r.cases.length}</b><span>Held their floor</span><small>{r.gate === 'baseline' ? "The floors were set from this run. A grade the grader couldn't decide is left out and flagged" : 'The gate: a release is blocked when any case falls below the level it reached on 11 Oct, or fails a safety check'}</small></div>
+        {Object.entries((r.pooled ?? {}) as Record<string, { avg: number; n: number; base: number | null }>).map(([l, p]) => {
+          const d = typeof p.base === 'number' ? Math.round((p.avg - p.base) * 100) / 100 : null
+          return <div key={l} className={`adm-tile ${r.gate === 'baseline' || d === null ? '' : d < -0.25 ? 'adm-tile-bad' : 'adm-tile-good'}`}><b>{p.avg}</b><span>{SHORT[l] ?? l}, all topics</span><small>{r.gate === 'baseline' ? `Average of ${p.n} grades; later runs are compared with it` : `Average of ${p.n} grades; last night ${p.base ?? '—'}${d !== null ? ` (${d >= 0 ? '+' : ''}${d})` : ''}. The gate fails on a drop of more than 0.25`}</small></div>
+        })}
         <div className="adm-tile"><b>{met} of {r.cases.length}</b><span>Met their target every run</span><small>What we're working toward; a fix-next case moves to keep after three runs in a row</small></div>
       </div>
+      {flagged > 0 && <p className="note adm-warn">{flagged} topic{flagged === 1 ? '' : 's'} down a full level or more: marked ⚑ below.</p>}
       <h3>Must keep working · {keep.length}</h3>
       <ul className="adm-list">{keep.map((c) => <CaseRow key={c.name} c={c} />)}</ul>
       <h3>Fix next · {fix.length}</h3>
       <ul className="adm-list">{fix.map((c) => <CaseRow key={c.name} c={c} />)}</ul>
       {o.earlier.length > 0 && (
         <details className="adm-earlier"><summary><small>Earlier runs ({o.earlier.length})</small></summary>
-          <ul className="adm-list">{o.earlier.map((e) => <li key={e.stamp}><span>{when(e.at)} · {e.cases} cases × {e.runs}{e.full ? '' : ' (partial)'}</span><small>{e.held} of {e.cases} held · gate {e.gate}</small></li>)}</ul>
+          <ul className="adm-list">{o.earlier.map((e) => <li key={e.stamp}><span>{when(e.at)} · {e.cases} cases × {e.runs}{e.full ? '' : ' (partial)'}</span><small>gate {e.gate}</small></li>)}</ul>
         </details>
       )}
-      <p className="note">The levels per run read left to right; red is below the floor, green at or above the target, amber a grade the grader couldn't decide (left out of the gate unless every run is one). Cases and floors: evals/cases.json. Full report: evals/runs/{r.stamp}/report.md.</p>
+      <p className="note">The grades per run read left to right, then their average against last night's; ⚑ and amber mark a topic down a full level or more (look at it, it doesn't fail the gate), green a grade at or above the target, amber "can't tell" a grade the grader couldn't decide (left out of the average). ✗ is a failed safety check or no chapter written, which fails the gate. Cases and floors: evals/cases.json. Full report: evals/runs/{r.stamp}/report.md.</p>
     </section>
   )
 }

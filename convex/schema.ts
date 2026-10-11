@@ -390,10 +390,10 @@ export default defineSchema({
   // D82 (11 Oct): each eval run's summary, sent by scripts/eval-run.mjs to prod so /admin Evals shows the last test run.
   // Case names, levels and cost only; the typed lines live in evals/cases.json, never a reader's data.
   evalRuns: defineTable({
-    stamp: v.string(), at: v.number(), rubric: v.string(), runs: v.number(), full: v.boolean(), gate: v.union(v.literal("pass"), v.literal("fail"), v.literal("baseline")), inr: v.number(),
+    stamp: v.string(), at: v.number(), rubric: v.string(), runs: v.number(), full: v.boolean(), gate: v.union(v.literal("pass"), v.literal("fail"), v.literal("baseline")), inr: v.number(), pooled: v.optional(v.any()),
     cases: v.array(v.object({
       name: v.string(), list: v.string(), floorHeld: v.boolean(), passes: v.number(), runs: v.number(), errored: v.boolean(),
-      levels: v.array(v.any()), floor: v.any(), expect: v.any(), failedChecks: v.array(v.string()), before: v.union(v.boolean(), v.null()), unsure: v.optional(v.array(v.string())),
+      levels: v.array(v.any()), floor: v.any(), expect: v.any(), failedChecks: v.array(v.string()), before: v.union(v.boolean(), v.null()), failed: v.optional(v.boolean()), unsure: v.optional(v.array(v.string())), base: v.optional(v.any()), avg: v.optional(v.any()), drops: v.optional(v.array(v.string())), crashed: v.optional(v.number()),
     })),
   }).index("by_at", ["at"]).index("by_stamp", ["stamp"]),
   aiCalls: defineTable({

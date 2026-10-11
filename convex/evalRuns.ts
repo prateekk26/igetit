@@ -13,15 +13,15 @@ export const CHECK_GOAL = 30; // Advanced evals: about 30 chapters, a mix of goo
 
 const caseRow = v.object({
   name: v.string(), list: v.string(), floorHeld: v.boolean(), passes: v.number(), runs: v.number(), errored: v.boolean(),
-  levels: v.array(v.any()), floor: v.any(), expect: v.any(), failedChecks: v.array(v.string()), before: v.union(v.boolean(), v.null()), unsure: v.optional(v.array(v.string())),
+  levels: v.array(v.any()), floor: v.any(), expect: v.any(), failedChecks: v.array(v.string()), before: v.union(v.boolean(), v.null()), failed: v.optional(v.boolean()), unsure: v.optional(v.array(v.string())), base: v.optional(v.any()), avg: v.optional(v.any()), drops: v.optional(v.array(v.string())), crashed: v.optional(v.number()),
 });
 
 export const record = internalMutation({
-  args: { stamp: v.string(), at: v.number(), rubric: v.string(), runs: v.number(), full: v.boolean(), inr: v.number(), cases: v.array(caseRow), baseline: v.optional(v.boolean()) },
-  handler: async (ctx, { baseline, ...a }) => {
+  args: { stamp: v.string(), at: v.number(), rubric: v.string(), runs: v.number(), full: v.boolean(), inr: v.number(), cases: v.array(caseRow), baseline: v.optional(v.boolean()), pass: v.optional(v.boolean()), pooled: v.optional(v.any()) },
+  handler: async (ctx, { baseline, pass, ...a }) => {
     const old = await ctx.db.query("evalRuns").withIndex("by_stamp", (q) => q.eq("stamp", a.stamp)).unique();
     // The baseline run (11 Oct) came before floors existed; the floors were set from it, so it is not a gate result.
-    const row = { ...a, gate: (baseline ? "baseline" : a.cases.every((c) => c.floorHeld) ? "pass" : "fail") as "pass" | "fail" | "baseline" };
+    const row = { ...a, gate: (baseline ? "baseline" : (pass ?? a.cases.every((c) => c.floorHeld)) ? "pass" : "fail") as "pass" | "fail" | "baseline" };
     if (old) await ctx.db.replace(old._id, row); else await ctx.db.insert("evalRuns", row);
     return row.gate;
   },
@@ -48,7 +48,7 @@ export const overview = query({
     return {
       rubric: RUBRIC_VERSION, levers,
       checked: new Set(mine.map((h) => `${h.handbookId}#${h.n}`)).size, goal: CHECK_GOAL,
-      last: last && { stamp: last.stamp, at: last.at, rubric: last.rubric, runs: last.runs, full: last.full, gate: last.gate, inr: last.inr, cases: last.cases },
+      last: last && { stamp: last.stamp, at: last.at, rubric: last.rubric, runs: last.runs, full: last.full, gate: last.gate, inr: last.inr, pooled: last.pooled ?? null, cases: last.cases },
       earlier: runs.filter((r) => r._id !== last?._id).map((r) => ({ stamp: r.stamp, at: r.at, runs: r.runs, full: r.full, gate: r.gate, cases: r.cases.length, held: r.cases.filter((c) => c.floorHeld).length })),
     };
   },
