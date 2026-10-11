@@ -34,6 +34,7 @@ What the agent did not do on its own, by rule: anything published or sent in Pra
 | 24 | "Free, every chapter" shelf | First shelf after the Spotlight and the Awards, all 11, with "Complete courses, free to the last chapter. Chapter 1 needs no sign-up." | Nothing told a reader these are free to the end | Live at 390 px: all 11 on it, covers drawn |
 | 25 | Try it pages never wider than their frame | The frame's style caps every element at the frame's width | 10 of 34 Try it pages on the eleven were cut on the right (laid out at 358 px in a 342 px frame) | All 34 at 342 px: 0 overflow after; the raise page live shows "HR / his boss" whole |
 | 26 | Launch footage | 1080x1920 screen recordings of chapter 1 for all eleven free handbooks, Try it taps included (docs/launch/screens/, kept out of git like the rest of docs/launch) | The --screen input for the reel editor, or visuals-only cuts | Contact sheets checked |
+| 27 | The baseline eval run, read (D80) | 20 cases x 3 runs on dev (about 2 h): only 3 met their target every time; course chapter 1s sit at outcome L3; facts L2 to L3 on tides, Avengers, photosynthesis; "wrong"/"incorrect" in 7 of 20, always descriptive; the harmful line and the injection held 3 of 3. The gate now guards floors (the baseline's lowest levels) and hard checks; targets show progress (evals/runs/2026-10-11T00-19-53/summary.md) | A gate that blocks every release teaches nothing; "keep" means what passes today | Runner checked on two cases after the change: gate PASS, floors held; one case hit a network error, so the runner now retries those and labels them instead of calling them "broke" |
 
 ## The handbook, Pick an idea to Submit
 
@@ -50,6 +51,14 @@ What the agent did not do on its own, by rule: anything published or sent in Pra
 | Product Launch Video | Hook, two story parts, promise or offer, a minute, posted with two more hooks | Script, hooks and shot list ready; shooting and posting are Prateek's |
 | Scoring | Pick a track, score yourself, know the row to fix | Done (scorecard.md); Prateek picks the track |
 | Submit | Live URL, public repo, numbers with screenshots, paragraph, submitted by 11:00 on 17 Oct | Pack ready (submission.md); screenshots and submitting are Prateek's |
+
+## Proposals (measured, not changed: Prateek's call)
+
+1. **Story recaps: one "say it back in a sentence" line.** Rubric r2 counts a retell prompt as doing it for a recap; today's story rule ("no exercises at all") doesn't ask for one, so recaps stay at outcome L3. Judge it with npm run eval:gate before it ships.
+2. **The "wrong"/"incorrect" rule.** Keep it literal (then the fact check should rephrase those words) or narrow it to feedback on the reader's answers. Today it fires on "the wrong cluster" and "Get it wrong and start again" in 7 of 20 chapter 1s.
+3. **Fact check: titles and every card.** The reading pass found a check that fixed a claim in the body and left it in the chapter title, and another that fixed one card but not the same claim on another (docs/evals/read-2026-10-11.md).
+4. **"AI agents" (ready topic) is written for Europe**: euros, Lisbon, foreign names. A rewrite with Indian examples, or off the Shelf.
+5. **Writer and plan "do it once" rules: don't.** Both tested head to head (evals/do-once-2026-10-11.md): no lift, and facts fell on chess.
 
 ## Waiting on Prateek
 

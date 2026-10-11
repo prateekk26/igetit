@@ -18,9 +18,15 @@ const CONCURRENCY = Number(arg("--concurrency", 4));
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const OUT = `evals/runs/${stamp}`;
 
-const convex = async (fn, args, prod = false) => {
-  const { stdout } = await run("npx", ["convex", "run", ...(prod ? ["--prod"] : []), fn, JSON.stringify(args)], { maxBuffer: 50 * 1024 * 1024, timeout: 11 * 60 * 1000 });
-  const t = stdout.trim(); return t ? JSON.parse(t) : null;
+// A "fetch failed" from the command line is the network, not the product (3 of 62 runs on 11 Oct): try twice more.
+const convex = async (fn, args, prod = false, tries = 3) => {
+  try {
+    const { stdout } = await run("npx", ["convex", "run", ...(prod ? ["--prod"] : []), fn, JSON.stringify(args)], { maxBuffer: 50 * 1024 * 1024, timeout: 11 * 60 * 1000 });
+    const t = stdout.trim(); return t ? JSON.parse(t) : null;
+  } catch (e) {
+    if (tries > 1 && /fetch failed|ECONNRESET|ETIMEDOUT/i.test(String(e?.stderr || e?.message || e))) { await new Promise((r) => setTimeout(r, 5000)); return convex(fn, args, prod, tries - 1); }
+    throw e;
+  }
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -84,7 +90,7 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
 const prevDir = existsSync("evals/runs") ? readdirSync("evals/runs").filter((d) => d < stamp).sort().pop() : null;
 const prev = prevDir ? JSON.parse(readFileSync(`evals/runs/${prevDir}/results.json`, "utf8")) : null;
 // A run that errored before scoring (a network blip in the CLI) is retried by the next run, not counted against the floor.
-const rows = Object.values(results).map((r) => ({ ...r, passed: r.runs.every((x) => x.pass), passes: r.runs.filter((x) => x.pass).length, floorHeld: r.runs.filter((x) => !x.error).every((x) => x.floorPass), before: prev?.cases?.find((p) => p.name === r.name)?.passed ?? null }));
+const rows = Object.values(results).map((r) => ({ ...r, errored: r.runs.every((x) => x.error), passed: r.runs.every((x) => x.pass), passes: r.runs.filter((x) => x.pass).length, floorHeld: r.runs.filter((x) => !x.error).every((x) => x.floorPass), before: prev?.cases?.find((p) => p.name === r.name)?.passed ?? null }));
 const keepFails = rows.filter((r) => !r.floorHeld);
 mkdirSync(OUT, { recursive: true });
 writeFileSync(`${OUT}/results.json`, JSON.stringify({ at: stamp, runs: RUNS, rubric: file.rubric, previous: prevDir, cases: rows }, null, 2));
@@ -92,7 +98,7 @@ const L = [`# Eval run ${stamp}`, "", `${rows.length} cases, ${RUNS} run(s) each
   `Floors held: ${rows.filter((r) => r.floorHeld).length} of ${rows.length} (the gate). Targets met in every run: ${rows.filter((r) => r.passed).length} of ${rows.length} (keep ${rows.filter((r) => r.list === "keep" && r.passed).length} of ${rows.filter((r) => r.list === "keep").length}, fix next ${rows.filter((r) => r.list === "fix" && r.passed).length} of ${rows.filter((r) => r.list === "fix").length}).`,
   keepFails.length ? `**Gate: FAIL** (${keepFails.map((r) => r.name).join(", ")})` : "**Gate: PASS**", "",
   "| Case | List | Floor held | Target met | Before | Levels per run | Failed checks |", "|---|---|---|---|---|---|---|",
-  ...rows.map((r) => `| ${r.name} | ${r.list} | ${r.floorHeld ? "yes" : "**no**"} | ${r.passes}/${r.runs.length} | ${r.before === null ? "-" : r.before ? "pass" : "fail"}${r.before !== null && r.before !== r.passed ? (r.passed ? " (fixed)" : " (broke)") : ""} | ${r.runs.map((x) => Object.entries(x.levels ?? {}).map(([l, v]) => `${l} ${v}`).join(", ") || x.status || x.error || "-").join(" / ")} | ${[...new Set(r.runs.flatMap((x) => x.failedChecks ?? []))].join(", ") || "-"} |`),
+  ...rows.map((r) => `| ${r.name} | ${r.list} | ${r.floorHeld ? "yes" : "**no**"} | ${r.passes}/${r.runs.length} | ${r.before === null ? "-" : r.before ? "pass" : "fail"}${r.errored ? " (this run errored)" : r.before !== null && r.before !== r.passed ? (r.passed ? " (fixed)" : " (broke)") : ""} | ${r.runs.map((x) => Object.entries(x.levels ?? {}).map(([l, v]) => `${l} ${v}`).join(", ") || x.status || x.error || "-").join(" / ")} | ${[...new Set(r.runs.flatMap((x) => x.failedChecks ?? []))].join(", ") || "-"} |`),
   "", "Fix next cases that pass all runs here and in the next run move to keep (edit evals/cases.json)."];
 writeFileSync(`${OUT}/report.md`, L.join("\n") + "\n");
 log(`report: ${OUT}/report.md`, keepFails.length ? `GATE FAIL: ${keepFails.map((r) => r.name).join(", ")}` : "GATE PASS");
