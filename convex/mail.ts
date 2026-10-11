@@ -22,3 +22,15 @@ export const sendCode = internalAction({
     });
   },
 });
+
+// D73 (11 Oct): an owner alert (convex/watch.ts), only when ALERT_EMAIL is set in the Convex env, only to that address,
+// at most one per kind an hour. Never to readers.
+export const sendAlert = internalAction({
+  args: { to: v.string(), kinds: v.array(v.string()) },
+  handler: async (_ctx, { to, kinds }): Promise<void> => {
+    const user = process.env.GMAIL_USER, pass = process.env.GMAIL_APP_PASSWORD;
+    if (!user || !pass || to !== process.env.ALERT_EMAIL) return;
+    const t = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
+    await t.sendMail({ from: `I Get It alerts <${user}>`, to, subject: `I Get It: ${kinds.join(" and ")} alert`, text: `Something needs a look: ${kinds.join(", ")} in the last hour.\n\nDetails at the top of /admin (www.igetit.now/admin).` });
+  },
+});

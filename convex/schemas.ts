@@ -151,7 +151,9 @@ export const researchV8 = researchV7.extend({
   facts: z.array(z.looseObject({ part: str, fact: str })).min(1).max(40),
 });
 
-export const SCHEMAS: Record<string, z.ZodType> = { plan, chapter, check, versions, scenes, intent, match, teach, research, artifact, move, researchV4, researchV6, researchV7, researchV8, library, stories };
+// D72 (11 Oct): the rubric scorer's verdict on one lever of one chapter (convex/rubric.ts).
+const score = z.looseObject({ level: z.number().int().min(1).max(5).nullable(), quote: str, why: str, cantTell: z.boolean().optional() });
+export const SCHEMAS: Record<string, z.ZodType> = { plan, chapter, check, versions, scenes, intent, match, teach, research, artifact, move, researchV4, researchV6, researchV7, researchV8, library, stories, score };
 
 // The problems with a reply, in a few short lines the model can act on; null when it fits.
 export function problems(kind: string, json: unknown): string | null {

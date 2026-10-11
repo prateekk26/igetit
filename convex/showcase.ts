@@ -3,7 +3,19 @@ import { internalAction, internalMutation, internalQuery } from "./_generated/se
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { HOLD_A_ROOM } from "./showcasePlans";
-import { drawMoves, topicKeyOf } from "./handbooks";
+// The free ten (11 Oct night, agent; Prateek: "All the pending handbooks as well"): hand plans written to the same bar
+// as HOLD_A_ROOM (one running example, a Try it card by card 3 of chapter 1, 7 chapters of under 5 minutes each).
+import { PLAN as LANDS_YOUR_JOB } from "./plans/lands_your_job";
+import { PLAN as ASK_RAISE } from "./plans/ask_raise";
+import { PLAN as ENGLISH } from "./plans/english";
+import { PLAN as IPO } from "./plans/ipo";
+import { PLAN as PUTTING_OFF } from "./plans/putting_off";
+import { PLAN as MULTIBAGGERS } from "./plans/multibaggers";
+import { PLAN as FNO } from "./plans/fno";
+import { PLAN as AI_WORK } from "./plans/ai_work";
+import { PLAN as CREDIT_CARD } from "./plans/credit_card";
+import { PLAN as CAR } from "./plans/car";
+import { drawMoves, topicKeyOf, factCheck } from "./handbooks";
 
 // D65 (Prateek, 10 Oct): the showcase handbooks of the free eleven, written with exactly the steps a reader's handbook
 // gets (research for the goal, the chapter writer with "Already taught", the fact check, Try it pages, quiz versions),
@@ -12,7 +24,33 @@ import { drawMoves, topicKeyOf } from "./handbooks";
 // Run: npx convex run showcase:build '{"key":"hold-a-room"}'   then watch: npx convex run showcase:status '{"handbookId":"..."}'
 
 const OWNER = "showcase-build";
-const PLANS: Record<string, typeof HOLD_A_ROOM> = { "hold-a-room": HOLD_A_ROOM };
+export const PLANS: Record<string, any> = {
+  "hold-a-room": HOLD_A_ROOM, "lands-your-job": LANDS_YOUR_JOB, "ask-raise": ASK_RAISE, english: ENGLISH, ipo: IPO, "putting-off": PUTTING_OFF,
+  multibaggers: MULTIBAGGERS, fno: FNO, "ai-work": AI_WORK, "credit-card": CREDIT_CARD, car: CAR,
+};
+const KIT = new Set(["picture", "teach", "example", "mistake", "try", "move", "doit", "steps", "tryit", "exercise", "quiz", "watch", "breath"]);
+
+// Every plan against the bar before anything is written: 3 to 7 chapters (28 for hold-a-room), blocks from the kit,
+// a Try it card among chapter 1's first three blocks, outcome lines, no "incorrect"/"wrong".
+//   npx convex run showcase:checkPlans '{}'
+export const checkPlans = internalQuery({
+  args: {},
+  handler: async () => Object.entries(PLANS).map(([key, p]) => {
+    const ch: any[] = p.chapters ?? [];
+    const issues: string[] = [];
+    if (key !== "hold-a-room" && (ch.length < 3 || ch.length > 7)) issues.push(`${ch.length} chapters`);
+    ch.forEach((c, i) => {
+      const bad = (c.blocks ?? []).filter((b: string) => !KIT.has(b));
+      if (bad.length) issues.push(`ch${i + 1} blocks ${bad.join(",")}`);
+      if (!c.outcome) issues.push(`ch${i + 1} no outcome`);
+      if ((c.readMinutes ?? 3) > 4) issues.push(`ch${i + 1} ${c.readMinutes} min`);
+    });
+    const t1 = (ch[0]?.blocks ?? []).indexOf("tryit");
+    if (t1 < 0 || t1 > 2) issues.push(`ch1 tryit at ${t1 + 1}`);
+    if (/\b(incorrect|wrong)\b/i.test(JSON.stringify(p))) issues.push("says incorrect/wrong");
+    return { key, topic: p.topic, mode: p.mode, caution: p.caution, chapters: ch.length, tryits: ch.filter((c) => (c.blocks ?? []).includes("tryit")).length, issues };
+  }),
+});
 
 export const create = internalMutation({
   args: { key: v.string() },
@@ -40,7 +78,7 @@ export const build = internalAction({
     if (!handbookId) {
       await ctx.runMutation(internal.handbooks.markResearch, { handbookId: id });
       await ctx.runAction(internal.research.run, { handbookId: id }).catch((e: any) => console.log("showcase research failed", String(e).slice(0, 200)));
-      const chapters = plan.chapters.map((c, i) => ({ ...c, n: i + 1 }));
+      const chapters = plan.chapters.map((c: any, i: number) => ({ ...c, n: i + 1 }));
       await ctx.runMutation(internal.handbooks.setPlan, { handbookId: id, plan: { ...plan, chapters }, topic: plan.topic });
     }
     await ctx.scheduler.runAfter(0, internal.showcase.step, { handbookId: id, n: from ?? 1, tries: 0 });
@@ -155,5 +193,29 @@ export const seedPart = internalMutation({
     }
     if (last) await ctx.scheduler.runAfter(0, internal.shelf.syncReadyTopic, { topic });
     return keys;
+  },
+});
+
+// A chapter left "unchecked" only because the checker wanted the plain "try" card typed "tryit" (fixTryit does that
+// afterwards) or did not know the "picture" type (11 Oct night, the free ten): check it again with each Try it card
+// shown as its idea line and kept exactly as built, and each picture card shown as a teach card, its corrected words
+// put back into the picture card. Nothing is inserted (no delivery check), so card positions hold.
+//   npx convex run showcase:recheck '{"handbookId":"...","n":1}'
+export const recheck = internalAction({
+  args: { handbookId: v.id("handbooks"), n: v.number() },
+  handler: async (ctx, { handbookId, n }): Promise<any> => {
+    const h: any = await ctx.runQuery(internal.handbooks.readHandbook, { handbookId });
+    const ch: any = await ctx.runQuery(internal.handbooks.readChapterRow, { handbookId, n });
+    if (!h || !ch?.cards) return { ok: false };
+    const sent = ch.cards.map((c: any) => c?.type === "tryit" ? { type: "tryit", title: c.title, idea: c.idea } : c?.type === "picture" ? { type: "teach", ...(c.title ? { title: c.title } : {}), body: c.body ?? "" } : c);
+    const checked = await factCheck(ctx, h.plan?.topic ?? h.topic, h.level, ch.title ?? "", sent, { trace: { handbookId, chapter: n } as any });
+    const cards = ch.cards.map((orig: any, i: number) => {
+      const c = checked.cards[i];
+      if (orig?.type === "tryit") return orig;
+      if (orig?.type === "picture") return c?.type === "teach" && typeof c.body === "string" ? { ...orig, body: c.body, ...(c.title ? { title: c.title } : {}) } : orig;
+      return c ?? orig;
+    });
+    await ctx.runMutation(internal.handbooks.patchCheckedCards, { id: ch._id, cards, factCheck: { ...checked.report, notes: ["re-checked 11 Oct (Try it cards kept as built, picture cards checked as text)", ...checked.report.notes] } });
+    return { status: checked.report.status, fixes: checked.report.fixes, notes: checked.report.notes };
   },
 });

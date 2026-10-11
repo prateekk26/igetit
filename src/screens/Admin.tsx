@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import AdminPipeline from '../components/AdminPipeline'
 import AdminReview from '../components/AdminReview'
+import { AdminAlerts, AdminRuns, AdminQuality } from '../components/AdminWatch'
 import { SECTIONS } from '../../convex/shelfSections'
 import { deviceToken } from '../lib/device'
 import { useConvexAuth, useMutation, useQuery } from 'convex/react'
@@ -49,7 +50,7 @@ export default function Admin() {
           {tab === 'trending' && <><TrendingCard /><ExperimentsCard /></>}
           {tab === 'payments' && <PaymentsCard />}
           {/* AI and cost together (8 Oct, Tanisha): what every step takes and costs, by handbook, then spend by day. */}
-          {tab === 'ai' && <><ProviderSwitch /><AdminPipeline /><CostsCard /></>}
+          {tab === 'ai' && <><AdminAlerts /><ProviderSwitch /><AdminPipeline /><AdminRuns /><AdminQuality /><CostsCard /></>}
 
           {tab === 'people' && <>
           <PeopleCard rows={d.recent as any} />

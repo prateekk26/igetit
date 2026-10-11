@@ -13,4 +13,6 @@ crons.daily("handbook doctor", { hourUTC: 22, minuteUTC: 30 }, internal.doctor.s
 crons.interval("export to Langfuse", { minutes: 2 }, internal.langfuse.exportNew, {});
 // Every 2 minutes: the same calls, numbers only, to PostHog's LLM analytics (convex/posthogAi.ts, D69). Nothing without POSTHOG_KEY.
 crons.interval("export to PostHog AI", { minutes: 2 }, internal.posthogAi.exportNew, {});
+// Every 10 minutes: a failure or cost spike in the last hour becomes an alert on /admin (convex/watch.ts, D73).
+crons.interval("alerts", { minutes: 10 }, internal.watch.check, {});
 export default crons;

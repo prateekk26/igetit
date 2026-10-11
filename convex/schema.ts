@@ -369,6 +369,19 @@ export default defineSchema({
     inr: v.number(),
   }).index("by_day_model_kind", ["day", "model", "kind"]),
 
+  // D73 (11 Oct): owner alerts on a failure or cost spike (convex/watch.ts), shown on /admin until acknowledged.
+  alerts: defineTable({ kind: v.string(), at: v.number(), message: v.string(), value: v.number(), threshold: v.number(), ackedAt: v.optional(v.number()) }).index("by_at", ["at"]),
+  // D72 (11 Oct): rubric scores, one row per lever per chapter (convex/rubric.ts). level 1 to 5, or null when the scorer
+  // can't tell; quote is the line it scored, so a reader can check it in seconds.
+  scores: defineTable({
+    handbookId: v.id("handbooks"), n: v.number(), lever: v.string(), level: v.union(v.number(), v.null()),
+    quote: v.string(), why: v.string(), model: v.string(), rubric: v.string(), at: v.number(),
+  }).index("by_handbook_n", ["handbookId", "n"]).index("by_at", ["at"]),
+  // D72: the eval test set. list "fix" (fails today, what we work on) or "keep" (passes today; one failure blocks a release).
+  evalCases: defineTable({
+    name: v.string(), list: v.union(v.literal("fix"), v.literal("keep")), topic: v.string(), level: v.union(v.literal("new"), v.literal("some")),
+    goal: v.optional(v.string()), mode: v.optional(v.string()), expect: v.any(), source: v.string(), note: v.optional(v.string()), createdAt: v.number(),
+  }).index("by_name", ["name"]),
   aiCalls: defineTable({
     kind: v.string(),
     model: v.string(),

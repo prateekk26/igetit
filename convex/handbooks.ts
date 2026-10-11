@@ -977,6 +977,9 @@ export const generateChapter = internalAction({
     // ₹6 a chapter and a review does not read them.
     if (!(h as any).test?.noVersions && (cards.some((c: any) => c?.type === "exercise") || recallCards.length)) await ctx.scheduler.runAfter(0, internal.handbooks.addQuizVersions, { handbookId, n, shareable });
     if (shareable && n > 1 && !h.test) await ctx.runMutation(internal.library.saveChapter, { handbookId, n });
+    // D72 (11 Oct): every chapter is scored on the rubric in the background (convex/rubric.ts), a minute later so a
+    // showcase build's Try it repair lands first. A reader never waits on it.
+    await ctx.scheduler.runAfter(60000, internal.rubric.scoreChapter, { handbookId, n });
     // Pictures come after the words. Chapter 1 is drawn now (it opens at once and gives the cover); later chapters are
     // drawn when the reader first opens them (openChapter), so a chapter written but never opened costs no pictures (7 Oct).
     if (n === 1) await ctx.scheduler.runAfter(0, internal.images.forChapter, { handbookId, n });
