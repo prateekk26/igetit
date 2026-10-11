@@ -360,6 +360,37 @@ export const missingPictures = internalQuery({
   },
 });
 
+// The same, a page at a time (11 Oct night): the one-query version read 13.9 MB of the 16 MB a function may read once
+// the free eleven were in (every ready topic's chapters, cards and all), so it would soon fail. images.backfillMissing
+// walks these pages.
+export const missingCachePage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  handler: async (ctx, { cursor }) => {
+    const page = await ctx.db.query("cache").paginate({ cursor, numItems: 6 });
+    const rows = page.page.filter((r) => r.level === "new").map((r) => ({
+      topic: r.topic, topicKey: r.topicKey,
+      ns: (r.chapters as any[]).filter((ch) => { const got = (ch.pictures ?? []).filter((p: any) => p.storageId).length; return ch.n === 1 ? got < 3 && !FROZEN.has(r.topic) : got < 4; }).map((ch) => ch.n as number),
+    }));
+    return { rows, cursor: page.continueCursor, done: page.isDone };
+  },
+});
+export const missingLivePage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  handler: async (ctx, { cursor }) => {
+    const since = Date.parse("2026-10-07T14:30:00Z");
+    const page = await ctx.db.query("handbooks").withIndex("by_created", (q) => q.gt("createdAt", since)).paginate({ cursor, numItems: 40 });
+    const live: { handbookId: any; n: number }[] = [];
+    for (const h of page.page) {
+      if (h.hiddenAt || h.source !== "live") continue;
+      for (const ch of await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id)).collect()) {
+        if (ch.status !== "ready" || !ch.cards) continue;
+        if ((ch.pictures ?? []).filter((p) => p.storageId && !p.credit).length <= 1) live.push({ handbookId: h._id, n: ch.n });
+      }
+    }
+    return { live, cursor: page.continueCursor, done: page.isDone };
+  },
+});
+
 // ---------- picture shrinking (8 Oct night; images.ts shrinkAll) ----------
 // A page of rows from one table, with every picture file id the row holds.
 const PICS = (xs: any) => (Array.isArray(xs) ? xs.map((p: any) => p?.storageId).filter((x: any) => typeof x === "string") : []) as string[];
@@ -642,5 +673,24 @@ export const editChapterText = internalAction({
       if (p.done) break;
     }
     return { dryRun: !!args.dryRun, stored, copies, copyHits };
+  },
+});
+
+// Read-only: what images.backfillMissing would queue, counted page by page (nothing drawn).
+//   npx convex run --prod repairData:countMissingPictures '{}'
+export const countMissingPictures = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ cacheChapters: number; liveChapters: number }> => {
+    let cacheChapters = 0, liveChapters = 0; const seen = new Set<string>();
+    for (let cursor: string | null = null, done = false; !done;) {
+      const p: any = await ctx.runQuery(internal.repairData.missingCachePage, { cursor });
+      for (const r of p.rows) { if (seen.has(r.topic)) continue; seen.add(r.topic); cacheChapters += r.ns.length; }
+      cursor = p.cursor; done = p.done;
+    }
+    for (let cursor: string | null = null, done = false; !done;) {
+      const p: any = await ctx.runQuery(internal.repairData.missingLivePage, { cursor });
+      liveChapters += p.live.length; cursor = p.cursor; done = p.done;
+    }
+    return { cacheChapters, liveChapters };
   },
 });

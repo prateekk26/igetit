@@ -238,7 +238,17 @@ export const photoTest = internalAction({
 export const backfillMissing = internalAction({
   args: {},
   handler: async (ctx): Promise<{ cacheChapters: number; liveChapters: number }> => {
-    const { queue, live } = await ctx.runQuery(internal.repairData.missingPictures, {});
+    // Page by page (11 Oct night): one query over every ready topic neared the 16 MB read limit.
+    const queue: { topicKey: string; level: "new"; n: number }[] = [], live: { handbookId: any; n: number }[] = [], seen = new Set<string>();
+    for (let cursor: string | null = null, done = false; !done;) {
+      const p: any = await ctx.runQuery(internal.repairData.missingCachePage, { cursor });
+      for (const r of p.rows) { if (seen.has(r.topic)) continue; seen.add(r.topic); for (const n of r.ns) queue.push({ topicKey: r.topicKey, level: "new", n }); }
+      cursor = p.cursor; done = p.done;
+    }
+    for (let cursor: string | null = null, done = false; !done;) {
+      const p: any = await ctx.runQuery(internal.repairData.missingLivePage, { cursor });
+      live.push(...p.live); cursor = p.cursor; done = p.done;
+    }
     if (queue.length) await ctx.scheduler.runAfter(0, internal.images.backfill, { queue });
     for (const [i, x] of live.entries()) await ctx.scheduler.runAfter(i * 20000, internal.images.forChapter, x);
     return { cacheChapters: queue.length, liveChapters: live.length };

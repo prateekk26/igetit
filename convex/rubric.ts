@@ -9,7 +9,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import { isOwner } from "./admin";
 
-export const RUBRIC_VERSION = "r1";
+export const RUBRIC_VERSION = "r2";   // r2 (11 Oct night): a recap or an explainer "does it" by retelling (evals/do-once-2026-10-11.md)
 
 export const LEVERS = {
   outcome: {
@@ -18,8 +18,8 @@ export const LEVERS = {
       "L1: never gets to the outcome line; it explains around it, or the outcome is something else entirely.",
       "L2: names the outcome but stops at explaining it; no example of it being done.",
       "L3: explains the outcome and shows it done on an example, but the reader never does it themselves.",
-      "L4: the reader does it once (a Try it, a Your turn, a timer, a worked exercise), but the closing card doesn't say what they can now do.",
-      "L5: the reader does it once inside the chapter and the closing card names what they can now do, in the outcome's own terms.",
+      "L4: the reader does it once (a Try it, a Your turn, a timer, a worked exercise; for a story recap or an explainer, which have no task by design, a prompt to retell or explain it in their own words counts), but the closing card doesn't say what they can now do.",
+      "L5: the reader does it once inside the chapter (as in L4, a retell prompt counts for a recap or an explainer) and the closing card names what they can now do, in the outcome's own terms.",
     ],
   },
   facts: {

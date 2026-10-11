@@ -1,6 +1,6 @@
 {
   "about": "The eval test set (D72, 11 Oct; docs/evals/advanced.md). Each case is a typed line and goal run through the real pipeline on dev to chapter 1, scored on the rubric (convex/rubric.ts), three runs a case; a case passes only when all three runs reach every expected level and every code check holds. list 'keep' = passes today, one failure blocks a release (npm run eval:gate). list 'fix' = what we work on next; three passing runs in a row move it to 'keep'. Cases added from live misses on /admin are stored in the evalCases table on prod and merged in by the runner.",
-  "rubric": "r1",
+  "rubric": "r2",
   "cases": [
     { "name": "dal-quick", "list": "keep", "topic": "how to make dal", "level": "new", "goal": "make dal for a family dinner tonight", "mode": "skill", "expect": { "outcome": 4, "facts": 4 }, "why": "A one-sitting recipe must stay short and doable (shape bench, 9 Oct)." },
     { "name": "tie-quick", "list": "keep", "topic": "how to tie a tie", "level": "new", "goal": "tie a tie for my interview tomorrow", "mode": "skill", "expect": { "outcome": 4 }, "why": "A quick hands-on skill." },
