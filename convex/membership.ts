@@ -28,7 +28,7 @@ export const LIMITS = {
   memberChaptersPerDay: 7,
   freeSearchPerWeek: 3,
   memberSearchPerMonth: 30,
-  dailyBudgetInr: 1000,
+  dailyBudgetInr: 300,   // ₹1,000 until 13 Oct (D94, Prateek)
 } as const;
 
 // What one reader action costs us, roughly (AGENTS.md section 4, measured 4–6 Oct).

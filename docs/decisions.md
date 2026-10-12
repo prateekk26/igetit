@@ -11,6 +11,12 @@ One entry per decision: what, why, what it replaced, and when to look at it agai
 
 How to add: at the end of a session, append under today's date. A decision Prateek made says "(Prateek)"; one the agent made in his stead says "(agent, authorised)". Never rewrite an old entry; add a new one that supersedes it.
 
+## 2026-10-13
+
+### Decisions
+
+- **D94. The free readers' daily cost pot is ₹300, down from ₹1,000 (Prateek, 13 Oct: "reduce the cost per user limit to INR 300", then "Shared one is fine").** One pot for all free readers together, not per person: once free readers' estimated AI cost passes ₹300 in a day, new typed topics and web-checked answers pause for free readers until the next day; members never pause. At about ₹15 a handbook that is roughly 20 free handbooks a day across everyone. convex/membership.ts LIMITS.dailyBudgetInr.
+
 ## 2026-10-12
 
 ### Decisions
