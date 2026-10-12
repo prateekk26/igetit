@@ -5,6 +5,7 @@
 #   prompt: when Prateek starts a message with "idea:", adds the message word for word.
 #           A message that starts with "learned:" goes to docs/lessons.md under "Noted during the day" instead
 #           (committed: lessons are the sprint's record), to be folded into that day's Product/Tech or GTM half.
+#           A message that starts with "late:" goes to docs/learning.md under "Noted during the day" (things we realised too late).
 cd "$(dirname "$0")/.." || exit 0
 F=docs/launch/post-ideas.md   # gitignored: ideas stay on this Mac
 IN=$(cat)
@@ -21,6 +22,14 @@ case "$1" in
     ;;
   prompt)
     P=$(printf '%s' "$IN" | jq -r '.prompt // ""')
+    if printf '%s' "$P" | head -1 | grep -qiE '^[[:space:]]*late:'; then
+      L=docs/learning.md
+      [ -f "$L" ] || printf '# Learned too late\n\n## Noted during the day\n' > "$L"
+      grep -q '^## Noted during the day' "$L" || printf '\n## Noted during the day\n' >> "$L"
+      BODY=$(printf '%s\n' "$P" | sed -E '1s/^[[:space:]]*[Ll][Aa][Tt][Ee]:[[:space:]]*//')
+      { printf -- '- %s\n' "$NOW"; printf '%s\n' "$BODY" | sed 's/^/    /'; } >> "$L"
+      exit 0
+    fi
     if printf '%s' "$P" | head -1 | grep -qiE '^[[:space:]]*learned:'; then
       L=docs/lessons.md
       [ -f "$L" ] || printf '# Lessons, day by day\n\n## Noted during the day\n' > "$L"
