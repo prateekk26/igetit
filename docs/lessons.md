@@ -5,6 +5,15 @@ What each day taught us, not what shipped (that's PROGRESS.md). Every build day 
 Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-of-sprint write-up. A message that starts with "learned:" lands under "Noted during the day" at the bottom; fold those into the day before the session ends.
 
 
+## Sun 11 Oct, the day (day 10; the first AI ad)
+
+### Product/Tech
+- **Thought:** pinning Opus for 16 handbooks costs what the chapter writes cost. **Learned:** it cost about $78, not the $35 estimated: the pin also moved the fact check (₹2,245) and the quiz versions (₹722) to Opus, and long chapters made the check rewrite more. **Now:** price a batch from one built handbook, every step, before starting the rest.
+- **Thought:** a fallback is one more model in a list. **Learned:** Gemini 3.7 Flash writes chapters and plans fine (64 s, 36 s) but with Google Search and JSON mode together it hung past 170 s twice; search alone answered in 19 s. And when 3.8 was overloaded, 3.7 was too, twice in an hour, so Opus did the work. **Now:** test each fallback step on the job it backs up, and count on the last step (Claude) taking the load when Google is busy.
+- **Thought:** a copy row per spelling is a cheap alias. **Learned:** 38 of them (a full handbook each, about 190 KB) pushed the cache read on every visit past 16 MB and the site failed for about 12 minutes; the read is 13.4 MB now. **Now:** aliases are redirects; any table read whole on the reader's path gets a size check before a batch lands.
+- **Thought:** 16 picture jobs in parallel finish 16 times faster. **Learned:** Runway runs 3 at a time on our tier; about 80 queued pictures timed out every call at 10 minutes. **Now:** batches go through the one-at-a-time server queue.
+- **Thought:** the Opus fact check makes a handbook safe to ship. **Learned:** a full read still found 134 things to fix in 112 checked chapters: 68 facts (rules that changed in 2025 and 2026: Thai cash, Vietnamese drug law, Australian card surcharges, US customs fines), 41 banned words, 12 quizzes, 12 broken sums. **Now:** a hand-planned batch is read against the web before it goes live, not only checked against its own brief.
+
 ## Sun 11 Oct, the night (day 10, 05:00 to 13:00; the agent alone, Prateek asleep)
 
 ### Product/Tech
