@@ -24,6 +24,13 @@ Day 1 is Fri 2 Oct (kickoff); Sat 17 Oct is submission.
 
 ## Tue 13 Oct (day 12)
 
+### "The next chapter will slow down" was a promise the writer never heard
+- **Realised:** 13 Oct (day 12), redesigning the question after each chapter (D96).
+- **Could have known:** 7 Oct (day 6), when chapters without a reader profile became one shared copy and stopped receiving the reading report.
+- **What it cost:** every "Lost me" or "Too easy" from a reader with no profile (most of them) paid for a rewrite, about ₹13, that never saw the rating, while the screen promised the change. And when we first fixed it, a member's note ("use cricket examples") still went nowhere: the writer's instructions only knew about missed quizzes, so 0 of 536 words used it. Sent in the Reader line instead, the next try built an example around cricket commentators.
+- **Now:** only members' answers rewrite a chapter, and they travel in the Reader line, which the writer follows on every card.
+- **Post opener:** "For six days my app told readers 'got it, the next chapter will slow down'. It never told the AI."
+
 ### Quick handbooks asked chapter 1's question at every chapter
 - **Realised:** 13 Oct (day 12), when Prateek read "Navigating the corporate world as a woman" and saw the same quiz open chapters 2 to 5.
 - **Could have known:** 10 Oct (day 9), the day quick handbooks stopped having quizzes after chapter 1 (D62). The review lookup walked back to the last chapter that had any, which was always chapter 1.
