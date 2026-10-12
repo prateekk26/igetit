@@ -104,6 +104,7 @@ import type * as trending from "../trending.js";
 import type * as trendingAdmin from "../trendingAdmin.js";
 import type * as watch from "../watch.js";
 import type * as whyRight from "../whyRight.js";
+import type * as wordingBackfill from "../wordingBackfill.js";
 
 import type {
   ApiFromModules,
@@ -208,6 +209,7 @@ declare const fullApi: ApiFromModules<{
   trendingAdmin: typeof trendingAdmin;
   watch: typeof watch;
   whyRight: typeof whyRight;
+  wordingBackfill: typeof wordingBackfill;
 }>;
 
 /**

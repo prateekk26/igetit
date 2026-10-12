@@ -25,20 +25,14 @@ type Frame =
   | { kind: 'exercise'; prompt: string; options: { id: string; text: string }[]; answer: string; whyNot: Record<string, string> }
 
 type Shelf = { topic: string; outcome: string; cover: string | null; week: number; starts: number; passRate: number | null; trending: boolean; addedAt: number; mode: string | null; improved?: boolean }
-// "Or start one tonight" as a carousel (6 Oct). D64 (10 Oct, the landing cut): the four sort pills went (five controls
-// above the first book, UX critique 8 Oct); the order is the Shelf's Spotlight rule, readers' finishes first, then starts,
-// then trending; "Surprise me" stays as one quiet link. One tap starts.
+// "Or start one tonight" as a carousel (6 Oct). D64 (10 Oct, the landing cut): the four sort pills went. 13 Oct (Prateek:
+// "we need more space on the landing page to display a carousel (auto rotating) of the top handbooks"): the "start one
+// tonight" row and its "Surprise me" went; the top handbooks have their own section under the hero (TopCarousel), and
+// this keeps the free eleven and the way to the Shelf.
 function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; busy: boolean; picked: string | null; onPick: (topic: string) => void; onExplore?: () => void }) {
-  const [seed, setSeed] = useState(0)
-  // The free eleven get their own row above this one (Prateek, 11 Oct: highlighted on the homepage), in FREE_TEN's order,
-  // the 28-day "Hold a room" first; this row keeps the rest. Copy (agent).
+  // The free eleven get their own row (Prateek, 11 Oct: highlighted on the homepage), in FREE_TEN's order, the 28-day
+  // "Hold a room" first. Copy (agent).
   const free = [...FREE_TEN].map((t) => items.find((it) => it.topic === t)).filter((it): it is Shelf => !!it)
-  const sorted = (() => {
-    const xs = items.filter((it) => !FREE_TEN.has(it.topic))
-    if (seed) { for (let i = xs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [xs[i], xs[j]] = [xs[j], xs[i]] } return xs }
-    return xs.sort((a, b) => (b.passRate !== null && b.starts >= 3 ? b.passRate * b.starts : 0) - (a.passRate !== null && a.starts >= 3 ? a.passRate * a.starts : 0) || b.week - a.week || Number(b.trending) - Number(a.trending))
-  })()
-  const tag = (it: Shelf, k: number) => it.trending && k < 3 ? 'Trending' : it.improved ? 'Just improved' : it.passRate !== null && it.starts >= 3 && it.passRate >= 0.3 ? `${Math.round(it.passRate * 100)}% finish chapter 1` : it.week >= 2 ? `${it.week} started this week` : ''
   return (
     <div className="lp-quick">
       {free.length > 0 && <>
@@ -55,20 +49,81 @@ function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; 
           ))}
         </ul>
       </>}
-      <p>Or start one tonight. It opens instantly. <button type="button" className="lp-surprise" onClick={() => setSeed((x) => x + 1)}>Surprise me</button></p>
-      <ul className="lp-carousel">
-        {sorted.slice(0, 12).map((it, k) => (
-          <li key={it.topic} className={picked === it.topic ? 'lifting' : picked ? 'resting' : undefined}>
-            <button type="button" onClick={() => onPick(it.topic)} disabled={busy} aria-busy={picked === it.topic || undefined}>
+      {onExplore && <button type="button" className="lp-explore" onClick={() => { track('submit', { via: 'explore_open' }); onExplore() }}>See the whole Shelf →</button>}
+    </div>
+  )
+}
+
+type Top = { topic: string; outcome: string; cover: string | null; starts: number; passes: number; free: boolean; mode: string | null }
+// The one honest line under each top handbook: real counts, never a claim the numbers can't back (the Spotlight's rule).
+const topStat = (it: Top) => it.passes >= 2 ? `${it.passes} readers finished chapter 1` : it.starts >= 3 ? `${it.starts} readers have opened it` : it.passes === 1 ? 'A reader finished chapter 1' : 'Picked for the Shelf'
+// The top handbooks (13 Oct, Prateek: "a carousel (auto rotating) of the top handbooks"), its own section under the
+// hero: one big card at a time on a phone with the next one peeking, up to six (landing.content top: the owner's pins,
+// then readers finishing chapter 1). It turns every 5 s while on screen; a swipe, a tap, a key or Pause stops it for
+// good, and it never turns for a phone set to reduce motion. Copy (agent).
+function TopCarousel({ items, busy, picked, onPick }: { items: Top[]; busy: boolean; picked: string | null; onPick: (topic: string) => void }) {
+  const track_ = useRef<HTMLUListElement>(null)
+  const [at, setAt] = useState(0)
+  const [stopped, setStopped] = useState(() => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+  const [seen, setSeen] = useState(false)
+  useEffect(() => {
+    const el = track_.current
+    if (!el || !('IntersectionObserver' in window)) return
+    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting), { threshold: 0.5 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  const go = (i: number, smooth = true) => {
+    const el = track_.current, li = el?.children[i] as HTMLElement | undefined, first = el?.children[0] as HTMLElement | undefined
+    if (!el || !li || !first) return
+    el.scrollTo({ left: li.offsetLeft - first.offsetLeft, behavior: smooth && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' })
+  }
+  useEffect(() => {
+    if (stopped || !seen || picked || items.length < 2) return
+    const t = setTimeout(() => { if (!document.hidden) go((at + 1) % items.length) }, 5000)
+    return () => clearTimeout(t)
+  }, [at, stopped, seen, picked, items.length])
+  // Which card is in front, from the scroll position (a swipe, or the turn above).
+  const onScroll = () => {
+    const el = track_.current
+    if (!el) return
+    const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth ?? 1
+    setAt(Math.max(0, Math.min(items.length - 1, Math.round(el.scrollLeft / (w + 14)))))
+  }
+  const stop = () => setStopped(true)
+  return (
+    <section className="lp-best" aria-roledescription="carousel" aria-label="Top handbooks">
+      <div className="lp-best-head">
+        <h2>Top of the Shelf.</h2>
+        <p className="lp-body">The handbooks readers open and finish most. Each one opens tonight, already written.</p>
+      </div>
+      <ul className="lp-best-track" ref={track_} onScroll={onScroll} onPointerDown={stop} onTouchStart={stop} onWheel={stop} onKeyDown={stop} onFocus={stop}>
+        {items.map((it, i) => (
+          <li key={it.topic} className={picked === it.topic ? 'opening' : picked ? 'resting' : undefined} aria-roledescription="slide" aria-label={`${i + 1} of ${items.length}`}>
+            <button type="button" className="lp-best-card" onClick={() => onPick(it.topic)} disabled={busy} aria-busy={picked === it.topic || undefined}>
               {picked === it.topic && <span className="lp-visually-hidden" role="status">Opening…</span>}
-              <span className="lp-carousel-pic">{it.cover && <img src={it.cover} alt="" loading="lazy" />}{tag(it, k) && <em>{tag(it, k)}</em>}</span>
-              <strong>{it.topic}</strong>
+              <span className="lp-best-pic">
+                {it.cover ? <img src={it.cover} alt="" loading={i === 0 ? 'eager' : 'lazy'} /> : <span className="lp-best-blank">{it.topic.slice(0, 1)}</span>}
+                <span className="lp-best-no" aria-hidden="true">No. {i + 1}</span>
+                {it.free && <em>Free · every chapter</em>}
+              </span>
+              <strong className="lp-best-title">{it.topic}</strong>
+              {it.outcome && <span className="lp-best-outcome">{it.outcome}</span>}
+              <span className="lp-best-stat">{topStat(it)}</span>
+              <span className="lp-best-go">{picked === it.topic ? 'Opening…' : 'Open it →'}</span>
             </button>
           </li>
         ))}
       </ul>
-      {onExplore && <button type="button" className="lp-explore" onClick={() => { track('submit', { via: 'explore_open' }); onExplore() }}>See the whole Shelf →</button>}
-    </div>
+      {items.length > 1 && (
+        <div className="lp-best-nav">
+          <span className="lp-best-dots">
+            {items.map((it, i) => <button key={it.topic} type="button" aria-label={`Show ${i + 1} of ${items.length}: ${it.topic}`} aria-current={i === at || undefined} onClick={() => { stop(); go(i) }}><span /></button>)}
+          </span>
+          {!stopped && <button type="button" className="lp-best-pause" onClick={stop}>Pause</button>}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -109,9 +164,9 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
     setTimeout(() => heroInput.current?.focus({ preventScroll: true }), 400)
   }
   // A ready topic starts straight away: no typing, and it opens instantly (it's already written).
-  const pick = async (t: string, via: 'row' | 'shelf') => {
+  const pick = async (t: string, via: 'row' | 'shelf' | 'top') => {
     track('submit', { via, topic: t })
-    setTopic(t); setError(null); setBusy(true); if (via === 'row') setPickedRow(t)
+    setTopic(t); setError(null); setBusy(true); if (via !== 'shelf') setPickedRow(t)
     try { await onCreate(t, 'new', voice) }
     catch { setError("Couldn't start it just now. Try once more in a minute."); setBusy(false); setPickedRow(null); toBox() }
   }
@@ -175,6 +230,8 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
         </div>
         <figure className="lp-hero-art"><img src="/images/landing/hero.jpg" alt="Someone climbing out of the fog toward one bright summit" /></figure>
       </section>
+
+      {c && c.top.length > 0 && <TopCarousel items={c.top as Top[]} busy={busy} picked={pickedRow} onPick={(t) => pick(t, 'top')} />}
 
 
       <section className="lp-steps">

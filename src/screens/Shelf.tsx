@@ -4,7 +4,7 @@ import { track } from '../lib/track'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import { SECTIONS, flagOf } from '../../convex/shelfSections'
+import { SECTIONS, byShelfOrder, flagOf, sectionOrder } from '../../convex/shelfSections'
 import { useOnline } from '../lib/online'
 
 // The Shelf (8 Oct, Prateek: "a section called The Shelf, always accessible, neatly organised visually as handbooks"):
@@ -15,7 +15,7 @@ import { useOnline } from '../lib/online'
 // 3). D34a ("funny award categories for the creative handbooks people are requesting"): the Awards row, the owner's
 // award title and citation on reader-typed handbooks. A book in either row is not repeated on the shelves below.
 type Award = { title: string; line: string }
-type Item = { kind: 'ready' | 'shared'; id?: Id<'library'>; key: string; free?: boolean; topic: string; goal?: string | null; outcome: string; mode: string | null; cover: string | null; hot: boolean; loved: boolean; pick?: boolean; week: number; finishedWeek?: number; trending?: boolean; addedAt?: number; starts?: number | null; passes?: number | null; spot?: number | null; award?: Award | null; section?: string | null }
+type Item = { kind: 'ready' | 'shared'; id?: Id<'library'>; key: string; free?: boolean; topic: string; goal?: string | null; outcome: string; mode: string | null; cover: string | null; hot: boolean; loved: boolean; pick?: boolean; week: number; finishedWeek?: number; trending?: boolean; addedAt?: number; starts?: number | null; passes?: number | null; spot?: number | null; award?: Award | null; section?: string | null; order?: number | null }
 // notice: why the reader landed here, e.g. a shared link that no longer opens (UX review 9 Oct). have: the handbooks
 // already on this phone or account, by lowercased name, with how far they got.
 type Props = { onReady: (topic: string) => Promise<void>; onShared: (id: Id<'library'>) => Promise<void>; onBack: () => void; notice?: string | null; have?: Record<string, string> }
@@ -23,17 +23,14 @@ type Props = { onReady: (topic: string) => Promise<void>; onShared: (id: Id<'lib
 // D35 (9 Oct, Prateek: "The categorization is horrible for the shelf"): one shelf per subject (convex/shelfSections.ts),
 // in a fixed order; a book sits on the shelf the server sorted it onto (or the owner moved it to). The popularity
 // shelves are gone: the Spotlight does that. Books with no shelf yet wait on "More".
-const SHELVES: { key: string; label: string; note: string; pick: (i: Item) => boolean }[] = [
+// 13 Oct (Prateek: "Let the admins rearrange the shelf"): the subject shelves come in the order the owner set on /admin
+// (shelf.layout), and the books on each in the owner's order, then the rest by readers (shelfSections.ts byShelfOrder).
+const shelvesIn = (order: string[]): { key: string; label: string; note: string; pick: (i: Item) => boolean }[] => [
   // The free eleven (D65, D74): complete courses anyone can finish without paying, first on the Shelf. Copy (agent).
   { key: 'free', label: 'Free, every chapter', note: 'Complete courses, free to the last chapter. Chapter 1 needs no sign-up.', pick: (i: Item) => !!i.free },
-  ...SECTIONS.map((s) => ({ key: s.key, label: s.label, note: s.note, pick: (i: Item) => i.section === s.key })),
+  ...order.map((k) => SECTIONS.find((s) => s.key === k)!).map((s) => ({ key: s.key, label: s.label, note: s.note, pick: (i: Item) => i.section === s.key })),
   { key: 'more', label: 'More', note: 'Not sorted yet.', pick: () => true },
 ]
-// Drawn above the Spotlight: the free eleven (Prateek, 11 Oct) and the travel series (11 Oct evening: "a nice space").
-const TOP = ['free', 'travel']
-
-// Within a shelf: the books readers finish most to the left, then the most opened, then the ones with a cover.
-const byReaders = (a: Item, b: Item) => (b.passes ?? 0) - (a.passes ?? 0) || (b.starts ?? 0) - (a.starts ?? 0) || Number(!!b.cover) - Number(!!a.cover) || a.topic.localeCompare(b.topic)
 // A deterministic lean per book, so the shelf looks lived-in but never moves.
 const lean = (k: string) => { let h = 0; for (const c of k) h = (h * 31 + c.charCodeAt(0)) >>> 0; return ((h % 7) - 3) * 0.6 }
 // The Spotlight's one honest line under each book: real counts, never a claim the numbers can't back. Copy (agent).
@@ -48,6 +45,11 @@ const cloth = (k: string) => { let h = 0; for (const c of k) h = (h * 17 + c.cha
 
 export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: Props) {
   const items = useQuery(api.library.explore, {}) as Item[] | undefined
+  const layout = useQuery(api.shelf.layout, {})
+  const order = useMemo(() => sectionOrder(layout?.shelves), [layout])
+  // Drawn above the Spotlight: the free eleven (Prateek, 11 Oct) and the first subject shelf, the travel series until the
+  // owner moves another to the top (11 Oct evening: "a nice space").
+  const TOP = ['free', order[0]]
   const online = useOnline()
   // On a phone each shelf is one row that scrolls sideways; on a wide screen a shelf holds as many books as fit, and a
   // long shelf becomes several shelves, each with its own plank. Counted from the page's own width (UX review 9 Oct: at
@@ -67,14 +69,14 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
   const spots = useMemo(() => (items ?? []).filter((i) => i.spot).sort((a, b) => (a.spot ?? 9) - (b.spot ?? 9)), [items])
   const awards = useMemo(() => (items ?? []).filter((i) => i.award && !i.spot), [items])
   const shelves = useMemo(() => {
-    if (!items) return []
+    if (!items || !layout) return []   // wait for the owner's order, so the shelves never jump once it arrives
     const left = new Set(items.filter((i) => !i.spot && !i.award).map((i) => i.key))
-    return SHELVES.map((s) => {
-      const books = items.filter((i) => left.has(i.key) && s.pick(i)).sort(byReaders)
+    return shelvesIn(order).map((s) => {
+      const books = items.filter((i) => left.has(i.key) && s.pick(i)).sort(byShelfOrder)
       for (const b of books) left.delete(b.key)
       return { ...s, books }
     }).filter((s) => s.books.length > 0)
-  }, [items])
+  }, [items, layout, order])
   useEffect(() => { track('shelf_view', undefined, 'shelf_view') }, [])   // D37: "shelf browsed" on /admin, once per visit
   const [note, setNote] = useState<string | null>(null)
   // The tapped book lifts off the shelf and turns to face the reader while its handbook opens (8 Oct night, Prateek):
@@ -192,7 +194,7 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
           </ul>
         </section>
       )}
-      {!items ? <p className="note" role="status">{online ? 'Dusting the shelves…' : "No connection. The Shelf opens when you're back online."}</p> : shelves.filter((s) => !TOP.includes(s.key)).map(shelfSection)}
+      {!items || !layout ? <p className="note" role="status">{online ? 'Dusting the shelves…' : "No connection. The Shelf opens when you're back online."}</p> : shelves.filter((s) => !TOP.includes(s.key)).map(shelfSection)}
     </div>
   )
 }

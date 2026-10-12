@@ -3,7 +3,7 @@ import AdminPipeline from '../components/AdminPipeline'
 import AdminReview from '../components/AdminReview'
 import { AdminAlerts, AdminRuns } from '../components/AdminWatch'
 import AdminEvals from '../components/AdminEvals'
-import { SECTIONS } from '../../convex/shelfSections'
+import { SECTIONS, byShelfOrder, sectionOrder } from '../../convex/shelfSections'
 import { deviceToken } from '../lib/device'
 import { useConvexAuth, useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
@@ -15,7 +15,7 @@ import { api } from '../../convex/_generated/api'
 // remembered in the address (#shelf), so a reload lands on the same one.
 const TABS = [{ k: 'matters', label: 'What matters' }, { k: 'shelf', label: 'Shelf and review' }, { k: 'trending', label: 'Trending and rewrites' }, { k: 'payments', label: 'Payments' }, { k: 'ai', label: 'AI and cost' }, { k: 'evals', label: 'Evals' }, { k: 'people', label: 'People and funnel' }]
 const WINDOWS = [{ d: 1, label: 'Today' }, { d: 7, label: '7 days' }, { d: 30, label: '30 days' }, { d: 0, label: 'All time' }]
-const SECTION_NAMES: Record<string, string> = { hero: 'Top (box)', saved: '"You saved the reel"', steps: 'How tonight works', demo: 'Demo chapter', path: 'Seven nights', shelf: 'Ready tonight shelf', offer: 'Price', final: 'Box again (bottom)' }
+const SECTION_NAMES: Record<string, string> = { hero: 'Top (box)', saved: '"You saved the reel"', steps: 'How tonight works', demo: 'Demo chapter', path: 'Seven nights', shelf: 'Ready tonight shelf', best: 'Top handbooks carousel', offer: 'Price', final: 'Box again (bottom)' }
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0)
 const time = (t: number) => new Date(t).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const secs = (s: number | null) => (s === null ? '—' : s < 90 ? `${s}s` : `${Math.round(s / 60)} min`)
@@ -47,7 +47,7 @@ export default function Admin() {
           {/* D37 (Prateek, 9 Oct): the page opens on the metrics that matter, in the order they cause each other. D39: every
               other section is a tab, and each has its actions (approve, reject, delete forever, build, rewrite, move). */}
           {tab === 'matters' && <><Metrics days={days} sources={d.sources} /><MineCard /></>}
-          {tab === 'shelf' && <><AdminReview /><ShelfCard /></>}
+          {tab === 'shelf' && <><AdminReview /><ArrangeCard /><ShelfCard /></>}
           {tab === 'trending' && <><TrendingCard /><ExperimentsCard /></>}
           {tab === 'payments' && <PaymentsCard />}
           {/* AI and cost together (8 Oct, Tanisha): what every step takes and costs, by handbook, then spend by day. */}
@@ -92,7 +92,7 @@ export default function Admin() {
             <section className="adm-card">
               <h2>How handbooks get started</h2>
               {d.via.length === 0 ? <p className="note">None yet in this window.</p> : (
-                <ul className="adm-list">{d.via.map((v) => <li key={v.via}><span>{v.via === 'box' ? 'Typed in the box' : v.via === 'row' ? 'Tapped the row under the box' : v.via === 'shelf' ? 'Tapped the shelf lower down' : v.via}</span><b>{v.n}</b></li>)}</ul>
+                <ul className="adm-list">{d.via.map((v) => <li key={v.via}><span>{v.via === 'box' ? 'Typed in the box' : v.via === 'row' ? 'Tapped the row under the box' : v.via === 'top' ? 'Tapped the top handbooks carousel' : v.via === 'shelf' ? 'Tapped the shelf lower down' : v.via}</span><b>{v.n}</b></li>)}</ul>
               )}
               {d.tapped.length > 0 && <><h3>Ready topics tapped</h3><ul className="adm-list">{d.tapped.map((t) => <li key={t.topic}><span>{t.topic}</span><b>{t.n}</b></li>)}</ul></>}
             </section>
@@ -333,6 +333,68 @@ function ProviderSwitch() {
 // The Shelf (D34, 9 Oct, Prateek: "clean up the Shelf, keep only the best"): every handbook that could be on it, on or
 // off with one tap (off is reversible and recorded), the Spotlight as the server ranks it with a pin to force one in,
 // and the Awards (D34a): a title and a citation line typed here, shown on the Shelf's Awards row.
+// Arrange the Shelf (13 Oct, Prateek: "Let the admins rearrange the shelf"): the Shelf as readers see it, the free
+// shelf first, then the five subject shelves in order, then "More". ↑ ↓ move a shelf, or a book along its shelf; the
+// dropdown moves a book to another shelf (it joins the end of the placed ones). Books in the Spotlight or the Awards
+// are not on a shelf, as on the real Shelf; pin and award them in the table below.
+function ArrangeCard() {
+  const rows = useQuery(api.shelf.adminList, {})
+  const layout = useQuery(api.shelf.layout, {})
+  const setBookOrder = useMutation(api.shelf.setBookOrder)
+  const setShelfOrder = useMutation(api.shelf.setShelfOrder)
+  const setSection = useMutation(api.shelf.setSection)
+  const [err, setErr] = useState<string | null>(null)
+  if (!rows || !layout) return null
+  type Row = (typeof rows)[number]
+  const order = sectionOrder(layout.shelves)
+  const live = rows.filter((r) => r.on)
+  const aside = live.filter((r) => r.spot || r.award)
+  const left = new Set(live.filter((r) => !r.spot && !r.award).map((r) => r.id))
+  const take = (pick: (r: Row) => boolean) => { const xs = live.filter((r) => left.has(r.id) && pick(r)).sort(byShelfOrder); xs.forEach((r) => left.delete(r.id)); return xs }
+  const shelves = [
+    { key: 'free', label: 'Free, every chapter', fixed: true, books: take((r) => !!r.free) },
+    ...order.map((k) => { const sec = SECTIONS.find((x) => x.key === k)!; return { key: k, label: sec.label, fixed: false, books: take((r) => r.section === k) } }),
+    { key: 'more', label: 'More (not sorted yet)', fixed: true, books: take(() => true) },
+  ]
+  const fail = (e: unknown) => setErr(String((e as Error)?.message ?? e))
+  const moveShelf = (k: string, d: -1 | 1) => { const i = order.indexOf(k), j = i + d; if (j < 0 || j >= order.length) return; const next = [...order]; [next[i], next[j]] = [next[j], next[i]]; setErr(null); setShelfOrder({ keys: next }).catch(fail) }
+  const moveBook = (books: Row[], i: number, d: -1 | 1) => { const j = i + d; if (j < 0 || j >= books.length) return; const next = [...books]; [next[i], next[j]] = [next[j], next[i]]; setErr(null); setBookOrder({ ids: next.map((b) => b.id) }).catch(fail) }
+  return (
+    <section className="adm-card adm-wide adm-arrange">
+      <h2>Arrange the Shelf</h2>
+      <p className="note">The Shelf as readers see it, top to bottom. The free shelf always comes first; the first subject shelf sits next to it, above the Spotlight. ↑ ↓ moves a shelf, or a book along its shelf (left to right on the Shelf). The dropdown sends a book to another shelf. Books you never moved follow the ones you did, the most finished first.</p>
+      {aside.length > 0 && <p className="note">Not on a shelf, because they are in the Spotlight or the Awards: {aside.map((r) => r.title).join(' · ')}.</p>}
+      {err && <p className="error" role="alert">{err}</p>}
+      {shelves.map((sh) => sh.books.length === 0 && sh.fixed ? null : (
+        <div key={sh.key} className="adm-shelf">
+          <div className="adm-shelf-head">
+            <h3>{sh.label} <small>{sh.books.length} {sh.books.length === 1 ? 'book' : 'books'}{sh.key === order[0] ? ' · above the Spotlight' : ''}</small></h3>
+            {!sh.fixed && <span className="adm-arrows">
+              <button type="button" className="quiet" aria-label={`Move ${sh.label} up`} disabled={order.indexOf(sh.key) === 0} onClick={() => moveShelf(sh.key, -1)}>↑</button>
+              <button type="button" className="quiet" aria-label={`Move ${sh.label} down`} disabled={order.indexOf(sh.key) === order.length - 1} onClick={() => moveShelf(sh.key, 1)}>↓</button>
+            </span>}
+          </div>
+          <ol className="adm-books">
+            {sh.books.map((b, i) => (
+              <li key={b.id}>
+                <span className="adm-book-n">{i + 1}</span>
+                <span className="adm-book-t">{b.title}{b.kind === 'shared' ? <small> · shared</small> : null}<small> · {b.passes}/{b.starts} finished ch 1</small></span>
+                <span className="adm-arrows">
+                  <button type="button" className="quiet" aria-label={`Move ${b.title} up`} disabled={i === 0} onClick={() => moveBook(sh.books, i, -1)}>↑</button>
+                  <button type="button" className="quiet" aria-label={`Move ${b.title} down`} disabled={i === sh.books.length - 1} onClick={() => moveBook(sh.books, i, 1)}>↓</button>
+                </span>
+                {sh.key !== 'free' && <select value={b.section ?? ''} onChange={(e) => { setErr(null); setSection({ id: b.id, section: e.target.value }).catch(fail) }} aria-label={`Shelf for ${b.title}`}>
+                  <option value="" disabled>not sorted</option>{order.map((k) => <option key={k} value={k}>{SECTIONS.find((x) => x.key === k)!.label}</option>)}
+                </select>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </section>
+  )
+}
+
 function ShelfCard() {
   const rows = useQuery(api.shelf.adminList, {})
   const setOn = useMutation(api.shelf.setOnShelf)

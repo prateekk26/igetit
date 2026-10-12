@@ -739,6 +739,20 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .adm-list { list-style: none; margin: 0; padding: 0; }
 .adm-list li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--paper-2); font-size: var(--small); }
 .adm-scroll { overflow-x: auto; }
+/* Arrange the Shelf (13 Oct): one block per shelf, a numbered list of its books, ↑ ↓ at least 44 px for a phone */
+.adm-shelf { border-top: 1px solid var(--tint); padding-top: 10px; margin-top: 12px; }
+.adm-shelf-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.adm-shelf-head h3 { margin: 0; font-size: 1.05rem; }
+.adm-shelf-head small, .adm-book-t small { color: var(--ink-2); font-weight: 400; }
+.adm-books { list-style: none; margin: 6px 0 0; padding: 0; }
+.adm-books li { display: grid; grid-template-columns: 24px 1fr auto auto; gap: 8px; align-items: center; padding: 2px 0; border-bottom: 1px solid var(--paper-2); font-size: var(--small); }
+.adm-book-n { color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.adm-book-t { min-width: 0; overflow-wrap: anywhere; }
+.adm-arrows { display: inline-flex; gap: 2px; }
+.adm-arrows button { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.1rem; }
+.adm-arrows button:disabled { opacity: 0.25; }
+.adm-books select { max-width: 9.5rem; min-height: 44px; }
+@media (max-width: 520px) { .adm-books li { grid-template-columns: 22px 1fr auto; } .adm-books select { grid-column: 2 / -1; max-width: none; } }
 .adm-table { width: 100%; border-collapse: collapse; font-size: var(--small); }
 .adm-table th { text-align: left; color: var(--ink-2); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--tint); white-space: nowrap; }
 .adm-table td { padding: 6px 8px; border-bottom: 1px solid var(--paper-2); white-space: nowrap; }
@@ -1226,3 +1240,44 @@ button.stop-tap:focus-visible { outline: 3px solid var(--ink); outline-offset: 3
 .week-t { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
 .week-count { grid-column: 1 / -1; font-size: var(--small); color: var(--ink-2); }
 .rung.long { gap: 2px; }
+
+/* Top of the Shelf (13 Oct, Prateek: "more space on the landing page to display a carousel (auto rotating) of the top
+   handbooks"): an indigo band under the marigold hero, paper cards with the ink outline and the full press shadow, one
+   in front on a phone with the next peeking, a "No. 1" ticket like the Spotlight's, dots and Pause at least 44 px. */
+.lp-best { background: var(--riso-indigo); color: var(--paper); padding-top: 52px !important; padding-bottom: 44px !important; }
+.lp-best h2 { color: var(--paper); }
+.lp-best .lp-body { color: var(--paper); margin-bottom: 20px; }
+.lp-best-track { list-style: none; margin: 0 calc(-1 * max(var(--m), env(safe-area-inset-left))); padding: 4px max(var(--m), env(safe-area-inset-left)) 18px;
+  display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: max(var(--m), env(safe-area-inset-left)); scrollbar-width: none; }
+.lp-best-track::-webkit-scrollbar { display: none; }
+.lp-best-track li { flex: none; width: min(86%, 400px); scroll-snap-align: start; display: flex; transition: opacity 300ms; }
+.lp-best-track li.resting { opacity: 0.5; }
+.lp-best-card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; align-content: start; gap: 10px; width: 100%; background: var(--paper); color: var(--ink);
+  border: 3px solid var(--ink); border-radius: 18px; padding: 12px 12px 16px; box-shadow: 6px 6px 0 var(--ink); transition: transform 160ms var(--ease), box-shadow 160ms var(--ease); }
+.lp-best-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.lp-best-card:active { transform: translate(3px, 3px); box-shadow: 3px 3px 0 var(--ink); }
+.lp-best-card:disabled { cursor: default; }
+.lp-best-track li.opening .lp-best-card { transform: translate(-3px, -3px); box-shadow: 9px 9px 0 var(--ink); }
+.lp-best-pic { position: relative; display: block; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; border: 2.5px solid var(--ink); background: var(--paper-2); }
+.lp-best-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lp-best-blank { display: grid; place-items: center; height: 100%; font: 800 4rem var(--sans); color: var(--ink-2); }
+.lp-best-no { position: absolute; left: 8px; top: 8px; background: var(--accent); color: var(--ink); border: 2px solid var(--ink); border-radius: 4px; padding: 2px 8px; font: 800 0.8rem var(--sans); transform: rotate(-3deg); }
+.lp-best-pic em { position: absolute; right: 8px; top: 8px; font: 700 0.75rem var(--sans); font-style: normal; background: var(--ink); color: var(--paper); padding: 4px 8px; border-radius: 999px; }
+.lp-best-title { font: 800 1.35rem/1.15 var(--sans); letter-spacing: -0.01em; text-wrap: balance; }
+.lp-best-outcome { font: 400 1rem/1.45 var(--serif); color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.lp-best-stat { font: 700 var(--small) var(--sans); color: var(--pass); }
+.lp-best-go { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; padding: 0 16px; margin-top: 2px; background: var(--accent); color: var(--ink); border: 2px solid var(--ink); border-radius: 999px; font: 800 1rem var(--sans); }
+.lp-best-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lp-best-dots { display: flex; flex-wrap: wrap; }
+.lp-best-dots button { all: unset; cursor: pointer; width: 44px; height: 44px; display: inline-grid; place-items: center; }
+.lp-best-dots button span { width: 9px; height: 9px; border-radius: 999px; background: var(--paper); opacity: 0.5; transition: width 250ms var(--ease), opacity 250ms; }
+.lp-best-dots button[aria-current] span { width: 24px; opacity: 1; background: var(--accent); }
+.lp-best-dots button:focus-visible, .lp-best-pause:focus-visible { outline: 3px solid var(--accent); outline-offset: -4px; border-radius: 8px; }
+.lp-best-pause { all: unset; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; font: 700 var(--small) var(--sans); color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 900px) {
+  .lp-best-track li { width: 360px; }
+  .lp-best-head { display: flex; align-items: end; justify-content: space-between; gap: 32px; }
+  .lp-best-head .lp-body { max-width: 26rem; }
+}
+@media (prefers-reduced-motion: reduce) { .lp-best-card, .lp-best-track li, .lp-best-dots button span { transition: none; } }
+@media (min-width: 900px) { .lp-best-track { margin: 0 calc(-1 * max(6vw, calc((100vw - 76rem) / 2))); padding-inline: max(6vw, calc((100vw - 76rem) / 2)); scroll-padding-inline: max(6vw, calc((100vw - 76rem) / 2)); } }

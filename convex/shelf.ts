@@ -5,7 +5,8 @@ import { internalAction, internalMutation, internalQuery, mutation, query, type 
 import type { Doc } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { isOwner } from "./admin";
-import { CLASSIFY_PROMPT, SECTION_KEYS } from "./shelfSections";
+import { CLASSIFY_PROMPT, SECTION_KEYS, SHELF_ORDER_KEY, sectionOrder } from "./shelfSections";
+import { FREE_TEN } from "./freeTen";
 
 // The shelf (7 Oct, before launch traffic): one light row per ready topic and per shared handbook, with just what the
 // landing page, Explore, "Jump to next" and the wait-screen story show. Those pages read this table and this week's
@@ -159,7 +160,7 @@ export const adminList = query({
     if (!(await isOwner(ctx)).ok) return null;
     const rows = (await ctx.db.query("shelf").collect()).filter((r) => r.kind === "shared" || r.level === "new");
     const items = rows.map((r) => ({ id: r._id, kind: r.kind, key: r.key, title: r.title, topic: r.topic, mode: r.mode ?? null, goal: r.goal ?? null, starts: r.starts, passes: r.passes,
-      on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
+      on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, free: r.kind === "ready" && (FREE_TEN.has(r.topic) || FREE_TEN.has(r.title)), cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
     const spot = spotlight(items.filter((i) => i.on));
     return items.map((i) => ({ ...i, spot: spot.indexOf(i.key) + 1 || null }))
       .sort((a, b) => Number(b.on) - Number(a.on) || (a.spot ?? 9) - (b.spot ?? 9) || b.passes - a.passes || b.starts - a.starts);
@@ -280,6 +281,44 @@ export const setSection = mutation({
   handler: async (ctx, { id, section }) => {
     if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
     if (!SECTION_KEYS.includes(section)) throw new Error("No such shelf");
-    await ctx.db.patch(id, { section });
+    await ctx.db.patch(id, { section, order: undefined });   // a moved book joins its new shelf after the placed ones
+  },
+});
+
+// Arranging the Shelf (13 Oct, Prateek: "Let the admins rearrange the shelf"). The shelves' order lives in one settings
+// row; a book's place on its shelf is its own order field. /admin sends the whole shelf after each move, so the numbers
+// are always 0..n-1 and two moves never leave two books on the same place.
+async function savedShelfOrder(ctx: { db: any }): Promise<string[]> {
+  const row = await ctx.db.query("settings").withIndex("by_key", (q: any) => q.eq("key", SHELF_ORDER_KEY)).unique();
+  try { return sectionOrder(row ? JSON.parse(row.value) : null); } catch { return sectionOrder(null); }
+}
+export const layout = query({ args: {}, handler: async (ctx) => ({ shelves: await savedShelfOrder(ctx) }) });
+export const setShelfOrder = mutation({
+  args: { keys: v.array(v.string()) },
+  handler: async (ctx, { keys }) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    const value = JSON.stringify(sectionOrder(keys));
+    const row = await ctx.db.query("settings").withIndex("by_key", (q) => q.eq("key", SHELF_ORDER_KEY)).unique();
+    if (row) await ctx.db.patch(row._id, { value, at: Date.now() });
+    else await ctx.db.insert("settings", { key: SHELF_ORDER_KEY, value, at: Date.now() });
+  },
+});
+export const setBookOrder = mutation({
+  args: { ids: v.array(v.id("shelf")) },
+  handler: async (ctx, { ids }) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    if (ids.length > 200) throw new Error("Too many books");
+    for (const [i, id] of ids.entries()) if (await ctx.db.get(id)) await ctx.db.patch(id, { order: i });
+  },
+});
+// One-off when shelves merge (13 Oct: History and big ideas, and Films, music and sport, became "Plot twist"):
+//   npx convex run --prod shelf:mergeSections '{"from":["ideas","culture"],"to":"stories"}'
+export const mergeSections = internalMutation({
+  args: { from: v.array(v.string()), to: v.string() },
+  handler: async (ctx, { from, to }) => {
+    if (!SECTION_KEYS.includes(to)) throw new Error("No such shelf");
+    const rows = (await ctx.db.query("shelf").collect()).filter((r) => r.section && from.includes(r.section));
+    for (const r of rows) await ctx.db.patch(r._id, { section: to, order: undefined });
+    return rows.map((r) => r.title);
   },
 });

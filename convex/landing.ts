@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { smallUrl } from "./pictures";
 import { query } from "./_generated/server";
 import { onShelf } from "./shelf";
+import { FREE_TEN } from "./freeTen";
 
 // Public content for the landing page, all from the ready topics: a tappable demo of
 // Public speaking chapter 1, its seven-night path, and a shelf of ready topics with cover pictures.
@@ -40,6 +41,14 @@ export const content = query({
         improved: !!r.improvedAt && Date.now() - r.improvedAt < 14 * 24 * 3600000 });
     }
 
+    // The top handbooks (13 Oct, Prateek: "a carousel (auto rotating) of the top handbooks"): the Spotlight's rule on the
+    // ready ones (shelf.ts spotlight): the owner's pins first, then readers finishing chapter 1 (10 points each) and
+    // starts (1 each); only books someone has read or the owner pinned, at most six, never padded.
+    const score = (r: (typeof rows)[number]) => r.passes * 10 + r.starts;
+    const top = [];
+    for (const r of rows.filter((r) => r.pick || r.passes >= 1 || r.starts >= 3).sort((a, b) => Number(!!b.pick) - Number(!!a.pick) || score(b) - score(a)).slice(0, 6))
+      top.push({ topic: r.title, outcome: r.outcome, cover: await url(r.cover), starts: r.starts, passes: r.passes, free: FREE_TEN.has(r.topic) || FREE_TEN.has(r.title), mode: r.mode ?? null });
+
     const demoRow = await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", DEMO_TOPIC).eq("level", "new")).unique();
     const ch = demoRow?.chapters.find((c: any) => c.n === 1);
     const frames: any[] = [];
@@ -57,6 +66,7 @@ export const content = query({
     return {
       demo: ch ? { topic: demoRow!.topic, title: ch.title, frames, total: (ch.cards ?? []).length, of: (demoRow!.plan?.chapters ?? []).length || 7 } : null,
       path: demoRow?.plan ? { topic: demoRow.plan.topic, outcome: demoRow.plan.outcome7, chapters: (demoRow.plan.chapters ?? []).map((c: any) => ({ n: c.n, title: c.title, hook: c.hook })) } : null,
+      top,
       shelf: shelf.sort((x, y) => rank(x.topic) - rank(y.topic) || Number(!x.cover) - Number(!y.cover)),
     };
   },

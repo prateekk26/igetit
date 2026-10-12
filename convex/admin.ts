@@ -216,7 +216,7 @@ async function build(ctx: QueryCtx, days: number) {
 
 // One visitor's path as a timeline, the time they spent, and the most likely reason they stopped (6 Oct).
 // Time spent counts the gaps between their actions and heartbeats, ignoring gaps over 5 minutes (they'd left).
-const SECTION_LABEL: Record<string, string> = { hero: "the top", saved: "\"You saved the reel\"", steps: "How tonight works", demo: "the demo chapter", path: "Seven nights", shelf: "the Ready tonight shelf", offer: "the price", final: "the bottom" };
+const SECTION_LABEL: Record<string, string> = { hero: "the top", saved: "\"You saved the reel\"", steps: "How tonight works", demo: "the demo chapter", path: "Seven nights", shelf: "the Ready tonight shelf", best: "the top handbooks carousel", offer: "the price", final: "the bottom" };
 async function journey(ctx: QueryCtx, first: number, es: Doc<"events">[], hb: Doc<"handbooks"> | undefined, p: Doc<"progress"> | undefined, ch1Of: number | null) {
   const answers = hb ? (await ctx.db.query("answers").withIndex("by_handbook", (q) => q.eq("handbookId", hb._id)).collect()).sort((a, b) => a.at - b.at) : [];
   const steps: { at: number; what: string }[] = [];
@@ -230,7 +230,7 @@ async function journey(ctx: QueryCtx, first: number, es: Doc<"events">[], hb: Do
       e.name === "section" ? (pr.section === "hero" ? null : `scrolled to ${SECTION_LABEL[String(pr.section)] ?? pr.section}`) :
       e.name === "box_focus" ? "tapped the topic box" :
       e.name === "box_type" ? "started typing" :
-      e.name === "submit" ? (pr.via === "box" ? `typed a topic (${pr.len ?? "?"} letters) and tapped Show me the way` : `tapped the ready topic "${pr.topic}" (${pr.via === "row" ? "row under the box" : "shelf"})`) :
+      e.name === "submit" ? (pr.via === "box" ? `typed a topic (${pr.len ?? "?"} letters) and tapped Show me the way` : `tapped the ready topic "${pr.topic}" (${pr.via === "row" ? "row under the box" : pr.via === "top" ? "top handbooks carousel" : "shelf"})`) :
       e.name === "demo_tap" ? "tapped the demo chapter" :
       e.name === "wait_view" ? "waited while the plan was written" :
       e.name === "plan_view" ? "saw the plan" :

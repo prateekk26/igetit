@@ -362,6 +362,7 @@ export default defineSchema({
     // shown in the Awards row of the Shelf. Copy is his; the agent's first set is a placeholder.
     award: v.optional(v.object({ title: v.string(), line: v.string() })),
     section: v.optional(v.string()),   // D35: the subject shelf (shelfSections.ts), set by shelf.classify or the owner
+    order: v.optional(v.number()),   // 13 Oct: the book's place on its shelf, set by the owner on /admin; unset books follow
     starts: v.number(), passes: v.number(),
   }).index("by_topic_kind", ["topic", "kind"]).index("by_library", ["libraryId"]).index("by_kind", ["kind"]),
 
