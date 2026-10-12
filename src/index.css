@@ -1086,7 +1086,10 @@ button.stop-tap:focus-visible { outline: 3px solid var(--ink); outline-offset: 3
 .book-spine { position: absolute; left: 0; top: 0; bottom: 0; width: 12px; border-radius: 3px 0 0 3px; background: linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0.12) 60%, rgba(255,255,255,0.08)); }
 .book-spine::before, .book-spine::after { content: ''; position: absolute; left: 3px; right: 3px; height: 1px; background: rgba(255,255,255,0.35); top: 14px; }
 .book-spine::after { top: auto; bottom: 14px; }
-.book-cover { display: block; aspect-ratio: 4 / 3; border-radius: 4px; overflow: hidden; background: #faf7f0; box-shadow: 0 0 0 2px rgba(250,247,240,0.9), inset 0 0 0 1px rgba(27,26,23,0.2); }
+.book-cover { position: relative; display: block; aspect-ratio: 4 / 3; border-radius: 4px; overflow: hidden; background: #faf7f0; box-shadow: 0 0 0 2px rgba(250,247,240,0.9), inset 0 0 0 1px rgba(27,26,23,0.2); }
+/* A travel handbook's flag (11 Oct evening): top left of the cover, emoji, no new colour. */
+.book-flag { position: absolute; top: 4px; left: 5px; font-size: 1.35rem; line-height: 1; filter: drop-shadow(0 1px 1px rgba(27,26,23,0.35)); pointer-events: none; }
+.spot-plate .book-flag { font-size: 1.9rem; top: 6px; left: 8px; }
 .book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .book-cover-blank { display: flex; align-items: center; justify-content: center; height: 100%; font: 800 2.2rem var(--sans); color: var(--ink); }
 .book-plate { position: absolute; left: 20px; right: 10px; bottom: 10px; background: #faf7f0; color: var(--ink); border-radius: 3px; padding: 6px 7px; box-shadow: 0 1px 0 rgba(0,0,0,0.25); display: grid; gap: 1px; }
@@ -1113,7 +1116,7 @@ button.stop-tap:focus-visible { outline: 3px solid var(--ink); outline-offset: 3
 .spot-card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
 .spot-card:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
 .spot-no { position: absolute; top: -13px; left: 12px; transform: rotate(-3deg); }
-.spot-plate { display: block; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--paper-2); border: 3px solid var(--paper); box-shadow: 0 0 0 2px var(--ink), 5px 5px 0 var(--ink); margin: 4px 6px 8px 0; }
+.spot-plate { position: relative; display: block; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--paper-2); border: 3px solid var(--paper); box-shadow: 0 0 0 2px var(--ink), 5px 5px 0 var(--ink); margin: 4px 6px 8px 0; }
 .spot-plate img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .spot-plate-blank { display: flex; align-items: center; justify-content: center; height: 100%; font: 800 2.6rem var(--sans); color: var(--ink); }
 .spot-title { font: 700 1.3rem/1.15 var(--serif); letter-spacing: -0.01em; }

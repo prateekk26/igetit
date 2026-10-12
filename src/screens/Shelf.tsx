@@ -4,7 +4,7 @@ import { track } from '../lib/track'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import { SECTIONS } from '../../convex/shelfSections'
+import { SECTIONS, flagOf } from '../../convex/shelfSections'
 import { useOnline } from '../lib/online'
 
 // The Shelf (8 Oct, Prateek: "a section called The Shelf, always accessible, neatly organised visually as handbooks"):
@@ -29,6 +29,9 @@ const SHELVES: { key: string; label: string; note: string; pick: (i: Item) => bo
   ...SECTIONS.map((s) => ({ key: s.key, label: s.label, note: s.note, pick: (i: Item) => i.section === s.key })),
   { key: 'more', label: 'More', note: 'Not sorted yet.', pick: () => true },
 ]
+// Drawn above the Spotlight: the free eleven (Prateek, 11 Oct) and the travel series (11 Oct evening: "a nice space").
+const TOP = ['free', 'travel']
+
 // Within a shelf: the books readers finish most to the left, then the most opened, then the ones with a cover.
 const byReaders = (a: Item, b: Item) => (b.passes ?? 0) - (a.passes ?? 0) || (b.starts ?? 0) - (a.starts ?? 0) || Number(!!b.cover) - Number(!!a.cover) || a.topic.localeCompare(b.topic)
 // A deterministic lean per book, so the shelf looks lived-in but never moves.
@@ -110,6 +113,7 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
                   <span className="book-spine" aria-hidden="true" />
                   <span className="book-cover">
                     {it.cover ? <img src={it.cover} alt="" loading="lazy" /> : <span className="book-cover-blank">{it.topic.slice(0, 1)}</span>}
+                    {flagOf(it.topic) && <span className="book-flag" aria-hidden="true">{flagOf(it.topic)}</span>}
                   </span>
                   {/* The goal line was cut to "for: Understa…" on a 90 px plate (UX review 9 Oct); the title is the name. */}
                   <span className="book-plate"><span className="book-title">{it.topic}</span>{mine(it) && <span className="book-mine">{mine(it)}</span>}</span>
@@ -137,12 +141,12 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
       {/* The jump row comes first, so its first chips are not for sections already scrolled past (UX review 9 Oct). */}
       <div className="shelf-tools">
         <button type="button" className="chip" onClick={surprise}>Surprise me</button>
-        {shelves.filter((s) => s.key === 'free' && s.books.length).map((s) => <button type="button" key={s.key} className="chip" onClick={() => jump(`shelf-${s.key}`)}>{s.label}</button>)}
+        {shelves.filter((s) => TOP.includes(s.key) && s.books.length).map((s) => <button type="button" key={s.key} className="chip" onClick={() => jump(`shelf-${s.key}`)}>{s.label}</button>)}
         {spots.length > 0 && <button type="button" className="chip" onClick={() => jump('shelf-spotlight')}>Spotlight</button>}
         {awards.length > 0 && <button type="button" className="chip" onClick={() => jump('shelf-awards')}>The Awards</button>}
-        {shelves.filter((s) => s.key !== 'free').map((s) => <button type="button" key={s.key} className="chip" onClick={() => jump(`shelf-${s.key}`)}>{s.label}</button>)}
+        {shelves.filter((s) => !TOP.includes(s.key)).map((s) => <button type="button" key={s.key} className="chip" onClick={() => jump(`shelf-${s.key}`)}>{s.label}</button>)}
       </div>
-      {items && shelves.filter((s) => s.key === 'free' && s.books.length).map(shelfSection)}
+      {items && shelves.filter((s) => TOP.includes(s.key) && s.books.length).map(shelfSection)}
       {spots.length > 0 && (
         <section id="shelf-spotlight" className="spot" aria-label="Spotlight">
           <div className="spot-head">
@@ -155,7 +159,7 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
                 <button type="button" className="spot-card" onClick={() => { if (!lifting) open(it) }} aria-label={`Spotlight ${i + 1}: ${it.topic}. ${it.outcome}`} aria-busy={lifting === it.key || undefined}>
                   {lifting === it.key && <span className="lp-visually-hidden" role="status">Opening…</span>}
                   <span className="spot-no" aria-hidden="true">No. {i + 1}</span>
-                  <span className="spot-plate">{it.cover ? <img src={it.cover} alt="" loading={i === 0 ? 'eager' : 'lazy'} /> : <span className="spot-plate-blank">{it.topic.slice(0, 1)}</span>}</span>
+                  <span className="spot-plate">{it.cover ? <img src={it.cover} alt="" loading={i === 0 ? 'eager' : 'lazy'} /> : <span className="spot-plate-blank">{it.topic.slice(0, 1)}</span>}{flagOf(it.topic) && <span className="book-flag" aria-hidden="true">{flagOf(it.topic)}</span>}</span>
                   <span className="spot-title">{it.topic}</span>
                   {it.goal && <span className="spot-goal">for: {it.goal}</span>}
                   {it.outcome && <span className="spot-outcome">{it.outcome}</span>}
@@ -188,7 +192,7 @@ export default function Shelf({ onReady, onShared, onBack, notice, have = {} }: 
           </ul>
         </section>
       )}
-      {!items ? <p className="note" role="status">{online ? 'Dusting the shelves…' : "No connection. The Shelf opens when you're back online."}</p> : shelves.filter((s) => s.key !== 'free').map(shelfSection)}
+      {!items ? <p className="note" role="status">{online ? 'Dusting the shelves…' : "No connection. The Shelf opens when you're back online."}</p> : shelves.filter((s) => !TOP.includes(s.key)).map(shelfSection)}
     </div>
   )
 }

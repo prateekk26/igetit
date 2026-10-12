@@ -191,7 +191,8 @@ export const forCache = internalAction({
   handler: async (ctx, { topicKey, level, n }): Promise<{ ok: boolean; error?: string; pictures?: number; of?: number; rows?: number; copies?: number }> => {
     const row: any = await ctx.runQuery(internal.handbooks.readCacheChapter, { topicKey, level, n });
     if (!row?.chapter) return { ok: false, error: "no such cached chapter" };
-    const r = await picturesFor(ctx, row.plan?.topic ?? row.topic, row.plan, row.chapter.title ?? "", row.chapter.cards ?? [], false, n === 1);
+    // A chapter seeded with its scenes (showcase builds, 12 Oct) is drawn from them: no Sonnet scenes call.
+    const r = await picturesFor(ctx, row.plan?.topic ?? row.topic, row.plan, row.chapter.title ?? "", row.chapter.cards ?? [], false, n === 1, undefined, Array.isArray(row.chapter.scenes) && row.chapter.scenes.length ? row.chapter.scenes : undefined);
     if (r.status !== "done") { await ctx.runMutation(internal.handbooks.cachePicturesFailed, { topicKey, level, n }); return { ok: false, error: r.status }; }
     const shared: { rows: number; copies: number } = await ctx.runMutation(internal.handbooks.setCachePictures, { topicKey, level, n, pictures: r.pictures });
     return { ok: true, pictures: r.pictures.filter((p) => p.storageId).length, of: r.pictures.length, ...shared };

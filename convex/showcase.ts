@@ -15,6 +15,23 @@ import { PLAN as FNO } from "./plans/fno";
 import { PLAN as AI_WORK } from "./plans/ai_work";
 import { PLAN as CREDIT_CARD } from "./plans/credit_card";
 import { PLAN as CAR } from "./plans/car";
+// The 11 Oct evening batch (Prateek: parents and "Know before you go"; written with Opus pinned, Gemini stays the default).
+import { PLAN as POCKET_MONEY } from "./plans/pocket_money";
+import { PLAN as CHILD_READING } from "./plans/child_reading";
+import { PLAN as MELTDOWN } from "./plans/meltdown";
+import { PLAN as GO_USA } from "./plans/go_usa";
+import { PLAN as GO_SCHENGEN } from "./plans/go_schengen";
+import { PLAN as GO_JAPAN } from "./plans/go_japan";
+import { PLAN as GO_THAILAND } from "./plans/go_thailand";
+import { PLAN as GO_AUSTRALIA } from "./plans/go_australia";
+import { PLAN as GO_KENYA } from "./plans/go_kenya";
+import { PLAN as GO_DUBAI } from "./plans/go_dubai";
+import { PLAN as GO_SINGAPORE } from "./plans/go_singapore";
+import { PLAN as GO_VIETNAM } from "./plans/go_vietnam";
+import { PLAN as GO_BALI } from "./plans/go_bali";
+import { PLAN as FORMULA_ONE } from "./plans/formula_one";
+import { PLAN as NIGHT_SKY } from "./plans/night_sky";
+import { PLAN as COFFEE_TASTING } from "./plans/coffee_tasting";
 import { drawMoves, topicKeyOf, factCheck } from "./handbooks";
 
 // D65 (Prateek, 10 Oct): the showcase handbooks of the free eleven, written with exactly the steps a reader's handbook
@@ -27,6 +44,10 @@ const OWNER = "showcase-build";
 export const PLANS: Record<string, any> = {
   "hold-a-room": HOLD_A_ROOM, "lands-your-job": LANDS_YOUR_JOB, "ask-raise": ASK_RAISE, english: ENGLISH, ipo: IPO, "putting-off": PUTTING_OFF,
   multibaggers: MULTIBAGGERS, fno: FNO, "ai-work": AI_WORK, "credit-card": CREDIT_CARD, car: CAR,
+  "pocket-money": POCKET_MONEY, "child-reading": CHILD_READING, meltdown: MELTDOWN,
+  "go-usa": GO_USA, "go-schengen": GO_SCHENGEN, "go-japan": GO_JAPAN, "go-thailand": GO_THAILAND, "go-australia": GO_AUSTRALIA, "go-kenya": GO_KENYA,
+  "go-dubai": GO_DUBAI, "go-singapore": GO_SINGAPORE, "go-vietnam": GO_VIETNAM, "go-bali": GO_BALI,
+  "formula-one": FORMULA_ONE, "night-sky": NIGHT_SKY, "coffee-tasting": COFFEE_TASTING,
 };
 const KIT = new Set(["picture", "teach", "example", "mistake", "try", "move", "doit", "steps", "tryit", "exercise", "quiz", "watch", "breath"]);
 
@@ -52,15 +73,17 @@ export const checkPlans = internalQuery({
   }),
 });
 
+// writer: a model pinned for every step of this build (chapters, check, quiz versions), e.g. "claude-opus-5-5" for the
+// 11 Oct evening batch (Prateek: "Use claude credit for this but gemini later on"). Left out, the default writers run.
 export const create = internalMutation({
-  args: { key: v.string() },
-  handler: async (ctx, { key }): Promise<Id<"handbooks">> => {
+  args: { key: v.string(), writer: v.optional(v.string()) },
+  handler: async (ctx, { key, writer }): Promise<Id<"handbooks">> => {
     const plan = PLANS[key];
     if (!plan) throw new Error(`No showcase plan "${key}"`);
     const now = Date.now();
     const handbookId = await ctx.db.insert("handbooks", {
       topic: plan.topic, topicKey: `showcase:${key}`, level: "new", language: "English", voice: "friend", status: "planning",
-      goal: plan.goal, mode: plan.mode, goalChosenAt: now,
+      goal: plan.goal, mode: plan.mode, goalChosenAt: now, ...(writer ? { writer } : {}),
       ownerToken: OWNER, source: "live", test: { label: `showcase:${key}`, startedAt: now, noVersions: false }, createdAt: now,
     } as any);
     await ctx.db.insert("progress", { handbookId, currentChapter: 1, currentCard: 0, chaptersPassed: [], passedExercises: [], missedExercises: [], lastOpenedAt: now, updatedAt: now });
@@ -70,11 +93,11 @@ export const create = internalMutation({
 
 // Research, then the hand-made plan, then chapter 1. Each chapter schedules the next (step), so nothing runs long.
 export const build = internalAction({
-  args: { key: v.string(), from: v.optional(v.number()), handbookId: v.optional(v.id("handbooks")) },
-  handler: async (ctx, { key, from, handbookId }): Promise<{ handbookId: Id<"handbooks"> }> => {
+  args: { key: v.string(), from: v.optional(v.number()), handbookId: v.optional(v.id("handbooks")), writer: v.optional(v.string()) },
+  handler: async (ctx, { key, from, handbookId, writer }): Promise<{ handbookId: Id<"handbooks"> }> => {
     const plan = PLANS[key];
     if (!plan) throw new Error(`No showcase plan "${key}"`);
-    const id: Id<"handbooks"> = handbookId ?? (await ctx.runMutation(internal.showcase.create, { key }));
+    const id: Id<"handbooks"> = handbookId ?? (await ctx.runMutation(internal.showcase.create, { key, writer }));
     if (!handbookId) {
       await ctx.runMutation(internal.handbooks.markResearch, { handbookId: id });
       await ctx.runAction(internal.research.run, { handbookId: id }).catch((e: any) => console.log("showcase research failed", String(e).slice(0, 200)));
@@ -175,6 +198,8 @@ export const exportChapters = internalQuery({
       plan: from === 1 ? h?.plan : undefined,
       chapters: rows.filter((c) => c.n >= from && c.n <= to && c.status === "ready").sort((a, b) => a.n - b.n).map((c: any) => ({
         n: c.n, title: c.title, cards: c.cards, recallCards: c.recallCards ?? [], quizTiers: c.quizTiers, recallTiers: c.recallTiers, outcomeLine: c.outcomeLine ?? "", factCheck: c.factCheck,
+        // the picture scenes the fact check wrote on dev: forCache draws from them on prod with no scenes call (12 Oct)
+        ...(c.scenes ? { scenes: c.scenes } : {}),
       })),
     };
   },
