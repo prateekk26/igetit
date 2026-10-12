@@ -376,28 +376,22 @@ export const recallFor = query({
     if (!progress) return [];
     // A reader who came in at chapter N from a post (?t=…&ch=N) has passed nothing here: recall the chapter before
     // it, which they read on the post, so they prove it before going on (7 Oct). Its rung stays unlit.
-    const fromPost = progress.chaptersPassed.length === 0 && progress.currentChapter > 1 ? [progress.currentChapter - 1] : [];
-    if (progress.chaptersPassed.length === 0 && !fromPost.length) return [];
-    const picks: { chapter: number; cardIndex: number; card: any }[] = [];
-    const passed = progress.chaptersPassed.length ? [...progress.chaptersPassed].sort((a, b) => b - a) : fromPost; // most recent first
-    for (const n of passed) {
-      const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).unique();
-      if (!ch?.cards) continue;
-      // Fresh quizzes on the same idea with new examples (cardIndex 100+), so the reader recalls the idea, not which button.
-      if (Array.isArray(ch.recallCards) && ch.recallCards.length) {
-        const all = recallWithTier(ch.recallCards as any[], (ch as any).recallTiers, tierOf(progress, n + 1));
-        const fresh = n === passed[0] ? all.slice(0, 2) : all.slice(0, 1);
-        fresh.forEach((c: any, k: number) => picks.push({ chapter: n, cardIndex: RECALL_BASE + k, card: publicCards([c])![0] }));
-        if (picks.length >= 3) break;
-        continue;
-      }
-      const ex = ch.cards.map((c: any, i: number) => ({ c, i })).filter((x: any) => x.c.type === "exercise");
-      // the "apply" and "recall" ones from the latest chapter, then one from the chapter before
-      const wanted = n === passed[0] ? ex.filter((x: any) => x.c.kind !== "guess").slice(0, 2) : ex.filter((x: any) => x.c.kind === "recall").slice(0, 1);
-      for (const x of wanted) picks.push({ chapter: n, cardIndex: x.i, card: publicCards([x.c])![0] });
-      if (picks.length >= 3) break;
+    // Only the chapter just finished is recalled, never one further back (13 Oct, Prateek's bug): walking back past
+    // chapters with no quizzes served a quick handbook's chapter 1 question at the start of chapters 2, 3, 4 and 5,
+    // and the "one from the chapter before" pick showed every chapter's first question at two chapter starts in a row.
+    const n = progress.currentChapter - 1;
+    const fromPost = progress.chaptersPassed.length === 0 && n >= 1;
+    if (n < 1 || (!progress.chaptersPassed.includes(n) && !fromPost)) return [];
+    const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).unique();
+    if (!ch?.cards) return [];
+    // Fresh quizzes on the same idea with new examples (cardIndex 100+), so the reader recalls the idea, not which button.
+    if (Array.isArray(ch.recallCards) && ch.recallCards.length) {
+      const all = recallWithTier(ch.recallCards as any[], (ch as any).recallTiers, tierOf(progress, n + 1));
+      return all.slice(0, 2).map((c: any, k: number) => ({ chapter: n, cardIndex: RECALL_BASE + k, card: publicCards([c])![0] }));
     }
-    return picks.slice(0, 3);
+    // Older chapters without recall quizzes: their "apply" and "recall" ones.
+    const ex = ch.cards.map((c: any, i: number) => ({ c, i })).filter((x: any) => x.c.type === "exercise" && x.c.kind !== "guess");
+    return ex.slice(0, 2).map((x: any) => ({ chapter: n, cardIndex: x.i, card: publicCards([x.c])![0] }));
   },
 });
 
