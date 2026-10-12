@@ -50,7 +50,8 @@ export default defineSchema({
   })
     .index("by_token", ["ownerToken"])
     .index("by_user", ["userId"])
-    .index("by_created", ["createdAt"]),
+    .index("by_created", ["createdAt"])
+    .index("by_topicKey", ["topicKey", "level"]),   // readers' copies of a ready topic (setCachePictures, 12 Oct)
 
   chapters: defineTable({
     handbookId: v.id("handbooks"),

@@ -1237,8 +1237,10 @@ export const setCachePictures = internalMutation({
     const title = row?.chapters.find((c: any) => c.n === n)?.title;
     if (!row || !title) return { rows: 0, copies: 0 };
     const keys = new Set<string>();
-    for (const r of await ctx.db.query("cache").collect()) {
-      if (r.level !== lvl || r.topic !== row.topic) continue;
+    // 12 Oct: by index, not the whole cache and every handbook: with the 11 Oct batch those two reads passed Convex's
+    // 16 MB limit and every new picture set was lost at this step.
+    for (const r of await ctx.db.query("cache").withIndex("by_topic", (q) => q.eq("topic", row.topic)).collect()) {
+      if (r.level !== lvl) continue;
       const c = r.chapters.find((x: any) => x.n === n);
       // Fill a copy when the new set is more complete than what it has (7 Oct: Western philosophy had 1 of 7).
       const stored = (x: any[] | undefined) => (x ?? []).filter((q: any) => q.storageId).length;
@@ -1247,8 +1249,8 @@ export const setCachePictures = internalMutation({
       keys.add(r.topicKey);
     }
     let copies = 0;
-    for (const h of await ctx.db.query("handbooks").collect()) {
-      if (h.source !== "cache" || !keys.has(h.topicKey) || h.level !== lvl) continue;
+    for (const key of keys) for (const h of await ctx.db.query("handbooks").withIndex("by_topicKey", (q) => q.eq("topicKey", key).eq("level", lvl)).collect()) {
+      if (h.source !== "cache") continue;
       const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).unique();
       if (!ch || ch.title !== title || (ch.pictures ?? []).filter((q: any) => q.storageId).length >= pictures.filter((q) => q.storageId).length) continue;
       await ctx.db.patch(ch._id, { pictures, picturesStatus: "done" });
