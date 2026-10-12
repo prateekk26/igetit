@@ -818,6 +818,11 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .intent-offer p { margin: 0; font: 400 var(--ui)/1.4 var(--serif); }
 .intent-offer .btn { width: 100%; }
 .intent-goals { display: grid; gap: 10px; margin-top: var(--l); }
+/* "I want to learn more" on the last Done screen (13 Oct): the goal screen's options, under a heading. */
+.learn-more { margin-top: var(--xl, 40px); }
+.learn-more h2 { margin: 0 0 4px; }
+.learn-more .intent-goals { margin-top: var(--m); }
+.learn-more-sub { display: block; margin-top: 4px; font: 400 var(--small) var(--serif); color: var(--ink-2); }
 .intent-goal { min-height: 60px; width: 100%; text-align: left; padding: 14px 18px; border: var(--stroke) solid var(--ink); border-radius: var(--radius-card); background: var(--paper); font: 700 1.05rem var(--sans); color: var(--ink); box-shadow: var(--press-sm); }
 .intent-goal:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 .intent-ghost { display: block; border-color: var(--tint); box-shadow: none; background: linear-gradient(90deg, var(--paper-2), #fff, var(--paper-2)); background-size: 200% 100%; animation: ghost 1.2s linear infinite; }

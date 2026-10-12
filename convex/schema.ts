@@ -42,6 +42,11 @@ export default defineSchema({
     source: v.union(v.literal("live"), v.literal("cache")),
     error: v.optional(v.string()),
     hiddenAt: v.optional(v.number()),   // a duplicate topic found when two devices merged at sign-in; kept, not deleted
+    // "I want to learn more" (13 Oct, Prateek): a free next handbook made on the last chapter's Done screen. buildsOn sits
+    // on the new one (what the finished one taught, sent to research, the plan and the writer); learnMoreId on the
+    // finished one, so each finished handbook gives one free next handbook.
+    buildsOn: v.optional(v.object({ handbookId: v.id("handbooks"), topic: v.string(), taught: v.string(), advanced: v.boolean() })),
+    learnMoreId: v.optional(v.id("handbooks")),
     replacedBy: v.optional(v.id("handbooks")),   // "Change what you typed" on an unread handbook (UX review 9 Oct): hidden, and no longer counts as the reader's typed one
     planSince: v.optional(v.number()),           // when the current plan write started, so a write that died is seen as stuck (UX review 9 Oct)
     writer: v.optional(v.string()),     // a model pinned for this handbook's plan, chapters, versions and check (abtest.ts)

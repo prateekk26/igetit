@@ -64,7 +64,7 @@ export async function typedBooks(ctx: QueryCtx | MutationCtx, userId: Id<"users"
   const out = new Map<string, Doc<"handbooks">>();
   if (userId) for (const h of await ctx.db.query("handbooks").withIndex("by_user", (q) => q.eq("userId", userId)).collect()) out.set(h._id, h);
   if (deviceToken) for (const h of await ctx.db.query("handbooks").withIndex("by_token", (q) => q.eq("ownerToken", deviceToken)).collect()) out.set(h._id, h);
-  return [...out.values()].filter((h) => h.source === "live" && !(h as any).fromLibrary && (h.status as string) !== "declined" && !h.replacedBy);   // a handbook replaced by "Change what you typed" no longer counts
+  return [...out.values()].filter((h) => h.source === "live" && !(h as any).fromLibrary && (h.status as string) !== "declined" && !h.replacedBy && !h.buildsOn);   // "I want to learn more" handbooks are free (13 Oct)   // a handbook replaced by "Change what you typed" no longer counts
 }
 
 // Can this person start a new typed topic? Returns why not, for the screen to explain.

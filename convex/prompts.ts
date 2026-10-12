@@ -217,6 +217,19 @@ export const CHAPTER_PROMPT_V5 = modesBeforeJson(CHAPTER_V5_EDITED);
 
 export type Voice = "friend" | "straight" | "stories";
 
+// "I want to learn more" (13 Oct): what the handbook they just finished taught, so research and the plan go past it.
+export function buildsOnLine(b?: { topic: string; taught: string; advanced: boolean }) {
+  if (!b) return "";
+  return `\nAlready learned: the reader just finished a handbook on "${b.topic}". It taught:\n${b.taught}\n` +
+    (b.advanced
+      ? `This handbook is the advanced next step on the same topic: do not teach any of the above again; go into the more advanced parts it did not reach.`
+      : `Do not teach any of the above again; build on it where it connects.`);
+}
+
+// "I want to learn more" handbooks (Prateek, 13 Oct: "we should not be very India-focused while taking the characters"):
+// added to the Reader line, which the writer's India default gives way to.
+export const WORLD_NAMES = "Invented people in examples come from many countries, not mostly India. Money, rules and institutions stay Indian unless the topic is about another country.";
+
 export function planUserMessage(topic: string, level: "new" | "some", language: string, voice: Voice, clarification?: string, goal?: string, mode?: string) {
   const base = `Line typed: "${topic}"\nLevel: ${level}\nLanguage: ${language}\nVoice: ${voice}${goal ? `\nThe reader's goal: "${goal}"` : ""}${mode ? `\nMode: ${mode}` : ""}\nToday: ${new Date().toISOString().slice(0, 10)}`;
   return clarification

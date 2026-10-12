@@ -5,7 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V3, CHECK_SCENES_PROMPT_V3, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
+import { buildsOnLine, WORLD_NAMES, briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V3, CHECK_SCENES_PROMPT_V3, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
 import { addCost, inrOf } from "./costs";
 import { pictureCards } from "./pictureCards";
 import type { Trace } from "./trace";
@@ -222,6 +222,7 @@ async function fullView(ctx: QueryCtx, h: Doc<"handbooks">) {
     // For the screens (UX review 9 Oct): a shared copy never adapts or offers "Change what you typed"; the wait screen
     // follows the real stage and knows when the write began.
     fromLibrary: h.fromLibrary ?? null,
+    learnMoreId: h.learnMoreId ?? null,   // "I want to learn more" already used on this handbook (13 Oct)
     goal: h.goal ?? null,
     phase: h.status === "planning" ? ((h as any).brief ? "plan" : "research") : null,
     startedAt: h.planSince ?? h.goalChosenAt ?? h.createdAt,
@@ -472,6 +473,55 @@ export const create = mutation({
   },
 });
 
+// "I want to learn more" (Prateek, 13 Oct): on the last chapter's Done screen, the reader picks the advanced version of
+// this handbook, one of the plan's own next topics, or types one. Free: it never counts as their typed handbook
+// (membership.ts typedBooks), one per finished handbook. The day's free budget and the generation caps still apply.
+// The advanced pick skips the goal question (its goal is "go beyond"); the others ask it like any typed topic.
+export const learnMore = mutation({
+  args: { handbookId: v.id("handbooks"), pick: v.union(v.literal("advanced"), v.literal("next"), v.literal("typed")), topic: v.optional(v.string()), deviceToken: v.string() },
+  handler: async (ctx, { handbookId, pick, topic, deviceToken }) => {
+    const h = await ownedHandbook(ctx, handbookId, deviceToken);
+    if (h.learnMoreId) return { handbookId: h.learnMoreId, existing: true };
+    const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).unique();
+    if (!p?.chaptersPassed.includes(totalOf(h))) throw new Error("Finish the last chapter first.");
+    const next: string[] = Array.isArray((h.plan as any)?.next) ? (h.plan as any).next.map(String) : [];
+    const line = pick === "advanced" ? `${h.topic}, advanced` : String(topic ?? "").trim().slice(0, 200);
+    if (line.length < 2) throw new Error("Type a few words first.");
+    if (pick === "next" && !next.includes(line)) throw new Error("That suggestion isn't on this handbook.");
+    const userId = await getAuthUserId(ctx);
+    const topicKey = topicKeyOf(line);
+    const now = Date.now();
+
+    // Already have it (typed before, or a ready copy): open that one, and it counts as this handbook's next one.
+    const already = (await ownedBooks(ctx, userId, deviceToken)).find((b) => b.topicKey === topicKey && b._id !== h._id);
+    if (already) { await ctx.db.patch(h._id, { learnMoreId: already._id }); return { handbookId: already._id, existing: true }; }
+
+    const member = !!(await memberUntil(ctx, userId));
+    if (!member && !(await spendFits(ctx, COST_INR.handbook))) throw new ConvexError("paused-today");
+    if (!(userId && (await isSuper(ctx, userId)))) {
+      const all = await limiter.limit(ctx, "generateAll");
+      const mine = await limiter.limit(ctx, "generateDevice", { key: userId ? String(userId) : deviceToken });
+      if (!all.ok || !mine.ok) throw new ConvexError("busy");
+      if (!userId && !(await limiter.limit(ctx, "generateAnon")).ok) throw new ConvexError("busy");
+    }
+
+    // What the finished handbook taught: each chapter's title and its "You can now" line.
+    const chs = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id)).collect();
+    const taught = chs.sort((a, b) => a.n - b.n).map((c) => `- ${c.title ?? `Chapter ${c.n}`}${c.outcomeLine ? `: ${c.outcomeLine}` : ""}`).join("\n").slice(0, 1500);
+    const advanced = pick === "advanced";
+    const newId = await ctx.db.insert("handbooks", {
+      topic: line, topicKey, level: advanced ? "some" : h.level, language: LANGUAGE, voice: h.voice ?? "friend",
+      status: advanced ? "planning" : "intent", ownerToken: deviceToken, userId: userId ?? undefined, source: "live", createdAt: now,
+      buildsOn: { handbookId: h._id, topic: h.topic, taught, advanced },
+      ...(advanced ? { goal: "Go beyond what they already learned, into the advanced parts", goalChosenAt: now, planSince: now } : {}),
+    });
+    await ctx.db.insert("progress", { handbookId: newId, currentChapter: 1, currentCard: 0, chaptersPassed: [], passedExercises: [], missedExercises: [], lastOpenedAt: now, updatedAt: now });
+    await ctx.db.patch(h._id, { learnMoreId: newId });
+    await ctx.scheduler.runAfter(0, advanced ? internal.handbooks.generatePlan : internal.handbooks.matchOrIntents, { handbookId: newId });
+    return { handbookId: newId, existing: false };
+  },
+});
+
 export const answerQuestion = mutation({
   args: { handbookId: v.id("handbooks"), answer: v.string(), deviceToken: v.optional(v.string()) },
   handler: async (ctx, { handbookId, answer, deviceToken }) => {
@@ -670,7 +720,7 @@ export const generatePlan = internalAction({
     // feat/handbook-shape (9 Oct): D23's typed-line guard (recipes forced to one chapter) and D27's forced 7-chapter
     // course are left out; the handbook's shape and length are what the shape work decides, from the goal and level.
     const brief = (h as any).brief ?? null;
-    const planUser = planUserMessage(h.topic, h.level, h.language, h.voice ?? "friend", clarification, h.goal, h.mode) + briefForPlan(brief);
+    const planUser = planUserMessage(h.topic, h.level, h.language, h.voice ?? "friend", clarification, h.goal, h.mode) + buildsOnLine(h.buildsOn) + briefForPlan(brief);
     // A benchmark handbook (evalShape, 9 Oct) runs on Flash alone: no Opus backup at any step, so a failure stays a
     // failure and we see what Flash does with the prompts. planOnly stops after the plan (no chapters are written).
     const flashOnly = !!(h as any).test?.flashOnly, planOnly = !!(h as any).test?.planOnly;
@@ -956,7 +1006,9 @@ export const generateChapter = internalAction({
     const planCh = h.plan.chapters?.[n - 1] ?? {};
     const pieces: string[] | undefined = Array.isArray(planCh.pieces) ? planCh.pieces.map(String) : undefined;
     const ledgers = await ctx.runQuery(internal.handbooks.readLedgers, { handbookId });
-    const user = chapterUserMessage(h.plan, h.level, h.language, h.voice ?? "friend", n, shareable ? undefined : prof.line, howTheyDid ?? undefined) + chapterContext((h as any).brief, h.plan, n, ledgers) + briefForChapter((h as any).brief, pieces);
+    // "I want to learn more" handbooks add the names line to the Reader line (13 Oct).
+    const readerLine = [shareable ? "" : prof.line, h.buildsOn ? WORLD_NAMES : ""].filter(Boolean).join(" ") || undefined;
+    const user = chapterUserMessage(h.plan, h.level, h.language, h.voice ?? "friend", n, readerLine, howTheyDid ?? undefined) + chapterContext((h as any).brief, h.plan, n, ledgers) + briefForChapter((h as any).brief, pieces);
     let r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: pinned ?? CHAPTER_MODEL, trace });
     // Why a chapter left Flash, for the call log: "budget" (Gemini's time ran out), "error" (any other failure), "floor" (too short twice).
     let bounce: string | undefined;

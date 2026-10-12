@@ -316,3 +316,6 @@ Order now: the top bar; the poster, the box, the free line, the Shelf strip, the
 - The rung bar keeps one segment a chapter; with more than seven the gaps shrink to 2 px so 28 fit at 390 px.
 - Every day shows its step done on one running example, Ananya (agent), then an optional "Your turn" card. Chapter titles, hooks and the example are (agent) until Prateek rewrites them (convex/showcasePlans.ts).
 - A Try it page that runs longer than its 520 px brief now grows and scrolls inside its frame instead of cutting its own text (src/lib/sandbox.ts, fit).
+
+## I want to learn more (13 Oct; Prateek: "There should be a button stating 'I want to learn more'")
+- After the last chapter, under "That's the whole handbook", one block in the "What's it for?" look (src/components/LearnMore.tsx): the heading "I want to learn more", the line "Pick what's next. Free for finishing this one.", three options (the handbook's own name with ", advanced" and the line "Goes past everything you just read"; then two of the plan's next topics, first letter capitalised), and a box "Or type what you want next" with a Start button. After a pick: "Your next handbook is started." and "Open it". Copy (agent).

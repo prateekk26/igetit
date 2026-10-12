@@ -34,6 +34,7 @@ type Props = {
   deviceToken?: string
   onRate?: (rating: 'too_easy' | 'just_right' | 'lost_me') => Promise<void>
   whatsNext?: React.ReactNode
+  learnMore?: React.ReactNode   // "I want to learn more" (13 Oct): shown after the last chapter
   adapts?: boolean   // typed topics rewrite the next chapter from the rating; ready topics only record it
   onShelf?: () => void   // the Shelf strip under the wall card (9 Oct, Prateek: make the Shelf findable)
   freeChapters?: number   // chapters a visitor reads without an account: membership.ts LIMITS.visitorChapters, read from the server (2 since 9 Oct, D26)
@@ -77,7 +78,7 @@ function cheer(n: number, s?: { minutes: number; right: number; total: number } 
   return `You took your time, and it stuck. That's the whole point.`
 }
 
-export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, adapts, whatsNext, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false }: Props) {
+export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, adapts, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
   const line = cheer(n, stats)
   const [stay, setStay] = useState(false)
@@ -146,6 +147,7 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
         </section>
       )}
       {last && <p className="lede" style={{ marginTop: 'var(--l)' }}>{left > 0 ? `That's the last chapter. ${left === 1 ? 'One earlier chapter is' : `${left} earlier chapters are`} still yours to read, on the handbook page.` : quick ? "That's all of it. Quick and done." : total === 7 ? "That's the whole handbook. Seven chapters, done." : `That's the whole handbook. ${total} chapters, done.`}</p>}
+      {last && learnMore}
       {last && whatsNext}
 
       {last && !isMember && (

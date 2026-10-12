@@ -14,6 +14,7 @@ import NextTopics from './components/NextTopics'
 import Sheet from './components/Sheet'
 import Landing from './screens/Landing'
 import WhatsNext from './components/WhatsNext'
+import LearnMore from './components/LearnMore'
 import SignupNudge from './components/SignupNudge'
 import { ShelfButton } from './components/ShelfStrip'
 import { nameOf, isId } from './lib/name'
@@ -59,6 +60,7 @@ export default function App() {
   const readyTopics = useQuery(api.handbooks.cachedTopics, {})
   const examples = readyTopics ?? []
   const create = useMutation(api.handbooks.create)
+  const learnMore = useMutation(api.handbooks.learnMore)
   const answerQuestion = useMutation(api.handbooks.answerQuestion)
   const retry = useMutation(api.handbooks.retry)
   const setPosition = useMutation(api.handbooks.setPosition)
@@ -542,6 +544,10 @@ export default function App() {
           handbookId={hb._id}
           deviceToken={token}
           adapts={hb.source === 'live' && !(hb as any).fromLibrary}
+          learnMore={<LearnMore topic={name} next={(plan as any)?.next ?? []} usedId={(hb as any).learnMoreId ?? null}
+            onPick={async (pick, t) => { const r = await learnMore({ handbookId: hb._id, pick, topic: t, deviceToken: token }); pin(String(r.handbookId)); setDoneN(null); setView('auto') }}
+            onOpen={(id) => { pin(id); setDoneN(null); setView('auto') }}
+            errorText={(e) => limitMessage(e) ?? "Couldn't start it just now. Try again in a minute."} />}
           whatsNext={<WhatsNext topic={name} deviceToken={token} onReady={async (t) => { const r = await create({ topic: t, level: 'new', voice: 'friend', deviceToken: token }); pin(String(r.handbookId)); setDoneN(null); setView('auto') }} onShared={async (id) => { const r = await startFromLibrary({ libraryId: id, deviceToken: token }); pin(String(r.handbookId)); setDoneN(null); setView('auto') }} />}
           onRate={async (rating) => { await rateChapter({ handbookId: hb._id, n: doneN, rating, deviceToken: token }) }}
           nextReady={chapterReady && chapter?.n === doneN + 1}
