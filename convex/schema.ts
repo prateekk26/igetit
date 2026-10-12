@@ -363,6 +363,7 @@ export default defineSchema({
     award: v.optional(v.object({ title: v.string(), line: v.string() })),
     section: v.optional(v.string()),   // D35: the subject shelf (shelfSections.ts), set by shelf.classify or the owner
     order: v.optional(v.number()),
+    free: v.optional(v.boolean()),   // D99: the owner made this ready handbook free (true) or took it off free (false); unset: freeTen.ts decides
     readWeek: v.optional(v.number()),   // D98: readers' copies opened in the last 7 days, recounted hourly (shelf.countReadWeek)   // 13 Oct: the book's place on its shelf, set by the owner on /admin; unset books follow
     starts: v.number(), passes: v.number(),
   }).index("by_topic_kind", ["topic", "kind"]).index("by_library", ["libraryId"]).index("by_kind", ["kind"]),

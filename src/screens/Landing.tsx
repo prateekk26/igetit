@@ -24,15 +24,16 @@ type Frame =
   | { kind: 'picture' | 'teach' | 'example' | 'mistake' | 'try'; title?: string; text: string; picture: string | null }
   | { kind: 'exercise'; prompt: string; options: { id: string; text: string }[]; answer: string; whyNot: Record<string, string> }
 
-type Shelf = { topic: string; outcome: string; cover: string | null; week: number; starts: number; passRate: number | null; trending: boolean; addedAt: number; mode: string | null; improved?: boolean }
+type Shelf = { topic: string; outcome: string; cover: string | null; week: number; starts: number; passRate: number | null; trending: boolean; addedAt: number; mode: string | null; improved?: boolean; free?: boolean }
 // "Or start one tonight" as a carousel (6 Oct). D64 (10 Oct, the landing cut): the four sort pills went. 13 Oct (Prateek:
 // "we need more space on the landing page to display a carousel (auto rotating) of the top handbooks"): the "start one
 // tonight" row and its "Surprise me" went; the top handbooks have their own section under the hero (TopCarousel), and
 // this keeps the free eleven and the way to the Shelf.
 function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; busy: boolean; picked: string | null; onPick: (topic: string) => void; onExplore?: () => void }) {
-  // The free eleven get their own row (Prateek, 11 Oct: highlighted on the homepage), in FREE_TEN's order, the 28-day
-  // "Hold a room" first. Copy (agent).
-  const free = [...FREE_TEN].map((t) => items.find((it) => it.topic === t)).filter((it): it is Shelf => !!it)
+  // The free handbooks get their own row (Prateek, 11 Oct: highlighted on the homepage): the eleven in FREE_TEN's order,
+  // the 28-day "Hold a room" first, then any the owner made free on /admin (D99). Copy (agent).
+  const rank = (t: string) => { const i = [...FREE_TEN].indexOf(t); return i < 0 ? FREE_TEN.size : i }
+  const free = items.filter((it) => it.free).sort((a, b) => rank(a.topic) - rank(b.topic) || a.topic.localeCompare(b.topic))
   return (
     <div className="lp-quick">
       {free.length > 0 && <>
@@ -42,7 +43,7 @@ function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; 
             <li key={it.topic} className={picked === it.topic ? 'lifting' : picked ? 'resting' : undefined}>
               <button type="button" onClick={() => onPick(it.topic)} disabled={busy} aria-busy={picked === it.topic || undefined}>
                 {picked === it.topic && <span className="lp-visually-hidden" role="status">Opening…</span>}
-                <span className="lp-carousel-pic">{it.cover && <img src={it.cover} alt="" loading="lazy" />}<em>{`Free · ${it.topic === 'Hold a room for 10 minutes' ? 28 : 7} days`}</em></span>
+                <span className="lp-carousel-pic">{it.cover && <img src={it.cover} alt="" loading="lazy" />}<em>{FREE_TEN.has(it.topic) ? `Free · ${it.topic === 'Hold a room for 10 minutes' ? 28 : 7} days` : 'Free · every chapter'}</em></span>
                 <strong>{it.topic}</strong>
               </button>
             </li>

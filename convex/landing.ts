@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { smallUrl } from "./pictures";
 import { query } from "./_generated/server";
 import { onShelf } from "./shelf";
-import { FREE_TEN } from "./freeTen";
+import { isFreeRow } from "./freeTen";
 
 // Public content for the landing page, all from the ready topics: a tappable demo of
 // Public speaking chapter 1, its seven-night path, and a shelf of ready topics with cover pictures.
@@ -37,7 +37,7 @@ export const content = query({
     for (const r of rows) {
       shelf.push({ topic: r.title, outcome: r.outcome, cover: await url(r.cover),
         week: recent.filter((h) => h.topic === r.topic).length, starts: r.starts, passRate: r.starts >= 3 ? r.passes / r.starts : null,
-        trending: r.trendingWeek === thisWeek, addedAt: r.addedAt, mode: r.mode ?? null,
+        trending: r.trendingWeek === thisWeek, addedAt: r.addedAt, mode: r.mode ?? null, free: isFreeRow(r),
         improved: !!r.improvedAt && Date.now() - r.improvedAt < 14 * 24 * 3600000 });
     }
 
@@ -47,7 +47,7 @@ export const content = query({
     const score = (r: (typeof rows)[number]) => r.passes * 10 + r.starts;
     const top = [];
     for (const r of rows.filter((r) => r.pick || r.passes >= 1 || r.starts >= 3).sort((a, b) => Number(!!b.pick) - Number(!!a.pick) || score(b) - score(a)).slice(0, 6))
-      top.push({ topic: r.title, outcome: r.outcome, cover: await url(r.cover), starts: r.starts, passes: r.passes, free: FREE_TEN.has(r.topic) || FREE_TEN.has(r.title), mode: r.mode ?? null });
+      top.push({ topic: r.title, outcome: r.outcome, cover: await url(r.cover), starts: r.starts, passes: r.passes, free: isFreeRow(r), mode: r.mode ?? null });
 
     const demoRow = await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", DEMO_TOPIC).eq("level", "new")).unique();
     const ch = demoRow?.chapters.find((c: any) => c.n === 1);

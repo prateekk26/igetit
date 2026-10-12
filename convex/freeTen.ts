@@ -17,6 +17,12 @@ export const FREE_TEN = new Set<string>([
   "Plan to buy your next car",
 ]);
 
+// D99 (13 Oct, Prateek: "Let me make handbooks free as well", then "keep the sign-up, build make free"): the owner can
+// make any ready handbook free, or take one of the eleven off, from /admin (shelf.free on the ready row). Unset means
+// the list above decides. Free means what D65 means: no daily chapter limit; the sign-up after chapter 2 stays.
+export const isFreeRow = (r: { kind: string; topic: string; title?: string; free?: boolean }) =>
+  r.kind === "ready" && (r.free ?? (FREE_TEN.has(r.topic) || (!!r.title && FREE_TEN.has(r.title))));
+
 // The same key as handbooks.topicKeyOf (kept here so this file imports nothing).
 const key = (t: string) => t.normalize("NFKC").toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ").slice(0, 80);
 

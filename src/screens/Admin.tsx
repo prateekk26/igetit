@@ -345,6 +345,7 @@ function ArrangeCard() {
   const setShelfOrder = useMutation(api.shelf.setShelfOrder)
   const setSection = useMutation(api.shelf.setSection)
   const recount = useMutation(api.shelf.recountReadWeek)
+  const setFree = useMutation(api.shelf.setFree)
   const [err, setErr] = useState<string | null>(null)
   const [recounting, setRecounting] = useState(false)
   if (!rows || !layout) return null
@@ -365,7 +366,7 @@ function ArrangeCard() {
   return (
     <section className="adm-card adm-wide adm-arrange">
       <h2>Arrange the Shelf</h2>
-      <p className="note">The Shelf as readers see it, top to bottom. The free shelf always comes first; the first subject shelf sits next to it, above the Spotlight. ↑ ↓ moves a shelf, or a book along its shelf (left to right on the Shelf). The dropdown sends a book to another shelf. Books you never moved follow the ones you did, the most finished first.</p>
+      <p className="note">The Shelf as readers see it, top to bottom. The free shelf always comes first; the first subject shelf sits next to it, above the Spotlight. ↑ ↓ moves a shelf, or a book along its shelf (left to right on the Shelf). The dropdown sends a book to another shelf. Make free puts a ready handbook on the free shelf with no daily chapter limit (the sign-up after chapter 2 stays); tap it again to take it off. Books you never moved follow the ones you did, the most finished first.</p>
       {/* D98 (13 Oct, Prateek: "how many copies are there of it or how many active users have read it"): copies are the
           readers who have it (our own phones left out); "read this week" is recounted hourly (shelf.countReadWeek). */}
       <p className="note">Under each book: copies (readers who have it), how many of them opened it in the last 7 days, and how many finished chapter 1. Our own phones are left out. Read this week: {layout.readWeekAt ? `counted ${ago(layout.readWeekAt)}` : 'not counted yet'}.{' '}
@@ -385,7 +386,9 @@ function ArrangeCard() {
             {sh.books.map((b, i) => (
               <li key={b.id}>
                 <span className="adm-book-n">{i + 1}</span>
-                <span className="adm-book-t">{b.title}{b.kind === 'shared' ? <small> · shared</small> : null}<small> · {b.starts} {b.starts === 1 ? 'copy' : 'copies'} · {b.readWeek ?? '–'} read this week · {b.passes} finished chapter 1</small></span>
+                <span className="adm-book-t">{b.title}{b.kind === 'shared' ? <small> · shared</small> : null}<small> · {b.starts} {b.starts === 1 ? 'copy' : 'copies'} · {b.readWeek ?? '–'} read this week · {b.passes} finished chapter 1</small>
+                  {/* D99: make a ready handbook free (no daily limit, the Free shelf); the sign-up after chapter 2 stays */}
+                  {b.kind === 'ready' && <><br /><button type="button" className="quiet adm-free" aria-pressed={b.free} onClick={() => { setErr(null); setFree({ id: b.id, free: !b.free }).catch(fail) }}>{b.free ? 'Free ✓ · take off free' : 'Make free'}</button></>}</span>
                 <span className="adm-arrows">
                   <button type="button" className="quiet" aria-label={`Move ${b.title} up`} disabled={i === 0} onClick={() => moveBook(sh.books, i, -1)}>↑</button>
                   <button type="button" className="quiet" aria-label={`Move ${b.title} down`} disabled={i === sh.books.length - 1} onClick={() => moveBook(sh.books, i, 1)}>↓</button>

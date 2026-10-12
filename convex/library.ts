@@ -1,4 +1,4 @@
-import { FREE_TEN } from "./freeTen";
+import { isFreeRow } from "./freeTen";
 import { v } from "convex/values";
 import { smallUrl } from "./pictures";
 import { typedName } from "./names";
@@ -207,7 +207,7 @@ export const explore = query({
     for (const r of shelf.filter((x) => x.kind === "ready" && x.level === "new" && onShelf(x))) {
       if (seen.has(r.topic)) continue; seen.add(r.topic);
       const mine = recent.filter((h) => h.source === "cache" && h.topic === r.topic);
-      items.push({ kind: "ready", key: r.key, topic: r.title, outcome: r.outcome, mode: r.mode ?? null, cover: await url(r.cover), week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, free: FREE_TEN.has(r.topic) || FREE_TEN.has(r.title),
+      items.push({ kind: "ready", key: r.key, topic: r.title, outcome: r.outcome, mode: r.mode ?? null, cover: await url(r.cover), week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, free: isFreeRow(r),
         finishedWeek: mine.filter((h) => finished.has(h._id)).length, trending: r.trendingWeek === thisWeek, addedAt: r.addedAt });
     }
     for (const r of shelf.filter((x) => x.kind === "shared" && onShelf(x))) {

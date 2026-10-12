@@ -5,7 +5,7 @@ import { query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { DAYS } from "./pricing";
 import { isOwner } from "./admin";
-import { FREE_TEN } from "./freeTen";
+import { isFreeRow } from "./freeTen";
 
 // Visitor, signed up, member (Prateek, 7 Oct, afternoon). One place for every number. Each limit is checked in a Convex
 // function; the screens only explain it. "New chapter" means one opened for the first time; going back is always free.
@@ -120,7 +120,9 @@ export async function tryOpen(ctx: MutationCtx, h: Doc<"handbooks">, n: number):
     const bp = b._id === h._id ? p : await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", b._id)).unique();
     for (const o of bp?.opened ?? []) if (o.day === day) today.push({ id: b._id, typed: isTyped(b) });
   }
-  const freeTen = h.source === "cache" && FREE_TEN.has(h.topic);   // D65: no daily limit on the free eleven
+  // D65: no daily limit on the free handbooks. D99: the owner's choice on the ready row decides, else the eleven.
+  const readyRow = h.source === "cache" ? await ctx.db.query("shelf").withIndex("by_topic_kind", (q) => q.eq("topic", h.topic).eq("kind", "ready")).unique() : null;
+  const freeTen = h.source === "cache" && isFreeRow(readyRow ?? { kind: "ready", topic: h.topic });
   if (member) {
     if (!sup && !freeTen && today.length >= LIMITS.memberChaptersPerDay) return { ok: false, code: "daily-member" };
   } else {

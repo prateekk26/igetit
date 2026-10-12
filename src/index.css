@@ -749,6 +749,8 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .adm-book-n { color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
 .adm-book-t { min-width: 0; overflow-wrap: anywhere; }
 .adm-arrows { display: inline-flex; gap: 2px; }
+.adm-free { min-height: 44px; padding: 0; font-size: var(--small); }
+.adm-free[aria-pressed="true"] { color: var(--pass); font-weight: 700; }
 .adm-arrows button { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.1rem; }
 .adm-arrows button:disabled { opacity: 0.25; }
 .adm-books select { max-width: 9.5rem; min-height: 44px; }

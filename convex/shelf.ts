@@ -7,7 +7,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { isOwner } from "./admin";
 import { CLASSIFY_PROMPT, SECTION_KEYS, SHELF_ORDER_KEY, sectionOrder } from "./shelfSections";
 const READ_WEEK_AT = "shelfReadWeekAt";
-import { FREE_TEN } from "./freeTen";
+import { isFreeRow } from "./freeTen";
 
 // The shelf (7 Oct, before launch traffic): one light row per ready topic and per shared handbook, with just what the
 // landing page, Explore, "Jump to next" and the wait-screen story show. Those pages read this table and this week's
@@ -161,7 +161,7 @@ export const adminList = query({
     if (!(await isOwner(ctx)).ok) return null;
     const rows = (await ctx.db.query("shelf").collect()).filter((r) => r.kind === "shared" || r.level === "new");
     const items = rows.map((r) => ({ id: r._id, kind: r.kind, key: r.key, title: r.title, topic: r.topic, mode: r.mode ?? null, goal: r.goal ?? null, starts: r.starts, passes: r.passes,
-      on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, readWeek: r.readWeek ?? null, free: r.kind === "ready" && (FREE_TEN.has(r.topic) || FREE_TEN.has(r.title)), cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
+      on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, readWeek: r.readWeek ?? null, free: isFreeRow(r), freeSet: r.free ?? null, cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
     const spot = spotlight(items.filter((i) => i.on));
     return items.map((i) => ({ ...i, spot: spot.indexOf(i.key) + 1 || null }))
       .sort((a, b) => Number(b.on) - Number(a.on) || (a.spot ?? 9) - (b.spot ?? 9) || b.passes - a.passes || b.starts - a.starts);
@@ -283,6 +283,17 @@ export const setSection = mutation({
     if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
     if (!SECTION_KEYS.includes(section)) throw new Error("No such shelf");
     await ctx.db.patch(id, { section, order: undefined });   // a moved book joins its new shelf after the placed ones
+  },
+});
+
+// Make free, or take off free (D99): ready handbooks only; a reader's shared handbook is not a written course.
+export const setFree = mutation({
+  args: { id: v.id("shelf"), free: v.boolean() },
+  handler: async (ctx, { id, free }) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    const r = await ctx.db.get(id);
+    if (!r || r.kind !== "ready") throw new Error("Only a ready handbook can be made free");
+    await ctx.db.patch(id, { free });
   },
 });
 
