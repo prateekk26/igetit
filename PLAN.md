@@ -42,16 +42,4 @@ Order from 6 Oct evening (Prateek, from /admin data: 27 started, 5 passed chapte
 9. Indian-language translations.
 Days 8 to 28 wait until 20 or more readers have passed chapter 1 (Shaktimaan, 6 Oct).
 
-Parked (not now), in the order they'd come:
-- Ideas from Tanisha Kothari's PR #2 (a coursemate; merged on GitHub 5 Oct by mistake, none of its code is in the product). The sprint is solo only, so never copy her code: if one of these ideas is wanted after the coursemate test, rebuild it ourselves. Chapter recap; "go deeper" bonus lessons; an "another way" lesson after a missed exercise; in-app navigation, cache expiry and AI retry.
-- Memes, AI-generated reels or clips inside a chapter (first user test, 4 Oct). Parked on purpose: the feed is the habit we're firing; the chapter earns attention with prose, examples and the checks instead.
-- Regenerate the plan with comments, done chapters kept.
-- "Go deeper" on a card, and language change mid-path. ("Say it simpler" shipped 4 Oct afternoon after a user asked for it.)
-- Photo-real images per chapter (needs an image provider and credits: Prateek decides). Model-drawn SVG illustrations shipped 4 Oct afternoon instead.
-- The tutor chat, scoped to the mission: a two-way "ask or object" on any card, in the handbook's voice. First thing after credits (user feedback 4 Oct: "it has to be a two-way street").
-- More voices beyond friend / straight / stories (user feedback 4 Oct asked for many). Add one at a time, each read by Prateek before it ships.
-- A second topic, with the three-slot rule and the forfeit.
-- "Don't remember" on recall, counted as a miss.
-- A reminder at the chosen time (needs an email or push provider: ask Prateek first).
-- Share-to-app from Instagram or YouTube; reading a reel or video.
-- Streaks, badges, share cards, payments, anything social.
+Parked: in Linear Triage since 12 Oct (workspace Kurkanji Labs, team key I2; I2-5 to I2-20). New asks go there through /intake, not here.

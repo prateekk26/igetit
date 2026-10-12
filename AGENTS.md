@@ -19,7 +19,7 @@ When I report a bug, I'll name the part. Look there first, and tell me if you th
 - Read PRODUCT.md, PLAN.md, PROGRESS.md and docs/decisions.md before anything else, and DESIGN.md before any screen work. Read docs/evals/ (basics, advanced, where-we-stand) before changing a prompt, a model or a scorer; run `npm run eval:gate` (dev, about an hour, D72) before it ships and say what the report showed. docs/decisions.md is the record of decisions (why we chose what we chose; lessons go in docs/lessons.md); append to it at the end of every session, newest day first. IDEA_SCOPE.md and docs/*.md outside the handbook chapters are superseded; don't build from them.
 - Before writing code, say in two or three sentences what you think I'm after, then your plan. Wait for my yes. (Night of 4 Oct: Prateek asleep and has authorised decisions in his stead; every such decision is written in PROGRESS.md under "Decided", and the first thing in the morning is to read that list.)
 - One milestone at a time: the next one in PLAN.md, working end to end. Nothing outside it.
-- If I ask for something new mid-milestone, add it to the parked list in PLAN.md and carry on.
+- If I ask for something new mid-milestone, or you notice something outside the task, file it in Linear Triage with /intake (workspace Kurkanji Labs, team key I2), say so in one line, and carry on. Only Prateek moves items out of Triage. (Since 12 Oct; the parked list in PLAN.md is retired.)
 - Never say "done" until you've seen it work (a screenshot at 390 px, or the live link on a phone) and told me how to check it on my phone.
 - When I report a bug, find the cause before changing anything. Fix only that.
 - After a milestone works: commit, push, deploy, and add one line to PROGRESS.md.
@@ -27,6 +27,7 @@ When I report a bug, I'll name the part. Look there first, and tell me if you th
 - Copy that a user reads is a placeholder until Prateek rewrites it. Mark it (agent) in DESIGN.md until then.
 - Never use or suggest any host, database or auth service other than Convex, or any other service, without asking first. (Prateek's standing rule.)
 - Every build day ends with lessons in docs/lessons.md, under that day's heading, in two halves: Product/Tech and GTM (Prateek, 8 Oct: "every single day we build"). Each session adds what its own work taught (thought / learned / now, with numbers) before it ends, and folds any "learned:" notes from the bottom of the file into the day. Lessons, not a list of what shipped; that's PROGRESS.md.
+- When a session catches something we were late on (a bug live for days, a rule found after breaking it, a tool or habit that would have saved hours from day 1), add an entry to docs/learning.md right then, in its format: realised, could have known, what it cost (numbers), now, a draft post opener. Fold any "late:" notes from its bottom into the day before the session ends. It feeds posts (Prateek, 11 Oct).
 
 ## 3. Shipping
 Live link: https://www.igetit.now (prod, sensible-mongoose-624; www has a CNAME to convex.domains, the bare igetit.now forwards to www through GoDaddy). SITE_URL on prod is https://www.igetit.now since 10 Oct. https://sensible-mongoose-624.convex.site serves the same build.
