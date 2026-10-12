@@ -34,5 +34,23 @@ const TO: Record<string, string[]> = {
   "Make ChatGPT and Claude do your boring work": ["chatgpt", "how to use chatgpt", "ai at work", "chatgpt for work"],
   "Make your credit card pay you back": ["credit card", "credit cards", "credit score", "cibil score", "credit card rewards"],
   "Plan to buy your next car": ["car buying", "buying a car", "how to buy a car", "car loan"],
+  // The 11 Oct evening batch (12 Oct): other ways to type them. Redirects, not copies: a copy row per spelling holds the
+  // whole handbook, and 38 of them pushed the whole-cache read on every visit past Convex's 16 MB limit.
+  "Read the night sky": ["stargazing", "night sky", "stargazing for beginners"],
+  "Taste coffee like a barista": ["coffee tasting", "taste coffee"],
+  "Calm your child's meltdown without losing yours": ["child meltdowns", "toddler tantrums", "tantrums"],
+  "Get your child reading for fun": ["get my child to read", "kids reading habit"],
+  "Teach your child money with their pocket money": ["pocket money", "teach kids about money"],
+  "Understand Formula 1 in a week": ["formula 1", "f1", "understand f1"],
+  "Know before you go: Singapore": ["singapore trip", "travel to singapore"],
+  "Know before you go: Vietnam": ["vietnam trip", "travel to vietnam"],
+  "Know before you go: Dubai": ["dubai trip", "travel to dubai"],
+  "Know before you go: Bali": ["bali trip", "travel to bali"],
+  "Know before you go: Japan": ["japan trip", "travel to japan"],
+  "Know before you go: Thailand": ["thailand trip", "travel to thailand"],
+  "Know before you go: the USA": ["travel to the usa", "usa trip", "visiting america"],
+  "Know before you go: a Europe trip on a Schengen visa": ["europe trip", "travel to europe", "schengen visa"],
+  "Know before you go: Australia": ["australia trip", "travel to australia"],
+  "Know before you go: Kenya": ["kenya trip", "travel to kenya", "kenya safari"],
 };
 export const REDIRECT: Record<string, string> = Object.fromEntries(Object.entries(TO).flatMap(([title, words]) => words.map((w) => [key(w), key(title)])));

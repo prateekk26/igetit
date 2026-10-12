@@ -244,3 +244,15 @@ export const recheck = internalAction({
     return { status: checked.report.status, fixes: checked.report.fixes, notes: checked.report.notes };
   },
 });
+
+// Remove ready-topic rows by key (12 Oct): seedPart's alias rows each hold a full copy of the handbook, and 41 of them
+// pushed a whole-cache read past Convex's 16 MB limit (cachedTopics on every visit). Rows only, no shelf change.
+//   npx convex run --prod showcase:dropKeys '{"keys":["japan trip"]}'
+export const dropKeys = internalMutation({
+  args: { keys: v.array(v.string()) },
+  handler: async (ctx, { keys }) => {
+    let dropped = 0;
+    for (const topicKey of keys) for (const r of await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", topicKey)).collect()) { await ctx.db.delete(r._id); dropped++; }
+    return dropped;
+  },
+});
