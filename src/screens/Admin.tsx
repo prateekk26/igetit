@@ -337,13 +337,16 @@ function ProviderSwitch() {
 // shelf first, then the five subject shelves in order, then "More". ↑ ↓ move a shelf, or a book along its shelf; the
 // dropdown moves a book to another shelf (it joins the end of the placed ones). Books in the Spotlight or the Awards
 // are not on a shelf, as on the real Shelf; pin and award them in the table below.
+const ago = (t: number) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago` }
 function ArrangeCard() {
   const rows = useQuery(api.shelf.adminList, {})
   const layout = useQuery(api.shelf.layout, {})
   const setBookOrder = useMutation(api.shelf.setBookOrder)
   const setShelfOrder = useMutation(api.shelf.setShelfOrder)
   const setSection = useMutation(api.shelf.setSection)
+  const recount = useMutation(api.shelf.recountReadWeek)
   const [err, setErr] = useState<string | null>(null)
+  const [recounting, setRecounting] = useState(false)
   if (!rows || !layout) return null
   type Row = (typeof rows)[number]
   const order = sectionOrder(layout.shelves)
@@ -363,6 +366,10 @@ function ArrangeCard() {
     <section className="adm-card adm-wide adm-arrange">
       <h2>Arrange the Shelf</h2>
       <p className="note">The Shelf as readers see it, top to bottom. The free shelf always comes first; the first subject shelf sits next to it, above the Spotlight. ↑ ↓ moves a shelf, or a book along its shelf (left to right on the Shelf). The dropdown sends a book to another shelf. Books you never moved follow the ones you did, the most finished first.</p>
+      {/* D98 (13 Oct, Prateek: "how many copies are there of it or how many active users have read it"): copies are the
+          readers who have it (our own phones left out); "read this week" is recounted hourly (shelf.countReadWeek). */}
+      <p className="note">Under each book: copies (readers who have it), how many of them opened it in the last 7 days, and how many finished chapter 1. Our own phones are left out. Read this week: {layout.readWeekAt ? `counted ${ago(layout.readWeekAt)}` : 'not counted yet'}.{' '}
+        <button type="button" className="quiet" disabled={recounting} onClick={() => { setRecounting(true); setErr(null); recount().catch(fail).finally(() => setTimeout(() => setRecounting(false), 4000)) }}>{recounting ? 'Counting…' : 'Recount now'}</button></p>
       {aside.length > 0 && <p className="note">Not on a shelf, because they are in the Spotlight or the Awards: {aside.map((r) => r.title).join(' · ')}.</p>}
       {err && <p className="error" role="alert">{err}</p>}
       {shelves.map((sh) => sh.books.length === 0 && sh.fixed ? null : (
@@ -378,7 +385,7 @@ function ArrangeCard() {
             {sh.books.map((b, i) => (
               <li key={b.id}>
                 <span className="adm-book-n">{i + 1}</span>
-                <span className="adm-book-t">{b.title}{b.kind === 'shared' ? <small> · shared</small> : null}<small> · {b.passes}/{b.starts} finished ch 1</small></span>
+                <span className="adm-book-t">{b.title}{b.kind === 'shared' ? <small> · shared</small> : null}<small> · {b.starts} {b.starts === 1 ? 'copy' : 'copies'} · {b.readWeek ?? '–'} read this week · {b.passes} finished chapter 1</small></span>
                 <span className="adm-arrows">
                   <button type="button" className="quiet" aria-label={`Move ${b.title} up`} disabled={i === 0} onClick={() => moveBook(sh.books, i, -1)}>↑</button>
                   <button type="button" className="quiet" aria-label={`Move ${b.title} down`} disabled={i === sh.books.length - 1} onClick={() => moveBook(sh.books, i, 1)}>↓</button>

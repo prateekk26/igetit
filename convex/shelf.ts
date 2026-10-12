@@ -6,6 +6,7 @@ import type { Doc } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { isOwner } from "./admin";
 import { CLASSIFY_PROMPT, SECTION_KEYS, SHELF_ORDER_KEY, sectionOrder } from "./shelfSections";
+const READ_WEEK_AT = "shelfReadWeekAt";
 import { FREE_TEN } from "./freeTen";
 
 // The shelf (7 Oct, before launch traffic): one light row per ready topic and per shared handbook, with just what the
@@ -160,7 +161,7 @@ export const adminList = query({
     if (!(await isOwner(ctx)).ok) return null;
     const rows = (await ctx.db.query("shelf").collect()).filter((r) => r.kind === "shared" || r.level === "new");
     const items = rows.map((r) => ({ id: r._id, kind: r.kind, key: r.key, title: r.title, topic: r.topic, mode: r.mode ?? null, goal: r.goal ?? null, starts: r.starts, passes: r.passes,
-      on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, free: r.kind === "ready" && (FREE_TEN.has(r.topic) || FREE_TEN.has(r.title)), cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
+      on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, readWeek: r.readWeek ?? null, free: r.kind === "ready" && (FREE_TEN.has(r.topic) || FREE_TEN.has(r.title)), cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
     const spot = spotlight(items.filter((i) => i.on));
     return items.map((i) => ({ ...i, spot: spot.indexOf(i.key) + 1 || null }))
       .sort((a, b) => Number(b.on) - Number(a.on) || (a.spot ?? 9) - (b.spot ?? 9) || b.passes - a.passes || b.starts - a.starts);
@@ -292,7 +293,13 @@ async function savedShelfOrder(ctx: { db: any }): Promise<string[]> {
   const row = await ctx.db.query("settings").withIndex("by_key", (q: any) => q.eq("key", SHELF_ORDER_KEY)).unique();
   try { return sectionOrder(row ? JSON.parse(row.value) : null); } catch { return sectionOrder(null); }
 }
-export const layout = query({ args: {}, handler: async (ctx) => ({ shelves: await savedShelfOrder(ctx) }) });
+export const layout = query({
+  args: {},
+  handler: async (ctx) => {
+    const at = await ctx.db.query("settings").withIndex("by_key", (q) => q.eq("key", READ_WEEK_AT)).unique();
+    return { shelves: await savedShelfOrder(ctx), readWeekAt: at ? Number(at.value) : null };
+  },
+});
 export const setShelfOrder = mutation({
   args: { keys: v.array(v.string()) },
   handler: async (ctx, { keys }) => {
@@ -320,5 +327,63 @@ export const mergeSections = internalMutation({
     const rows = (await ctx.db.query("shelf").collect()).filter((r) => r.section && from.includes(r.section));
     for (const r of rows) await ctx.db.patch(r._id, { section: to, order: undefined });
     return rows.map((r) => r.title);
+  },
+});
+
+// "Read this week" (D98, 13 Oct; Prateek: "how many active users have read it"): for each book on the Shelf, the readers'
+// copies opened in the last 7 days. Copies opened this week come from progress.lastOpenedAt (indexed), a page at a time,
+// so it never reads every handbook; our own phones, test replays, abuse tokens and merged duplicates never count (the
+// /stats rule). Too heavy for every page load (about 400 copies, 5 MB on 13 Oct), so it runs hourly and on "Recount now".
+export const readWeekPage = internalQuery({
+  args: { since: v.number(), cursor: v.union(v.string(), v.null()) },
+  handler: async (ctx, { since, cursor }) => {
+    const r = await ctx.db.query("progress").withIndex("by_lastOpened", (q) => q.gte("lastOpenedAt", since)).paginate({ cursor, numItems: 100 });
+    const excluded = await ctx.db.query("statsExcluded").collect();
+    const xT = new Set(excluded.map((e) => e.deviceToken).filter(Boolean) as string[]);
+    const xU = new Set(excluded.map((e) => e.userId).filter(Boolean).map(String));
+    const out: { topic?: string; lib?: string }[] = [];
+    for (const p of r.page) {
+      const h = await ctx.db.get(p.handbookId);
+      if (!h || h.hiddenAt || h.ownerToken?.startsWith("abuse-") || (h.ownerToken && xT.has(h.ownerToken)) || (h.userId && xU.has(String(h.userId)))) continue;
+      if (h.fromLibrary) out.push({ lib: String(h.fromLibrary) });
+      else if (h.source === "cache") out.push({ topic: h.topic });
+    }
+    return { out, cursor: r.continueCursor, done: r.isDone };
+  },
+});
+export const setReadWeek = internalMutation({
+  args: { counts: v.array(v.object({ key: v.string(), n: v.number() })) },
+  handler: async (ctx, { counts }) => {
+    const by = new Map(counts.map((c) => [c.key, c.n]));
+    for (const r of await ctx.db.query("shelf").collect()) {
+      const n = (r.kind === "shared" ? (r.libraryId ? by.get("lib:" + r.libraryId) : 0) : by.get("topic:" + r.topic)) ?? 0;
+      if (r.readWeek !== n) await ctx.db.patch(r._id, { readWeek: n });
+    }
+    const value = String(Date.now());
+    const row = await ctx.db.query("settings").withIndex("by_key", (q) => q.eq("key", READ_WEEK_AT)).unique();
+    if (row) await ctx.db.patch(row._id, { value, at: Date.now() });
+    else await ctx.db.insert("settings", { key: READ_WEEK_AT, value, at: Date.now() });
+  },
+});
+export const countReadWeek = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ copies: number }> => {
+    const since = Date.now() - 7 * 24 * 3600000;
+    const n = new Map<string, number>();
+    let cursor: string | null = null, copies = 0;
+    for (;;) {
+      const p: { out: { topic?: string; lib?: string }[]; cursor: string; done: boolean } = await ctx.runQuery(internal.shelf.readWeekPage, { since, cursor });
+      for (const x of p.out) { copies++; const k = x.lib ? "lib:" + x.lib : "topic:" + x.topic; n.set(k, (n.get(k) ?? 0) + 1); }
+      cursor = p.cursor; if (p.done) break;
+    }
+    await ctx.runMutation(internal.shelf.setReadWeek, { counts: [...n].map(([key, c]) => ({ key, n: c })) });
+    return { copies };
+  },
+});
+export const recountReadWeek = mutation({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
+    await ctx.scheduler.runAfter(0, internal.shelf.countReadWeek, {});
   },
 });

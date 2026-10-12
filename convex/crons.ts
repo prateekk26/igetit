@@ -15,4 +15,6 @@ crons.interval("export to Langfuse", { minutes: 2 }, internal.langfuse.exportNew
 crons.interval("export to PostHog AI", { minutes: 2 }, internal.posthogAi.exportNew, {});
 // Every 10 minutes: a failure or cost spike in the last hour becomes an alert on /admin (convex/watch.ts, D73).
 crons.interval("alerts", { minutes: 10 }, internal.watch.check, {});
+// Hourly: "read this week" for every book on /admin's Arrange the Shelf (convex/shelf.ts, D98).
+crons.interval("shelf read this week", { hours: 1 }, internal.shelf.countReadWeek, {});
 export default crons;
