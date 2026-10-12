@@ -795,6 +795,8 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .rate-q { font: 600 var(--small) var(--sans); color: var(--ink-2); margin: 0 0 8px; }
 .rate-row { display: flex; gap: 8px; }
 .rate-row .chip { flex: 1; min-height: 44px; padding: 0 8px; }
+.rate-note { min-height: 48px; margin-bottom: 8px; font-size: var(--ui); }
+.rate-members { margin: 8px 0 0; }
 .cheer { font-variation-settings: 'wdth' 92; }
 
 .adm-journeys { display: grid; gap: 6px; }

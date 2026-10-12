@@ -543,13 +543,12 @@ export default function App() {
           stats={doneStats}
           handbookId={hb._id}
           deviceToken={token}
-          adapts={hb.source === 'live' && !(hb as any).fromLibrary}
           learnMore={<LearnMore topic={name} next={(plan as any)?.next ?? []} usedId={(hb as any).learnMoreId ?? null}
             onPick={async (pick, t) => { const r = await learnMore({ handbookId: hb._id, pick, topic: t, deviceToken: token }); pin(String(r.handbookId)); setDoneN(null); setView('auto') }}
             onOpen={(id) => { pin(id); setDoneN(null); setView('auto') }}
             errorText={(e) => limitMessage(e) ?? "Couldn't start it just now. Try again in a minute."} />}
           whatsNext={<WhatsNext topic={name} deviceToken={token} onReady={async (t) => { const r = await create({ topic: t, level: 'new', voice: 'friend', deviceToken: token }); pin(String(r.handbookId)); setDoneN(null); setView('auto') }} onShared={async (id) => { const r = await startFromLibrary({ libraryId: id, deviceToken: token }); pin(String(r.handbookId)); setDoneN(null); setView('auto') }} />}
-          onRate={async (rating) => { await rateChapter({ handbookId: hb._id, n: doneN, rating, deviceToken: token }) }}
+          onRate={async (rating, note) => { await rateChapter({ handbookId: hb._id, n: doneN, rating, note, deviceToken: token }) }}
           nextReady={chapterReady && chapter?.n === doneN + 1}
           nextWriting={hb.chapters.find((c) => c.n === doneN + 1)?.status === 'writing'}
           nextFailed={!!chapterFailed && chapter?.n === doneN + 1}

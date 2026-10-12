@@ -998,7 +998,9 @@ export const generateChapter = internalAction({
     // A reader with no profile line gets a neutral chapter, written once and shared with every later reader of this
     // handbook (7 Oct); adapting happens in the quiz versions and the recap. A reader who set a profile gets a chapter
     // written for them, as before, and it stays theirs.
-    const shareable = !prof.line;
+    // D96: a member who said what they want from this chapter gets it written for them (the report carries their answer).
+    const asked: string = n > 1 ? await ctx.runQuery(internal.handbooks.memberAsked, { handbookId, n }) : "";
+    const shareable = !prof.line && !asked;
     const howTheyDid: string | null = shareable ? null : await ctx.runQuery(internal.handbooks.readingReport, { handbookId, n });
     const trace = { handbookId, chapter: n };
     const pinned = prof.model ?? h.writer;
@@ -1007,7 +1009,7 @@ export const generateChapter = internalAction({
     const pieces: string[] | undefined = Array.isArray(planCh.pieces) ? planCh.pieces.map(String) : undefined;
     const ledgers = await ctx.runQuery(internal.handbooks.readLedgers, { handbookId });
     // "I want to learn more" handbooks add the names line to the Reader line (13 Oct).
-    const readerLine = [shareable ? "" : prof.line, h.buildsOn ? WORLD_NAMES : ""].filter(Boolean).join(" ") || undefined;
+    const readerLine = [shareable ? "" : prof.line, h.buildsOn ? WORLD_NAMES : "", asked].filter(Boolean).join(" ") || undefined;
     const user = chapterUserMessage(h.plan, h.level, h.language, h.voice ?? "friend", n, readerLine, howTheyDid ?? undefined) + chapterContext((h as any).brief, h.plan, n, ledgers) + briefForChapter((h as any).brief, pieces);
     let r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: pinned ?? CHAPTER_MODEL, trace });
     // Why a chapter left Flash, for the call log: "budget" (Gemini's time ran out), "error" (any other failure), "floor" (too short twice).
@@ -1176,8 +1178,12 @@ export const setChapter = internalMutation({
     const tiers = shuffleTiers(quizTiers, `${handbookId}:${n}`), rTiers = shuffleTiers(recallTiers, `${handbookId}:${n}:recall`);
     // 8 Oct: versions usually come later (addQuizVersions); a rewrite clears the old ones so they never sit beside new cards.
     const versions = { quizTiers: tiers ?? undefined, recallTiers: rTiers ?? undefined };
-    if (existing) await ctx.db.patch(existing._id, { status: "ready", title, cards: shuffled, recallCards: recall, outcomeLine, svg, model, factCheck, scenes, ledger, stale: false, error: undefined, ...versions });
+    // A rewrite (the row already had cards: a member's answer, a profile change; rewrites run when the chapter is opened):
+    // any old pictures belong to the old cards, so they go and the new cards are drawn for this reader (D96, 13 Oct).
+    const redraw = !!existing && n > 1 && Array.isArray(existing.cards) && existing.cards.length > 0;
+    if (existing) await ctx.db.patch(existing._id, { status: "ready", title, cards: shuffled, recallCards: recall, outcomeLine, svg, model, factCheck, scenes, ledger, stale: !!existing.askedWhileWriting, askedWhileWriting: undefined, error: undefined, ...versions, ...(redraw ? { pictures: [], picturesStatus: undefined } : {}) });   // D96: an answer that came mid-write rewrites it once more, on open
     else await ctx.db.insert("chapters", { handbookId, n, status: "ready", title, cards: shuffled, recallCards: recall, outcomeLine, svg, model, factCheck, scenes, ledger, createdAt: Date.now(), ...(tiers ? { quizTiers: tiers } : {}), ...(rTiers ? { recallTiers: rTiers } : {}) });
+    if (redraw) { const h = await ctx.db.get(handbookId); if (h) await ensurePictures(ctx, h, n); }
     // D42: a rebuild started from the review queue is judged the moment its chapter 1 lands (nobody reads it first).
     if (n === 1) { const hb = await ctx.db.get(handbookId); if ((hb as any)?.rebuildOf) await ctx.scheduler.runAfter(0, internal.library.consider, { handbookId }); }
   },
@@ -1222,8 +1228,10 @@ export const readingReport = internalQuery({
     }
     const prog = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
     const said = prog?.feedback?.[String(n - 1)];
-    if (said === "lost_me") lines.push(`The reader said chapter ${n - 1} lost them. Slow down: shorter cards, plainer words, one more worked example, and an easier first quiz. No step up.`);
-    if (said === "too_easy") lines.push(`The reader said chapter ${n - 1} was too easy. Step up: assume the basics, go one level deeper, and make the quizzes apply the idea to trickier cases.`);
+    if (said === "lost_me") lines.push(`For this chapter the reader asked for slower, with more examples. Slow down: shorter cards, plainer words, one more worked example, and an easier first quiz. No step up.`);
+    if (said === "too_easy") lines.push(`For this chapter the reader asked to go deeper. Step up: assume the basics, go one level deeper, and make the quizzes apply the idea to trickier cases.`);
+    const asked = prog?.feedbackNote?.[String(n - 1)];
+    if (asked) lines.push(`For this chapter the reader asked: "${asked}". Do it where it fits the plan; never drop a must-have for it.`);
     return lines.join("\n");
   },
 });
@@ -1366,7 +1374,7 @@ async function ensurePictures(ctx: MutationCtx, h: Doc<"handbooks">, n: number) 
   const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).unique();
   if (!ch || ch.status !== "ready" || !ch.cards) return;
   if ((ch.pictures ?? []).some((p: any) => p.storageId) || ch.picturesStatus === "drawing" || ch.picturesStatus === "skipped") return;
-  if (h.source === "cache") {
+  if (h.source === "cache" && !ch.model) {   // a chapter rewritten for its reader (D96) has its own pictures
     const row = await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", h.topicKey).eq("level", h.level)).unique();
     const cached: any = row?.chapters.find((c: any) => c.n === n);
     if (cached && cached.title === ch.title && (cached.pictures ?? []).some((p: any) => p.storageId)) {
@@ -1509,20 +1517,27 @@ export const finishChapter = mutation({
 // "How was chapter N?" on the Done screen (optional; Prateek, 6 Oct): Too easy, Just right, Lost me.
 // On a typed topic, "Lost me" or "Too easy" marks the next chapter for a rewrite when it's opened, so it can adapt
 // (it was already being written when the last quiz passed). Ready topics are pre-written and only record the answer.
+// "What do you want from chapter N+1?" (D96, Prateek, 13 Oct: "For free chapters we should not change the next ones. For
+// the paid users, we can build next chapters taking in their feedback."). Stored for everyone; only a member's answer
+// (any handbook, ready ones included) rewrites the next chapter, and only if they haven't started it. The ratings keep
+// their old names: too_easy = "Go deeper", just_right = "Same pace", lost_me = "Slower, more examples".
 export const rateChapter = mutation({
-  args: { handbookId: v.id("handbooks"), n: v.number(), rating: v.union(v.literal("too_easy"), v.literal("just_right"), v.literal("lost_me")), deviceToken: v.optional(v.string()) },
-  handler: async (ctx, { handbookId, n, rating, deviceToken }) => {
+  args: { handbookId: v.id("handbooks"), n: v.number(), rating: v.union(v.literal("too_easy"), v.literal("just_right"), v.literal("lost_me")), note: v.optional(v.string()), deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { handbookId, n, rating, note, deviceToken }) => {
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
     if (!Number.isInteger(n) || n < 1 || n > totalOf(h)) throw new Error("No such chapter");
     const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
-    if (!p || !p.chaptersPassed.includes(n)) return;
-    await ctx.db.patch(p._id, { feedback: { ...(p.feedback ?? {}), [String(n)]: rating }, updatedAt: Date.now() });
-    // Only the reader's own typed handbook adapts: a shared copy (fromLibrary) is shared text, like a ready one (UX review
-    // 9 Oct: "Too easy" on Tides from the Shelf queued a paid rewrite with a note that wasn't true).
-    if (rating === "just_right" || h.source !== "live" || h.fromLibrary || n >= totalOf(h)) return;
+    if (!p || !p.chaptersPassed.includes(n)) return { adapts: false };
+    const member = await ownerIsMember(ctx, h);
+    const said = member ? (note ?? "").trim().slice(0, 200) : "";
+    await ctx.db.patch(p._id, { feedback: { ...(p.feedback ?? {}), [String(n)]: rating }, ...(said ? { feedbackNote: { ...(p.feedbackNote ?? {}), [String(n)]: said } } : {}), updatedAt: Date.now() });
+    if (!member || n >= totalOf(h) || (rating === "just_right" && !said)) return { adapts: false };
     const next = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", n + 1)).unique();
     const unread = p.currentChapter <= n + 1 && !(p.currentChapter === n + 1 && p.currentCard > 0);
-    if (next && next.status === "ready" && unread && !next.stale) await ctx.db.patch(next._id, { stale: true });
+    if (!next || !unread) return { adapts: !next };   // not written yet: it will be written with the answer
+    if (next.status === "writing") { await ctx.db.patch(next._id, { askedWhileWriting: true }); return { adapts: true }; }
+    if (next.status === "ready" && !next.stale) await ctx.db.patch(next._id, { stale: true });
+    return { adapts: true };
   },
 });
 
@@ -1727,6 +1742,20 @@ export const refreshIfStale = mutation({
     await ctx.db.patch(ch._id, { status: "writing", stale: false, error: undefined });
     await ctx.scheduler.runAfter(0, internal.handbooks.generateChapter, { handbookId, n });
     return { rewriting: true };
+  },
+});
+
+// D96: what a member asked for this chapter, as a line for the Reader slot (the writer follows the Reader line on every
+// card; its "How the reader did" rules only know missed quizzes and step-ups). Empty when not a member or nothing asked.
+export const memberAsked = internalQuery({
+  args: { handbookId: v.id("handbooks"), n: v.number() },
+  handler: async (ctx, { handbookId, n }): Promise<string> => {
+    const h = await ctx.db.get(handbookId);
+    const p = h && (await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique());
+    const said = p?.feedback?.[String(n - 1)], note = p?.feedbackNote?.[String(n - 1)];
+    if (!h || ((!said || said === "just_right") && !note) || !(await ownerIsMember(ctx, h))) return "";
+    const pace = said === "lost_me" ? "For this chapter they asked to slow down: shorter steps, plainer words, one more worked example." : said === "too_easy" ? "For this chapter they asked to go deeper: assume the basics and go one level further." : "";
+    return [pace, note ? `For this chapter they also asked: "${note}". Do it on every card where it fits; never drop a must-have for it.` : ""].filter(Boolean).join(" ");
   },
 });
 

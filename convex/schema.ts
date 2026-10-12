@@ -63,6 +63,7 @@ export default defineSchema({
     n: v.number(),
     status: v.union(v.literal("writing"), v.literal("ready"), v.literal("failed")),
     stale: v.optional(v.boolean()),          // preferences changed after this was written and before it was read
+    askedWhileWriting: v.optional(v.boolean()),   // D96: a member answered "what do you want from it?" while this was being written: stale once saved
     model: v.optional(v.string()),
     variants: v.optional(v.any()),            // masked model comparison: [{ key: "A", model, title, cards, outcomeLine }]
     vote: v.optional(v.string()),             // "A" | "B" | "C" once the person has chosen
@@ -97,6 +98,8 @@ export default defineSchema({
     missedExercises: v.array(v.string()),   // "chapter:cardIndex" that needed a second go or were shown the answer
     tomorrowAt: v.optional(v.string()),     // "21:00"
     feedback: v.optional(v.record(v.string(), v.string())),   // chapter number -> "too_easy" | "just_right" | "lost_me" (optional, Done screen)
+    // D96 (13 Oct): a member's own words for the next chapter, by the chapter they just finished ("Anything else?", 200 characters).
+    feedbackNote: v.optional(v.record(v.string(), v.string())),
     opened: v.optional(v.array(v.object({ n: v.number(), day: v.string() }))),   // chapters opened and the IST day, for the daily reading limits (membership.ts, 7 Oct)
     lastOpenedAt: v.number(),
     updatedAt: v.number(),

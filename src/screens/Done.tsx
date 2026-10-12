@@ -32,10 +32,9 @@ type Props = {
   onNext?: () => void
   handbookId?: Id<'handbooks'>
   deviceToken?: string
-  onRate?: (rating: 'too_easy' | 'just_right' | 'lost_me') => Promise<void>
+  onRate?: (rating: 'too_easy' | 'just_right' | 'lost_me', note?: string) => Promise<void>
   whatsNext?: React.ReactNode
   learnMore?: React.ReactNode   // "I want to learn more" (13 Oct): shown after the last chapter
-  adapts?: boolean   // typed topics rewrite the next chapter from the rating; ready topics only record it
   onShelf?: () => void   // the Shelf strip under the wall card (9 Oct, Prateek: make the Shelf findable)
   freeChapters?: number   // chapters a visitor reads without an account: membership.ts LIMITS.visitorChapters, read from the server (2 since 9 Oct, D26)
   priceLine?: string | null   // the early-bird price, as information on the wall, never a gate (Shaktimaan, 8 Oct)
@@ -78,8 +77,9 @@ function cheer(n: number, s?: { minutes: number; right: number; total: number } 
   return `You took your time, and it stuck. That's the whole point.`
 }
 
-export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, adapts, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false }: Props) {
+export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
+  const [note, setNote] = useState('')
   const line = cheer(n, stats)
   const [stay, setStay] = useState(false)
   const last = n >= total
@@ -120,9 +120,29 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
       {wall && nextTitle && priceLine && <p className="note">Chapter {n + 1} costs nothing. {priceLine} <button type="button" className="quiet" style={{ padding: 0 }} onClick={onPricing}>See pricing</button></p>}
       {wall && onShelf && <ShelfStrip where="done" onOpen={onShelf} />}
       {line && <p className="cheer">{line}</p>}
-      {onRate && (
+      {/* D96 (13 Oct, Prateek): the question looks at the next chapter. A member's answer rewrites it (members can add a line);
+          a free reader's is noted, the chapter stays as written, and one quiet line says members get it. Copy (agent). */}
+      {onRate && !last && (
+        <div className="rate" role="group" aria-label={`What do you want from chapter ${n + 1}?`}>
+          <p className="rate-q">{rated ? (!isMember ? 'Noted.' : rated === 'just_right' && !note.trim() ? 'Noted. Same pace.' : `Got it. Chapter ${n + 1} gets written around this.`) : `What do you want from chapter ${n + 1}? (optional)`}</p>
+          {!rated && isMember && (
+            <input className="input rate-note" placeholder="Anything else? Then tap one" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} aria-label={`Anything else for chapter ${n + 1}?`} />
+          )}
+          {!rated && (
+            <div className="rate-row">
+              {([['lost_me', 'Slow down'], ['just_right', 'Same pace'], ['too_easy', 'Go deeper']] as const).map(([k, label]) => (
+                <button key={k} type="button" className="chip" onClick={() => { setRated(k); track('feedback', { n, v: k, note: note.trim() ? 1 : 0 }); onRate(k, isMember ? note.trim() || undefined : undefined).catch(() => {}) }}>{label}</button>
+              ))}
+            </div>
+          )}
+          {rated && !isMember && (
+            <p className="note rate-members">Members get chapter {n + 1} rewritten around this. <button type="button" className="quiet" style={{ padding: 0 }} onClick={onPricing}>See membership</button></p>
+          )}
+        </div>
+      )}
+      {onRate && last && (
         <div className="rate" role="group" aria-label={`How was chapter ${n}?`}>
-          <p className="rate-q">{rated ? (!adapts ? 'Thanks, noted.' : rated === 'just_right' ? 'Noted. Same pace next time.' : rated === 'lost_me' ? "Noted. The next chapter will slow down." : 'Noted. The next chapter will step up.') : `How was chapter ${n}? (optional)`}</p>
+          <p className="rate-q">{rated ? 'Thanks, noted.' : `How was chapter ${n}? (optional)`}</p>
           {!rated && (
             <div className="rate-row">
               {([['too_easy', 'Too easy'], ['just_right', 'Just right'], ['lost_me', 'Lost me']] as const).map(([k, label]) => (
