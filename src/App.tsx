@@ -67,6 +67,7 @@ export default function App() {
   const recordAnswer = useMutation(api.handbooks.recordAnswer)
   const finishChapter = useMutation(api.handbooks.finishChapter)
   const rateChapter = useMutation(api.handbooks.rateChapter)
+  const starChapter = useMutation(api.handbooks.starChapter)
   const chooseIntent = useMutation(api.handbooks.chooseIntent)
   const startFromLibrary = useMutation(api.library.start)
   const setTomorrow = useMutation(api.handbooks.setTomorrow)
@@ -107,6 +108,7 @@ export default function App() {
   const [doneN, setDoneN] = useState<number | null>(null)
   // The chapter on screen stays on screen when its last quiz passes it and the server moves the reader on (6 Oct).
   const [readingN, setReadingN] = useState<number | null>(null)
+  const [starredN, setStarredN] = useState<number | null>(null)   // D100: the chapter just rated on the star slide
   const [doneStats, setDoneStats] = useState<{ minutes: number; right: number; total: number } | null>(null)
   const [draftTopic, setDraftTopic] = useState('')
   // The writer comparison is for testers only: open the app once with ?compare=1 and this phone remembers it.
@@ -549,6 +551,7 @@ export default function App() {
             errorText={(e) => limitMessage(e) ?? "Couldn't start it just now. Try again in a minute."} />}
           whatsNext={<WhatsNext topic={name} deviceToken={token} onReady={async (t) => { const r = await create({ topic: t, level: 'new', voice: 'friend', deviceToken: token }); pin(String(r.handbookId)); setDoneN(null); setView('auto') }} onShared={async (id) => { const r = await startFromLibrary({ libraryId: id, deviceToken: token }); pin(String(r.handbookId)); setDoneN(null); setView('auto') }} />}
           onRate={async (rating, note) => { await rateChapter({ handbookId: hb._id, n: doneN, rating, note, deviceToken: token }) }}
+          starred={starredN === doneN}
           nextReady={chapterReady && chapter?.n === doneN + 1}
           nextWriting={hb.chapters.find((c) => c.n === doneN + 1)?.status === 'writing'}
           nextFailed={!!chapterFailed && chapter?.n === doneN + 1}
@@ -557,6 +560,15 @@ export default function App() {
         {previewSheet}
       </Shell>
     )
+  }
+
+  // D100: the slide after chapters 1 and 2 that shows the next one. "wall" sends its button to Done, where the sign-up is.
+  const teaserFor = (n: number) => {
+    if (n > 2 || n >= total || !plan?.chapters?.[n]?.title) return null
+    const nx = hb.chapters.find((c) => c.n === n + 1)
+    const wall = !isAuthenticated && n >= freeChapters && (plan as any)?.format !== 'quick'
+    const state = wall ? 'wall' as const : nx?.status === 'failed' ? 'failed' as const : nx?.status === 'ready' ? 'ready' as const : 'writing' as const
+    return { title: plan.chapters[n].title, hook: plan.chapters[n].hook, picture: firstPicture((nx as any)?.pictures), state }
   }
 
   if (resolved === 'chapter' && chapter && chapterReady && !chapterLocked) {
@@ -579,7 +591,17 @@ export default function App() {
           startPart={chapter.n === currentN ? (progress as any)?.currentPart ?? 0 : 0}
           onPosition={(cardIndex, part) => { setReadingN(chapter.n); setView('chapter'); setPosition({ handbookId: hb._id, chapter: chapter.n, cardIndex, part, deviceToken: token }).catch(() => {}) }}
           onAnswer={async (item, optionId, attempt) => { setReadingN(chapter.n); setView('chapter'); return (await recordAnswer({ handbookId: hb._id, chapter: item.chapter, cardIndex: item.cardIndex, optionId, attempt, recall: !!item.recall, deviceToken: token })) as AnswerResult }}
-          onFinish={async (stats) => { await finishChapter({ handbookId: hb._id, n: chapter.n, deviceToken: token }); setDoneStats(stats); setDoneN(chapter.n); setView('done') }}
+          onFinish={async () => { await finishChapter({ handbookId: hb._id, n: chapter.n, deviceToken: token }) }}
+          onStars={async (stars) => { setStarredN(chapter.n); await starChapter({ handbookId: hb._id, n: chapter.n, stars, deviceToken: token }) }}
+          teaser={teaserFor(chapter.n)}
+          onAfter={(go, stats) => {
+            if (go === 'done') { setDoneStats(stats); setDoneN(chapter.n); setView('done'); return }
+            // Straight into the next chapter, the way Done's button goes (D100).
+            setDoneN(null); setReadingN(null)
+            const nx = hb.chapters.find((c) => c.n === chapter.n + 1)
+            if (nx?.status === 'failed') { retry({ handbookId: hb._id, deviceToken: token }).catch(() => {}); setView('plan'); return }
+            setView(nx?.status === 'ready' ? 'chapter' : 'plan')
+          }}
           onLog={async (item, count, feel) => { setReadingN(chapter.n); setView('chapter'); return logSet({ handbookId: hb._id, chapter: item.chapter, cardIndex: item.cardIndex, count, feel, deviceToken: token }) }}
           loggedSets={(hb as any).loggedSets?.[String(chapter.n)] ?? []}
           svg={(chapter as any).svg}

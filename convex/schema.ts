@@ -278,6 +278,20 @@ export default defineSchema({
     .index("by_day", ["day"])
     .index("by_visitor", ["visitor"]),
 
+  // D100 (13 Oct, Prateek): "How was chapter N?", 1 to 5 stars, on the slide after a chapter's last card. One row per
+  // copy and chapter (a second tap replaces it). key says which Shelf book it was ("lib:<id>", "topic:<topic>") or
+  // "typed"; ours marks our own phones and accounts, left out of every average.
+  chapterStars: defineTable({
+    handbookId: v.id("handbooks"),
+    n: v.number(),
+    stars: v.number(),
+    key: v.string(),
+    ours: v.boolean(),
+    at: v.number(),
+  })
+    .index("by_handbook_n", ["handbookId", "n"])
+    .index("by_key", ["key"]),
+
   // Phones and accounts their owner asked us not to count (Prateek's own). Anyone can only exclude themselves.
   statsExcluded: defineTable({
     deviceToken: v.optional(v.string()),

@@ -62,6 +62,14 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
   console.log(`     frames tapped through: ${frames}`)
   await step('the last frame offers "Finish chapter 1"', `!!document.querySelector('.story-finish')`, 5000)
   await tap('Finish chapter')
+  // D100: two slides before Done. Skip the stars (no fake rating on prod), then the teaser's "Later" goes to Done.
+  if (await step('the star slide asks "How was chapter 1?"', `/How was chapter 1\\?/.test(document.querySelector('.story-q')?.textContent ?? '') && document.querySelectorAll('.after-stars button').length === 5`, 15000)) {
+    console.log(`     stars after chapter 1: ${await shot('stars-1')}`)
+    await tap('Skip')
+    await step('the teaser shows chapter 2 with "Open chapter 2 →"', `/Up next/.test(document.querySelector('.story-kicker')?.textContent ?? '') && [...document.querySelectorAll('button')].some((b) => b.textContent.trim().startsWith('Open chapter 2'))`, 5000)
+    console.log(`     teaser for chapter 2: ${await shot('teaser-2')}`)
+    await tap('Later')
+  }
   if (await step('the Done screen says chapter 1 is done', `/Chapter 1 of \\d+: done/.test(document.querySelector('h1')?.textContent ?? '')`, 15000)) {
     await step('the rung bar shows one lit segment', `document.querySelectorAll('.rung span.on, .rung span.filling').length === 1`, 5000)
     // D26 (9 Oct, Prateek): the wall is after chapter 2. After chapter 1 the main action is chapter 2, sign-in a quiet line.
@@ -82,6 +90,12 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
       console.log(`     chapter 2 steps: ${frames2}`)
       if (await ev(`!!document.querySelector('.sheet')`)) await ev(`(() => { const b = [...document.querySelectorAll('.sheet .btn')].find((b) => /See your rung|Finish|Keep going/.test(b.textContent)); b?.click() })()`)
       else await tap('Finish chapter')
+      // D100: after chapter 2, a fresh phone's teaser button leads to the wall on Done.
+      if (await step('the star slide asks "How was chapter 2?"', `/How was chapter 2\\?/.test(document.querySelector('.story-q')?.textContent ?? '')`, 20000)) {
+        await tap('Skip')
+        await step('the teaser shows chapter 3 with "Open chapter 3 →"', `[...document.querySelectorAll('button')].some((b) => b.textContent.trim().startsWith('Open chapter 3'))`, 5000)
+        await tap('Open chapter 3')
+      }
       if (await step('the Done screen says chapter 2 is done', `/Chapter 2 of \\d+: done/.test(document.querySelector('h1')?.textContent ?? '')`, 20000)) {
         await step('the sign-up wall is the main action ("Make a free account")', `[...document.querySelectorAll('button')].some((b) => b.textContent.trim().startsWith('Make a free account'))`, 5000)
         await step('and it is the only one (no doubled button)', `[...document.querySelectorAll('button')].filter((b) => b.textContent.trim().startsWith('Make a free account')).length === 1`, 2000)

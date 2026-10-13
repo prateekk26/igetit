@@ -160,7 +160,11 @@ export const adminList = query({
   handler: async (ctx) => {
     if (!(await isOwner(ctx)).ok) return null;
     const rows = (await ctx.db.query("shelf").collect()).filter((r) => r.kind === "shared" || r.level === "new");
-    const items = rows.map((r) => ({ id: r._id, kind: r.kind, key: r.key, title: r.title, topic: r.topic, mode: r.mode ?? null, goal: r.goal ?? null, starts: r.starts, passes: r.passes,
+    // D100: each book's star average across all its chapters, our own phones left out.
+    const st = new Map<string, { sum: number; n: number }>();
+    for (const s of await ctx.db.query("chapterStars").collect()) { if (s.ours) continue; const x = st.get(s.key) ?? { sum: 0, n: 0 }; x.sum += s.stars; x.n++; st.set(s.key, x); }
+    const starsOf = (r: Doc<"shelf">) => { const x = st.get(r.kind === "shared" ? "lib:" + (r.libraryId ?? "") : "topic:" + r.topic); return x ? { avg: Math.round((x.sum / x.n) * 10) / 10, n: x.n } : null; };
+    const items = rows.map((r) => ({ stars: starsOf(r), id: r._id, kind: r.kind, key: r.key, title: r.title, topic: r.topic, mode: r.mode ?? null, goal: r.goal ?? null, starts: r.starts, passes: r.passes,
       on: onShelf(r), offWhy: r.kind === "shared" ? null : (r.offWhy ?? null), pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, readWeek: r.readWeek ?? null, free: isFreeRow(r), freeSet: r.free ?? null, cover: !!r.cover, stories: Array.isArray(r.stories) ? r.stories.length : 0, libraryId: r.libraryId ?? null, addedAt: r.addedAt }));
     const spot = spotlight(items.filter((i) => i.on));
     return items.map((i) => ({ ...i, spot: spot.indexOf(i.key) + 1 || null }))

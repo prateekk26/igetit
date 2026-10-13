@@ -58,7 +58,16 @@ type Props = {
   onExit: () => void
   handbookId: Id<'handbooks'>
   deviceToken: string
+  // D100 (13 Oct, Prateek: 31 readers passed chapter 1 in 14 days, 12 opened chapter 2): after Finish, two slides before
+  // the Done screen. "How was chapter N?" (stars, every chapter, "Don't show again" on this phone), then on chapters 1
+  // and 2 the next chapter's picture, title and hook with a button straight into it. Without onAfter, Finish goes to Done.
+  onStars?: (stars: number) => Promise<void>
+  teaser?: { title: string; hook?: string; picture?: string; state: 'ready' | 'writing' | 'failed' | 'wall' } | null
+  onAfter?: (go: 'done' | 'next', stats: { minutes: number; right: number; total: number }) => void
 }
+
+const NO_STARS = 'igi.noStars'
+const starsOff = () => { try { return localStorage.getItem(NO_STARS) === '1' } catch { return false } }
 
 // Only http(s) links from the known hosts reach the page; anything else is dropped.
 function safeUrl(u: string): string {
@@ -89,7 +98,12 @@ function sizeOf(text: string) {
 // D38: for an exercise with no added line yet (an old copy the backfill did not reach): a short, true line, by the card's key so it does not flicker. Copy (agent).
 const CHEERS = ['Got it in one.', "That one's yours now.", 'No hint needed.', 'Clean. Next.', 'You saw it straight away.']
 const cheer = (key: string) => { let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CHEERS[h % CHEERS.length] }
-export default function Chapter({ total = 7, topic, n, title, cards, recall, passed: _passed, passedExercises, startAt, startPart = 0, onPosition, onAnswer, onFinish, onLog, loggedSets = [], lastTime, recapReteach = [], pictures, credits = {}, alts = {}, caution, onExit, handbookId, deviceToken }: Props) {
+export default function Chapter({ total = 7, topic, n, title, cards, recall, passed: _passed, passedExercises, startAt, startPart = 0, onPosition, onAnswer, onFinish, onLog, loggedSets = [], lastTime, recapReteach = [], pictures, credits = {}, alts = {}, caution, onExit, handbookId, deviceToken, onStars, teaser, onAfter }: Props) {
+  // A chapter read again after it was passed goes straight to Done, as before: no second rating, no teaser.
+  const [wasPassed] = useState(() => _passed.includes(n))
+  const [after, setAfter] = useState<null | 'stars' | 'teaser'>(null)
+  const [stars, setStars] = useState(0)
+  const afterStats = useRef({ minutes: 1, right: 0, total: 0 })
   const items: Item[] = useMemo(
     () => [
       ...(lastTime && !['exercise', 'watch', 'move', 'doit', 'steps', 'tryit'].includes(lastTime.type) ? [{ chapter: n - 1, cardIndex: -1, recall: true, card: { ...lastTime, title: 'Last time', body: dropNextLine((lastTime as any).body ?? '') } as Card }] : []),
@@ -211,7 +225,15 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const finish = async () => {
     setFinishing(true); setError(null)
     const tries = [...firstTries.current.values()]
-    try { await onFinish({ minutes: Math.max(1, Math.round((Date.now() - openedAt.current) / 60000)), right: tries.filter(Boolean).length, total: tries.length }) } catch (e: any) {
+    const stats = { minutes: Math.max(1, Math.round((Date.now() - openedAt.current) / 60000)), right: tries.filter(Boolean).length, total: tries.length }
+    try {
+      await onFinish(stats)
+      if (onAfter) {
+        afterStats.current = stats
+        const first = wasPassed ? null : onStars && !starsOff() ? 'stars' : teaser ? 'teaser' : null
+        if (first) { track('after_view', { n, s: first }); setAfter(first) } else onAfter('done', stats)
+      }
+    } catch (e: any) {
       // A quiz still open (7 Oct: one was skipped by the recall bug): go straight to it instead of a dead end.
       const open = e?.data?.code === 'open-check' || e?.data?.code === 'open-set' ? frames.findIndex((f) => !f.item.recall && f.item.cardIndex === e.data.card) : -1
       if (open >= 0) { setI(open); reset(); setLater((s) => { const x = new Set(s); x.delete(e.data.card); return x }); setError(e?.data?.code === 'open-set' ? 'Log one set and the chapter counts.' : 'One quiz is still open. Answer it, then finish.') }
@@ -228,6 +250,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
       // Enter or Space on a focused button presses that button (UX review 9 Oct: they turned the page, so Tab + Enter
       // could not answer a quiz, open Ask or press ×). The arrows still turn pages from anywhere.
       if ((e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement)?.closest?.('button, a, label')) return
+      if (after) { if (e.key === 'Escape') leave('done'); return }
       if (askOpen) { if (e.key === 'Escape') setAskOpen(false); return }
       if (result) { if (['Escape', 'Enter', 'ArrowRight', ' '].includes(e.key)) { e.preventDefault(); closeSheet() } return }
       if (e.key === 'ArrowLeft') { e.preventDefault(); back(); return }
@@ -258,6 +281,55 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
       const atTop = !body || body.scrollTop <= 4
       if (dy < 0 && atEnd) next(); else if (dy > 0 && atTop) back()
     }
+  }
+
+  // D100: the slides after Finish. Leaving them goes to Done ("Later", ×, Escape, a wall) or straight into the next chapter.
+  const leave = (go: 'done' | 'next') => { track('after_go', { n, go }); onAfter?.(go, afterStats.current) }
+  const toTeaser = () => { if (teaser) { track('after_view', { n, s: 'teaser' }); setAfter('teaser') } else leave('done') }
+  const rate = (k: number) => { if (stars) return; setStars(k); track('stars', { n, v: k }); onStars?.(k).catch(() => {}); setTimeout(toTeaser, 600) }
+  if (after) {
+    const t = teaser
+    return (
+      <div className="story" role="dialog" aria-modal="true" aria-label={after === 'stars' ? `How was chapter ${n}?` : `Up next: chapter ${n + 1}`} ref={dialogRef} tabIndex={-1}>
+        <div className={`story-frame tone-${after === 'stars' ? 'cream' : 'ink'}`}>
+          <div className="story-head">
+            <span className="story-label">{after === 'stars' ? `Chapter ${n} of ${total} · done` : `Chapter ${n + 1} of ${total}`}</span>
+            <span className="story-topic">{topic}</span>
+            <button type="button" className="story-close" onClick={() => leave('done')} aria-label="Close">×</button>
+          </div>
+          <div className="story-body turn-fwd" key={after}>
+            {after === 'stars' ? (
+              <>
+                {/* Copy (agent). */}
+                <p className="story-kicker">One tap</p>
+                <p className="story-q">How was chapter {n}?</p>
+                <div className="after-stars" role="radiogroup" aria-label={`Stars for chapter ${n}`}>
+                  {[1, 2, 3, 4, 5].map((k) => (
+                    <button key={k} type="button" role="radio" aria-checked={stars === k} aria-label={`${k} star${k > 1 ? 's' : ''}`} className={k <= stars ? 'on' : ''} onClick={() => rate(k)}>★</button>
+                  ))}
+                </div>
+                <p className="story-hint" aria-live="polite">{stars ? 'Thanks. Noted.' : '\u00a0'}</p>
+                <div className="after-quiet">
+                  <button type="button" className="quiet" onClick={toTeaser} disabled={!!stars}>Skip</button>
+                  <button type="button" className="after-never" disabled={!!stars} onClick={() => { try { localStorage.setItem(NO_STARS, '1') } catch {} track('stars_off', { n }); toTeaser() }}>Don't show again</button>
+                </div>
+              </>
+            ) : t ? (
+              <>
+                {t.picture && <div className="story-pic"><img src={t.picture} alt="" onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')} ref={(el) => { if (el && el.complete && el.naturalWidth > 0) el.parentElement?.classList.add('loaded') }} /></div>}
+                <p className="story-kicker">Up next</p>
+                <h2 className="story-title">{t.title}</h2>
+                {t.hook && <p className="story-text size-md">{inline(t.hook)}</p>}
+                {t.state === 'writing'
+                  ? <button type="button" className="story-finish" disabled aria-busy="true">Writing chapter {n + 1}… about a minute</button>
+                  : <button type="button" className="story-finish" onClick={() => leave(t.state === 'ready' ? 'next' : 'done')}>Open chapter {n + 1} →</button>}
+                <button type="button" className="quiet after-later" onClick={() => leave('done')}>Later</button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const c = item.card

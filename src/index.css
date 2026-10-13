@@ -354,6 +354,16 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .tone-ink .story-finish { box-shadow: 4px 4px 0 rgba(250, 247, 240, 0.6); }
 .tone-marigold .story-finish { background: #1b1a17; color: #faf7f0; }
 .story-finish:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #1b1a17; }
+/* D100: the slides after Finish. Stars (one tap), then the next chapter's teaser. */
+.after-stars { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.after-stars button { min-width: 52px; min-height: 52px; font-size: 2.4rem; line-height: 1; background: none; border: 0; color: var(--bar); cursor: pointer; transition: transform 120ms var(--ease), color 120ms; }
+.after-stars button.on { color: #f2a93b; text-shadow: 1px 1px 0 #1b1a17; }
+.after-stars button:active { transform: scale(0.9); }
+.after-quiet { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 28px; }
+.after-quiet .quiet { min-height: 44px; color: var(--fg); }
+.after-never { min-height: 44px; padding: 0 12px; background: none; border: 0; color: var(--fg2); font-size: 0.75rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.after-later { display: block; margin: 10px auto 0; min-height: 44px; color: var(--fg2); }
+.story-body .story-finish[disabled] { opacity: 0.7; box-shadow: none; }
 .story-offline { margin: 0 0 8px; align-self: flex-start; background: rgba(0, 0, 0, 0.45); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: var(--small); font-weight: 700; }
 .story-error { margin-top: 14px; background: rgba(0, 0, 0, 0.35); color: #fff; padding: 10px 12px; border-radius: 12px; font-size: var(--small); }
 .story-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; cursor: default; }

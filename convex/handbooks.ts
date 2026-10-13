@@ -1541,6 +1541,24 @@ export const rateChapter = mutation({
   },
 });
 
+// D100 (13 Oct, Prateek): the star slide after a chapter. Only a chapter this copy has passed; a second tap replaces.
+export const starChapter = mutation({
+  args: { handbookId: v.id("handbooks"), n: v.number(), stars: v.number(), deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { handbookId, n, stars, deviceToken }) => {
+    const h = await ownedHandbook(ctx, handbookId, deviceToken);
+    if (!Number.isInteger(n) || n < 1 || n > totalOf(h)) throw new Error("No such chapter");
+    if (!Number.isInteger(stars) || stars < 1 || stars > 5) throw new Error("1 to 5 stars");
+    const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
+    if (!p || !p.chaptersPassed.includes(n)) return;
+    const excluded = await ctx.db.query("statsExcluded").collect();
+    const ours = (!!h.ownerToken && (h.ownerToken.startsWith("abuse-") || excluded.some((e) => e.deviceToken === h.ownerToken))) || (!!h.userId && excluded.some((e) => e.userId === h.userId));
+    const key = h.fromLibrary ? "lib:" + h.fromLibrary : h.source === "cache" ? "topic:" + h.topic : "typed";
+    const row = await ctx.db.query("chapterStars").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", n)).unique();
+    if (row) await ctx.db.patch(row._id, { stars, ours, at: Date.now() });
+    else await ctx.db.insert("chapterStars", { handbookId, n, stars, key, ours, at: Date.now() });
+  },
+});
+
 export const setTomorrow = mutation({
   args: { handbookId: v.id("handbooks"), at: v.string(), deviceToken: v.optional(v.string()) },
   handler: async (ctx, { handbookId, at, deviceToken }) => {

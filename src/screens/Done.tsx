@@ -35,6 +35,7 @@ type Props = {
   onRate?: (rating: 'too_easy' | 'just_right' | 'lost_me', note?: string) => Promise<void>
   whatsNext?: React.ReactNode
   learnMore?: React.ReactNode   // "I want to learn more" (13 Oct): shown after the last chapter
+  starred?: boolean   // D100: rated on the star slide just now, so the last chapter's question isn't asked twice
   onShelf?: () => void   // the Shelf strip under the wall card (9 Oct, Prateek: make the Shelf findable)
   freeChapters?: number   // chapters a visitor reads without an account: membership.ts LIMITS.visitorChapters, read from the server (2 since 9 Oct, D26)
   priceLine?: string | null   // the early-bird price, as information on the wall, never a gate (Shaktimaan, 8 Oct)
@@ -77,7 +78,7 @@ function cheer(n: number, s?: { minutes: number; right: number; total: number } 
   return `You took your time, and it stuck. That's the whole point.`
 }
 
-export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false }: Props) {
+export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const line = cheer(n, stats)
@@ -140,7 +141,7 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
           )}
         </div>
       )}
-      {onRate && last && (
+      {onRate && last && !starred && (
         <div className="rate" role="group" aria-label={`How was chapter ${n}?`}>
           <p className="rate-q">{rated ? 'Thanks, noted.' : `How was chapter ${n}? (optional)`}</p>
           {!rated && (
