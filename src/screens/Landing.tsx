@@ -101,13 +101,13 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
       <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
         placeholder="Public speaking, the stock market…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
+      <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Making your book…' : 'Make my book'}</span><GoArrow /></button>
       {where === 'hero' && chips.length > 0 && (<>
         <p className="c1-chips-label" id="c1-chips-label">Or tap one that's ready to read now:</p>
         <div className="c1-chips" role="group" aria-labelledby="c1-chips-label">
           {chips.map((t) => <button key={t} type="button" className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'chip')}>{pickedRow === t ? 'Opening…' : t}</button>)}
         </div>
       </>)}
-      <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Making your book…' : 'Make my book'}</span><GoArrow /></button>
       {error && <p className="lp-error" role="alert">{error}</p>}
       {where === 'hero' && slow && pickedRow && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
     </form>

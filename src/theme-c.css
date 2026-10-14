@@ -658,3 +658,4 @@ div.c3-row { cursor: default; }
 @media (min-width: 1024px) { .lp.home section:not(.c1) { padding-top: 88px !important; padding-bottom: 88px; } }
 .demo-head .story-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 15px var(--sans); color: var(--ink-2); }
 .c1-chips-label { margin: 6px 0 -4px; font: 600 15px var(--sans); color: var(--ink-2); }
+.lp.home .c1-chips-label { margin: 14px 0 -2px; }
