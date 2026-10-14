@@ -739,3 +739,64 @@ div.c3-row { cursor: default; }
 .c2-go { width: 100%; }
 @media (min-width: 600px) { .c2 h1 { font-size: 52px; } .c2-go { max-width: 420px; align-self: center; } }
 @media (prefers-reduced-motion: reduce) { .c2-says, .c2-picked { animation: none; } }
+
+/* ---------- hub screens (C4, C10): the board's header, and from 1024 the sidebar ---------- */
+.hub-top { display: flex; align-items: center; justify-content: space-between; height: 60px; padding-top: 4px; }
+.hub-top .wordmark-btn { font-size: 24px; font-family: var(--head); font-weight: 800; font-variation-settings: 'wdth' 82, 'opsz' 48; }
+.hub-top .wm { line-height: 1; }
+.hub-acct { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); cursor: pointer; }
+.hub-acct-label { display: none; }
+.hub-menu { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.hub-menu .quiet { min-height: 48px; justify-content: flex-start; font-weight: 700; color: var(--ink); }
+
+/* C4 Tonight */
+.c4 h1 { margin: 6px 0 0; font-size: 56px; line-height: 0.92; letter-spacing: -0.012em; font-variation-settings: 'wdth' 82, 'opsz' 96; }
+.c4-date { margin: 6px 0 0; font: 600 16px var(--sans); color: var(--ink-2); }
+.c4-says { margin-top: 16px; }
+.c4-card { margin: 18px 0 0; display: flex; flex-direction: row; gap: 14px; align-items: stretch; }
+.c4-card-words { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.c4-card-pic { display: none; }
+.c4-label { margin: 22px 0 6px; font: 700 15px var(--sans); color: var(--ink-2); letter-spacing: 0; font-variation-settings: normal; }
+.c4-books ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.c4-books li button { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 14px; min-height: 68px; border-radius: 16px; }
+.c4-books li button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.c4-books li img, .c4-blank { flex: none; width: 52px; height: 52px; border-radius: 16px; object-fit: cover; background: var(--paper-2); }
+.c4-blank { display: grid; place-items: center; font: 800 1.4rem var(--head); color: var(--ink-2); }
+.c4-book-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.c4-book-t b { font: 700 17px/1.2 var(--sans); }
+.c4-progress { display: flex; align-items: center; gap: 6px; }
+.c4-progress i { width: 10px; height: 10px; border-radius: 50%; background: var(--tint); }
+.c4-progress i.on { background: var(--accent); }
+.c4-progress small { margin-left: 4px; font: 600 14px var(--sans); color: var(--ink-2); }
+.c4-bar { width: 96px; height: 8px; border-radius: 4px; background: var(--tint); overflow: hidden; display: inline-block; }
+.c4-bar i { display: block; width: 0; height: 100%; border-radius: 0; background: var(--accent); }
+.c4-more { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 10px; }
+
+@media (min-width: 1024px) {
+  .shell.has-tabs { display: grid; grid-template-columns: 248px minmax(0, 1fr); column-gap: 72px; max-width: 1240px; padding-left: 0; }
+  .shell.has-tabs > .hub-top { grid-column: 1; grid-row: 1; flex-direction: column; align-items: stretch; height: auto; padding: 28px 16px 0 28px; }
+  .shell.has-tabs > .hub-top .wordmark-btn { font-size: 30px; }
+  .shell.has-tabs > .hub-top .hub-acct { position: fixed; left: 24px; bottom: 24px; width: auto; height: 48px; padding: 0 16px 0 0; border-radius: 24px; background: none; justify-content: flex-start; }
+  .shell.has-tabs > .hub-top .hub-acct svg { width: 48px; height: 48px; padding: 12px; box-sizing: border-box; border-radius: 50%; background: var(--paper-2); }
+  .shell.has-tabs > .hub-top .hub-acct-label { display: inline; font: 700 16px var(--sans); }
+  .shell.has-tabs > .tabbar { grid-column: 1; grid-row: 2; position: sticky; top: 0; flex-direction: column; align-items: stretch; gap: 4px; margin: 28px 16px 0; padding: 0; align-self: start; }
+  .shell.has-tabs > .tabbar button { justify-content: flex-start; padding: 0 20px 0 24px; min-height: 52px; border-radius: 26px; color: var(--ink-2); font-weight: 600; }
+  .shell.has-tabs > .tabbar button[aria-current="page"] { background: var(--paper-2); color: var(--ink); font-weight: 700; }
+  .shell.has-tabs > .tabbar .tabbar-dot { display: block; background: transparent; }
+  .shell.has-tabs > .tabbar button[aria-current="page"] .tabbar-dot { background: var(--accent); }
+  .shell.has-tabs::before { content: ''; position: fixed; top: 0; bottom: 0; left: max(0px, calc((100vw - 1240px) / 2)); width: 264px; border-right: 1px solid var(--rule); pointer-events: none; }
+  .shell.has-tabs > main { grid-column: 2; grid-row: 1 / span 3; padding-top: 56px; }
+  .shell.has-tabs > .foot { grid-column: 2; }
+  .c4 { display: grid; grid-template-columns: minmax(0, 532px) minmax(0, 1fr); column-gap: 48px; align-items: start; }
+  .c4 h1 { font-size: 80px; grid-column: 1 / -1; }
+  .c4-main { display: contents; }
+  .c4-main > h1, .c4-main > .c4-date { grid-column: 1 / -1; }
+  .c4-main > .c4-says { grid-column: 1; margin-top: 40px; }
+  .c4-main > .c4-card { grid-column: 1; }
+  .c4-books { grid-column: 2; grid-row: 3 / span 2; margin-top: 40px; }
+  .c4-books .c4-label { margin-top: 0; }
+  .c4-card { padding: 26px; min-height: 300px; }
+  .c4-card h2 { font-size: 36px; }
+  .c4-card .c4-go { margin-top: auto; }
+  .c4-card-pic { display: block; width: 44%; border-radius: 16px; object-fit: cover; background: var(--paper); }
+}

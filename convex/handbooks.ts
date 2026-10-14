@@ -13,6 +13,7 @@ import { MOVE_PROMPT, moveUserMessage, TRYIT_PROMPT, tryItUserMessage, INTENT_PR
 import { level } from "./schema";
 import { copyInto, matchForIntent, sharedRow } from "./library";
 import { onShelf } from "./shelf";
+import { smallUrl } from "./pictures";
 import { isOwner, isSuper } from "./admin";
 import { assignVariant } from "./doctor";
 import { COST_INR, LIMITS, isOpen, memberUntil, ownerIsMember, spendFits, tryOpen, typedAllowance } from "./membership";
@@ -267,6 +268,13 @@ async function passedCount(ctx: QueryCtx | MutationCtx, handbookId: Id<"handbook
 }
 
 // Every handbook this person has, newest activity first, for the library.
+// A handbook's cover: chapter 1's first drawn picture, the small copy (C4's "Your book", C10).
+async function coverOfBook(ctx: QueryCtx, handbookId: Id<"handbooks">): Promise<string | null> {
+  const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", 1)).unique();
+  const pic = [...(ch?.pictures ?? [])].sort((a, b) => a.card - b.card).find((x) => x.storageId);
+  return pic?.storageId ? await smallUrl(ctx, pic.storageId) : null;
+}
+
 export const library = query({
   args: { deviceToken: v.optional(v.string()) },
   handler: async (ctx, { deviceToken }) => {
@@ -278,7 +286,11 @@ export const library = query({
       // started (9 Oct, returning-reader review): a handbook only glanced at (opened from a link, never read) should not
       // look like one in progress, and never be the one "Continue" picks.
       const started = (p?.currentCard ?? 0) > 0 || (p?.chaptersPassed.length ?? 0) > 0 || (p?.opened?.length ?? 0) > 0;
-      rows.push({ _id: h._id, topic: h.topic, status: h.status, passed: p?.chaptersPassed.length ?? 0, total: totalOf(h), current: p?.currentChapter ?? 1, card: p?.currentCard ?? 0, started, lastAt: p?.updatedAt ?? h.createdAt, outcome: (h.plan as any)?.outcome7 ?? null, typed: h.source === "live" && !h.fromLibrary });
+      // C4 "Tonight" (14 Oct): the book's cover (chapter 1's first picture) and its next chapter's title and minutes.
+      const current = p?.currentChapter ?? 1;
+      const nextPlan = ((h.plan as any)?.chapters ?? [])[current - 1];
+      rows.push({ _id: h._id, topic: h.topic, status: h.status, passed: p?.chaptersPassed.length ?? 0, total: totalOf(h), current, card: p?.currentCard ?? 0, started, lastAt: p?.updatedAt ?? h.createdAt, outcome: (h.plan as any)?.outcome7 ?? null, typed: h.source === "live" && !h.fromLibrary,
+        cover: await coverOfBook(ctx, h._id), nextTitle: (nextPlan?.title as string | undefined) ?? null, nextMinutes: typeof nextPlan?.minutes === "number" ? nextPlan.minutes : 5 });
     }
     return { signedIn: !!userId, handbooks: rows.sort((a, b) => b.lastAt - a.lastAt) };
   },
@@ -292,11 +304,13 @@ export const known = query({
   handler: async (ctx, { deviceToken }) => {
     const userId = await getAuthUserId(ctx);
     const items: { handbookId: Id<"handbooks">; topic: string; n: number; title: string; line: string; fuzzy: boolean; at: number }[] = [];
+    const covers: Record<string, string | null> = {};
     for (const h of await ownedBooks(ctx, userId, deviceToken)) {
       if (h.status === "declined") continue;
       const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).unique();
       if (!p?.chaptersPassed.length) continue;
       const recalls = (await ctx.db.query("answers").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).collect()).filter((a) => a.recall);
+      covers[h._id] = await coverOfBook(ctx, h._id);
       for (const n of [...p.chaptersPassed].sort((a, b) => a - b)) {
         const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).unique();
         const planCh = ((h.plan as any)?.chapters ?? [])[n - 1];
@@ -305,7 +319,7 @@ export const known = query({
       }
     }
     items.sort((a, b) => Number(b.fuzzy) - Number(a.fuzzy) || b.at - a.at || a.n - b.n);
-    return { items, fuzzy: items.filter((i) => i.fuzzy).length };
+    return { items, fuzzy: items.filter((i) => i.fuzzy).length, covers };
   },
 });
 
