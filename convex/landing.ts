@@ -14,6 +14,22 @@ const DEMOS = [
   { title: "Make your credit card pay you back", label: "Credit card points" },
   { title: "Know before you go: Japan", label: "A trip to Japan" },
 ];
+// The chips under the homepage box are short names for what a person wonders about, as the C1 board draws them
+// ("Volcanoes", "Public speaking"), not the handbooks' long titles (14 Oct, Prateek: "Why aren't we following it to the
+// t?"). One per free handbook; any other ready one shows its title. Copy (agent).
+const CHIP: Record<string, string> = {
+  "Hold a room for 10 minutes": "Public speaking",
+  "Build a system that lands your next job": "Finding a job",
+  "Ask for a raise and get it": "Asking for a raise",
+  "Speak English without translating in your head": "Speaking English",
+  "Tell a good IPO from hype": "How IPOs work",
+  "Start the thing you keep putting off": "Putting things off",
+  "Spot what India's past multibaggers had in common": "Multibagger stocks",
+  "Why 9 in 10 F&O traders lose money": "F&O trading",
+  "Make ChatGPT and Claude do your boring work": "AI for boring work",
+  "Make your credit card pay you back": "Credit card points",
+  "Plan to buy your next car": "Buying a car",
+};
 const keyOf = (t: string) => t.normalize("NFKC").toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ").slice(0, 80);   // handbooks.topicKeyOf
 // The order of the "start one tonight" row under the box (Prateek, 6 Oct): timely and pop-culture topics first.
 // Matched against each ready topic's name; anything not listed follows.
@@ -76,6 +92,7 @@ export const content = query({
     return {
       demos,
       pinned,
+      chipNames: Object.fromEntries(rows.map((r) => [r.title, CHIP[r.title] ?? r.title])),
       shelf: shelf.sort((x, y) => rank(x.topic) - rank(y.topic) || Number(!x.cover) - Number(!y.cover)),
     };
   },

@@ -54,7 +54,16 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
     const left = c.shelf.filter((s) => !pinned.includes(s.topic))
     setChips([...pinned, ...shuffle(left.filter((s) => s.free).map((s) => s.topic)), ...shuffle(left.filter((s) => !s.free).map((s) => s.topic))].slice(0, 4))
   }, [c, chips.length])
-  useEffect(() => { if (chips.length) track('chips', Object.fromEntries(chips.map((t, i) => [`t${i + 1}`, t])), 'chips') }, [chips])
+  // A chip counts as shown only once it is on screen (the row slides sideways, as the board draws it), so a chip off the
+  // edge never drags its tap rate down.
+  const chipRow = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const row = chipRow.current
+    if (!row || !chips.length || !('IntersectionObserver' in window)) return
+    const io = new IntersectionObserver((es) => es.forEach((e) => { const t = (e.target as HTMLElement).dataset.topic; if (e.isIntersecting && t) track('chips', { t1: t }, 'chip-seen:' + t) }), { threshold: 0.9 })
+    row.querySelectorAll('button').forEach((b) => io.observe(b))
+    return () => io.disconnect()
+  }, [chips])
 
   // For the owner's /admin funnel: the page was seen, and how far down each visitor got. The bar turns solid once the
   // page leaves the top.
@@ -100,14 +109,13 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
     <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
       <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
-        placeholder="Public speaking, the stock market…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
-      <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Making your book…' : 'Make my book'}</span><GoArrow /></button>
-      {where === 'hero' && chips.length > 0 && (<>
-        <p className="c1-chips-label" id="c1-chips-label">Or tap one that's ready to read now:</p>
-        <div className="c1-chips" role="group" aria-labelledby="c1-chips-label">
-          {chips.map((t) => <button key={t} type="button" className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'chip')}>{pickedRow === t ? 'Opening…' : t}</button>)}
+        placeholder="Why the Moon changes shape" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
+      {where === 'hero' && chips.length > 0 && (
+        <div className="c1-chips" role="group" aria-label="Or open one that's ready" ref={chipRow}>
+          {chips.map((t) => <button key={t} type="button" data-topic={t} className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'chip')}>{pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}</button>)}
         </div>
-      </>)}
+      )}
+      <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>
       {error && <p className="lp-error" role="alert">{error}</p>}
       {where === 'hero' && slow && pickedRow && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
     </form>
@@ -121,7 +129,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       {/* The bar stays on screen (14 Oct, Prateek: "we are showing the shelf on the top (probably we need to make it sticky)"). */}
       <header className={`home-bar${scrolled ? ' is-scrolled' : ''}`}>
         <a className="lp-mark" href="/" aria-label="I Get It, home"><Wordmark /></a>
-        {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>Browse books</button>}
+        {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>The Shelf</button>}
       </header>
 
       {/* 1. The ask (C1). Ooh is the dot of a tall "i" on the marigold stage; from 1024 the stage is the left half. */}
@@ -135,7 +143,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
             <h1>What have you been wondering about?</h1>
             {box('hero')}
           </div>
-          <p className="c1-says"><Ooh face="curious" size={28} /><span>Tell me in a line. I'll make you a little book, five minutes a chapter.</span></p>
+          <p className="c1-says"><Ooh face="curious" size={28} /><span>Tell me in a line. I'll make you a little book, one short chapter a night.</span></p>
           {/* The rules are told when they matter (14 Oct, Prateek: "We can just let people know when the time comes"): the wall
               after chapter 2, and the typed-topic rule on Start another topic. Only a phone that has used its free typed
               topic hears it here, before it types again. */}
@@ -173,7 +181,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       <section className="lp-final c-final">
         <h2>So, what have you been wondering about?</h2>
         {box('final')}
-        {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or browse books that are ready now →</button>}
+        {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or open one from the Shelf →</button>}
       </section>
 
       <footer className="lp-foot c-foot">
