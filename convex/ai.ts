@@ -201,7 +201,10 @@ async function callGemini(kind: Kind, system: string, user: string, model: strin
     if (res.ok) break;
     // 9 Oct: a key out of credit (402) is dropped and the other key carries on. Before, the backup's 402 ended the call
     // even when the main key had only been busy for a moment (503), and the error read "credits depleted".
-    if (res.status === 402 && dead.size + 1 < keys.length) dead.add(i % keys.length);
+    // 14 Oct: a key whose project Google refused (403, "Your project has been denied access") is dropped the same way. The
+    // main key has been refused since 12 Oct night while the backup works; the 403 ended the call, so every plan and
+    // chapter fell through to Opus.
+    if ((res.status === 402 || res.status === 403) && dead.size + 1 < keys.length) dead.add(i % keys.length);
     else if (![503, 429, 0].includes(res.status)) break;
     // 9 Oct: a 503 "high demand" can last a minute; wait 15 s between rounds when the step has time for it.
     if (i % keys.length === keys.length - 1 && deadline - Date.now() > 30000) await new Promise((x) => setTimeout(x, 15000));
