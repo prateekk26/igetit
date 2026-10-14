@@ -6,13 +6,14 @@ import { inline } from './Rich'
 import { limitMessage } from '../lib/limits'
 import Ooh from './Ooh'
 
-type Props = { handbookId: Id<'handbooks'>; chapter: number; cardIndex: number; deviceToken: string }
+type Props = { handbookId: Id<'handbooks'>; chapter: number; cardIndex: number; deviceToken: string; autoFocus?: boolean }
 
 // The two-way street: ask or object about this page, answered from the card first, in the handbook's voice.
 // C8 (14 Oct, the C board "Ask Ooh"): it lives on the page, not in a sheet. Each question shows as "You asked", Ooh's
-// answer under it in Ooh's voice colour, its sources under that; the box to ask sits at the end of the page. The
+// answer under it in Ooh's voice colour, its sources under that; the box to ask sits at the end of the page, opened by
+// Ooh in the chapter's header (never shown unasked). The
 // server calls, the limits and the web check are the ones the sheet used. Copy (agent).
-export default function AskCard({ handbookId, chapter, cardIndex, deviceToken }: Props) {
+export default function AskCard({ handbookId, chapter, cardIndex, deviceToken, autoFocus }: Props) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -42,10 +43,10 @@ export default function AskCard({ handbookId, chapter, cardIndex, deviceToken }:
           )}
         </div>
       ))}
-      {(focused || text) && <p className="ask-note">Ask about this page, or tell me if you don't buy it. If the page doesn't say, I'll look it up and show you where.</p>}
+      {(focused || text || rows.length === 0) && <p className="ask-note">Ask about this page, or tell me if you don't buy it. If the page doesn't say, I'll look it up and show you where.</p>}
       <form className="ask-row" onSubmit={(e) => { e.preventDefault(); send() }}>
         <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask Ooh about this page"
-          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} disabled={busy} maxLength={500} aria-label="Ask Ooh about this page" enterKeyHint="send" />
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} disabled={busy} maxLength={500} aria-label="Ask Ooh about this page" enterKeyHint="send" autoFocus={autoFocus} />
         <button type="submit" className="ask-send" disabled={busy || text.trim().length < 3} aria-label="Send">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5" /><path d="m6 11 6-6 6 6" /></svg>
         </button>

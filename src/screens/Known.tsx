@@ -18,7 +18,7 @@ export default function Known({ deviceToken, onOpen }: { deviceToken: string; on
   return (
     <section className="known">
       <h1>What you know</h1>
-      <p className="c3-says"><Ooh size={28} /><span>{total === 0 ? 'Nothing yet. Pass a chapter and what it taught lands here.'
+      <p className="c3-says"><Ooh size={28} idle /><span>{total === 0 ? 'Nothing yet. Pass a chapter and what it taught lands here.'
         : `You know ${total} ${total === 1 ? 'thing' : 'things'} now.${fuzzy ? ` ${fuzzy} ${fuzzy === 1 ? 'is' : 'are'} getting fuzzy: you missed a warm-up question on ${fuzzy === 1 ? 'it' : 'them'}. Read ${fuzzy === 1 ? 'it' : 'them'} again.` : ''}`}</span></p>
       {total > 0 && (
         <>

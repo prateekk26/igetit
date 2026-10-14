@@ -187,6 +187,9 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const voice = useLocalVoice()
   const [speaking, setSpeaking] = useState(false)
   const [unsure, setUnsure] = useState(false)
+  // C8 Ask Ooh opens on the page only when the reader taps Ooh in the header (14 Oct, Prateek: "It is an assistant that
+  // should be there if you need it and not nagging you on every screen"); it closes when the page turns.
+  const [askOpen, setAskOpen] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
@@ -204,7 +207,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // D24 (9 Oct, Prateek: "let's not make the activities mandatory to exit the chapter"): only a quiz holds the arrow.
   // A do-it, try-it, steps or move card is an invitation; the arrow works from the moment the card shows.
   const canAdvance = item.card.type !== 'exercise' || exercisePassed
-  const reset = () => { setAttempt(1); setPicked(null); setMissed([]); setResult(null); setError(null); setUnsure(false) }
+  const reset = () => { setAttempt(1); setPicked(null); setMissed([]); setResult(null); setError(null); setUnsure(false); setAskOpen(false) }
 
   useEffect(() => { track('ch_open', { n }, `ch_open:${handbookId}:${n}`) }, [n, handbookId])
   useEffect(() => { if (!item.recall) track('card', { n, i: item.cardIndex }, `card:${handbookId}:${n}:${item.cardIndex}`) }, [n, handbookId, item.cardIndex, item.recall])
@@ -259,6 +262,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
       // could not answer a quiz, open Ask or press ×). The arrows still turn pages from anywhere.
       if ((e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement)?.closest?.('button, a, label')) return
       if (after) { if (e.key === 'Escape') leave('done'); return }
+      if (askOpen && e.key === 'Escape') { setAskOpen(false); return }
       if (result) { if (['Escape', 'Enter', 'ArrowRight', ' '].includes(e.key)) { e.preventDefault(); closeSheet() } return }
       if (e.key === 'ArrowLeft') { e.preventDefault(); back(); return }
       if (e.key === 'Escape') { onExit(); return }
@@ -377,6 +381,11 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
         </div>
         <div className="story-head">
           <span className="story-label">{label}</span>
+          {!item.recall && c.type !== 'try' && c.type !== 'exercise' && (
+            <button type="button" className="story-askbtn" aria-pressed={askOpen} aria-label={askOpen ? 'Close Ask Ooh' : 'Ask Ooh about this page'} onClick={() => setAskOpen((x) => !x)}>
+              <Ooh size={30} /><span>{askOpen ? 'Close' : 'Ask'}</span>
+            </button>
+          )}
           <span className="story-folio" aria-hidden="true">{i + 1}</span>
           <button type="button" className="story-close" onClick={onExit} aria-label="Back to the handbook">×</button>
         </div>
@@ -443,7 +452,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
             <button type="button" className="story-finish no-tap" onClick={finish} disabled={finishing}>{finishing ? 'Saving…' : `Finish chapter ${n}`}</button>
           )}
           {error && <p className="story-error no-tap">{error}</p>}
-          {!item.recall && c.type !== 'try' && c.type !== 'exercise' && <div className="no-tap story-ask"><AskCard handbookId={handbookId} chapter={item.chapter} cardIndex={item.cardIndex} deviceToken={deviceToken} /></div>}
+          {askOpen && <div className="no-tap story-ask" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}><AskCard handbookId={handbookId} chapter={item.chapter} cardIndex={item.cardIndex} deviceToken={deviceToken} autoFocus /></div>}
         </div>
 
         {/* Offline, a tapped answer or Finish waited 20+ s in silence (UX review 9 Oct, #18); they go through on reconnect. */}

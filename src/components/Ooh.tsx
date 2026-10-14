@@ -18,9 +18,12 @@ const arcs = (
 )
 
 // tone "cream" is Ooh on a marigold page (C1, C9): a paper face with an indigo shadow a step down and right.
-export default function Ooh({ face = 'curious', size = 40, className = '', tone = 'marigold' }: { face?: OohFace; size?: number; className?: string; tone?: 'marigold' | 'cream' }) {
+// idle: this is the screen's one moving Ooh (brand book C, page 6: "One moving Ooh on a screen at most"). Curious then
+// runs its idle loop (glance left, glance right, blink; 4 s, for ever); any other face blinks once its reaction settles.
+// Without it, Ooh is still: the small faces beside a line of Ooh's words never move.
+export default function Ooh({ face = 'curious', size = 40, className = '', tone = 'marigold', idle = false }: { face?: OohFace; size?: number; className?: string; tone?: 'marigold' | 'cream'; idle?: boolean }) {
   return (
-    <svg className={`ooh ooh-${face} ${className}`} width={size} height={size} viewBox="-6 -8 52 52" aria-hidden="true" focusable="false">
+    <svg className={`ooh ooh-${face}${idle ? ' ooh-idle' : ''} ${className}`} width={size} height={size} viewBox="-6 -8 52 52" aria-hidden="true" focusable="false">
       <g className="ooh-body">
         {tone === 'cream' && <circle cx="21" cy="21" r="19.5" fill="#2F3478" />}
         <circle cx="20" cy="20" r={tone === 'cream' ? 19.5 : 20} fill={tone === 'cream' ? '#FAF7F0' : '#F2A93B'} />

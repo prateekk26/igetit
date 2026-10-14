@@ -88,7 +88,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
         {plan.pushback && <p className="c3-says"><Ooh size={28} /><span>{plan.pushback}</span></p>}
         {/* A quick handbook (a recap, one recipe; 7 Oct) says so up top: no weeks of study for this one. */}
         {!plan.pushback && plan.framing && <p className="c3-says"><Ooh size={28} /><span>{plan.framing}</span></p>}
-        <p className="c3-says"><Ooh size={28} /><span>{plan.outcome7}{first && mins(1) ? ` Tonight is chapter 1. It takes ${mins(1)} minutes.` : ''}</span></p>
+        <p className="c3-says"><Ooh size={28} idle /><span>{plan.outcome7}{first && mins(1) ? ` Tonight is chapter 1. It takes ${mins(1)} minutes.` : ''}</span></p>
         {caution && <p className="roadmap-caution c3-caution">Study aid, verify before you act.</p>}
         {plan.picture && <p className="c3-picture">The picture for the whole way: {plan.picture.line}</p>}
       </section>

@@ -311,6 +311,16 @@ export default function App() {
   goTonight = () => { setDoneN(null); setView(hb ? 'plan' : 'library'); window.scrollTo({ top: 0 }) }
   goKnown = () => { setDoneN(null); setView('known'); window.scrollTo({ top: 0 }) }
   const tabs = (lib?.handbooks?.length ?? 0) > 0 || !!hb   // C4's bar shows once there is a handbook to come back to
+  // The landing page's starts: the box, a chip, or the demo, which has already shown chapter 1 and opens at chapter 2
+  // the way a post link does (?t=…&ch=2), so the reader never reads chapter 1 twice (14 Oct).
+  const startFromLanding = async (topic: string, level: 'new' | 'some', voice: 'friend' | 'straight' | 'stories', chapter?: number) => {
+    setHold('landing'); setDraftTopic(topic)
+    const r = await create({ topic, level, voice, deviceToken: token })
+    if (!r.existing && chapter && chapter > 1) await setPosition({ handbookId: r.handbookId, chapter, cardIndex: 0, deviceToken: token })
+    pin(String(r.handbookId))
+    setFlash((r as any).restored ? 'Brought back from the ones you removed, where you left off.' : r.existing ? 'You already have this handbook, so we opened it where you left off. Each topic lives in one handbook.' : null)
+    if (!r.existing && chapter && chapter > 1) { setReadingN(chapter); setView('chapter') } else setView('auto')
+  }
   // Explore: ready topics and the ones other readers started (6 Oct).
   if (view === 'explore' || (hold === 'explore' && (data === undefined || holdable))) {
     return (
@@ -323,7 +333,7 @@ export default function App() {
   }
 
   // A first-time visitor's pick stays on the landing page, with the card lifted, until its handbook is ready (8 Oct night).
-  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={async (topic, level, voice) => { setHold('landing'); setDraftTopic(topic); const r = await create({ topic, level, voice, deviceToken: token }); pin(String(r.handbookId)); setFlash((r as any).restored ? 'Brought back from the ones you removed, where you left off.' : r.existing ? 'You already have this handbook, so we opened it where you left off. Each topic lives in one handbook.' : null); setView('auto') }} />
+  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   const libRows = lib?.handbooks ?? []
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   if (view === 'library' || (hold === 'library' && data === undefined)) {
@@ -381,7 +391,7 @@ export default function App() {
     )
   }
   if (!hb && view !== 'start-again' && libRows.length === 0 && lib !== undefined) {
-    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={async (topic, level, voice) => { setHold('landing'); setDraftTopic(topic); const r = await create({ topic, level, voice, deviceToken: token }); pin(String(r.handbookId)); setFlash((r as any).restored ? 'Brought back from the ones you removed, where you left off.' : r.existing ? 'You already have this handbook, so we opened it where you left off. Each topic lives in one handbook.' : null); setView('auto') }} />
+    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   }
 
   // No handbook yet, or the person wants a different line: the first screen.

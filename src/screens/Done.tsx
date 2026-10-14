@@ -103,7 +103,7 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
           what was added to what they know. The rung bar stays under it, small. Copy (agent). */}
       <section className="c9-stage" aria-hidden="true">
         <span className="c1-stem c9-stem" />
-        <Ooh face="happy" tone="cream" size={132} className="c9-ooh" />
+        <Ooh face="happy" tone="cream" size={132} className="c9-ooh" idle />
       </section>
       <p className="c9-topic">{topic}</p>
       <h1 className="c9-h">{total === 1 ? <>Done,<br />and you got it!</> : <>Chapter {n},<br />and you got it!</>}</h1>

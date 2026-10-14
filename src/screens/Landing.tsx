@@ -18,12 +18,12 @@ import Ooh, { GoArrow, Wordmark } from '../components/Ooh'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
-type Props = { onCreate: (topic: string, level: Level, voice: Voice) => Promise<void>; onExplore?: () => void; freeChapters?: number; allowance?: TypedAllowance | null }
+type Props = { onCreate: (topic: string, level: Level, voice: Voice, chapter?: number) => Promise<void>; onExplore?: () => void; freeChapters?: number; allowance?: TypedAllowance | null }
 
 type Frame =
   | { kind: 'picture' | 'teach' | 'example' | 'mistake' | 'try'; title?: string; text: string; picture: string | null }
   | { kind: 'exercise'; prompt: string; options: { id: string; text: string }[]; answer: string; whyNot: Record<string, string> }
-type DemoBook = { topic: string; label: string; title: string; frames: Frame[]; total: number; of: number }
+type DemoBook = { topic: string; label: string; title: string; frames: Frame[]; total: number; of: number; next: { title: string; hook: string } | null }
 
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
@@ -90,7 +90,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
   const pick = async (t: string, via: 'chip' | 'demo') => {
     track('submit', { via, topic: t })
     setTopic(t); setError(null); setBusy(true); setPickedRow(t)
-    try { await onCreate(t, 'new', voice) }
+    try { await onCreate(t, 'new', voice, via === 'demo' ? 2 : undefined) }
     catch { setError("Couldn't start it just now. Try once more in a minute."); setBusy(false); setPickedRow(null); toBox() }
   }
   const go = async () => {
@@ -136,7 +136,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       <section className="lp-hero c1">
         <div className="c1-stage" aria-hidden="true">
           <span className="c1-stem" />
-          <Ooh face="curious" tone="cream" className="c1-ooh" size={132} />
+          <Ooh face="curious" tone="cream" className="c1-ooh" size={132} idle />
         </div>
         <div className="c1-copy">
           <div className="c1-main">
@@ -215,9 +215,15 @@ function Demo({ book, onOpen, busy, freeText }: { book: DemoBook; onOpen: () => 
         <div className="demo-body" key={i}>
           {end ? (
             <>
-              <p className="story-big">That was {frames.length} of chapter 1's {book.total} pages.</p>
-              <p className="story-text size-md">{freeText} of this one are free, no sign-up. Yours can be about anything you type, in this style, with its own pictures.</p>
-              <button type="button" className="btn c-go" onClick={onOpen} disabled={busy}><span>Read the rest of this one</span><GoArrow /></button>
+              <p className="story-kicker">That was chapter 1 of {book.of}</p>
+              {book.next ? (
+                <>
+                  <p className="story-big">Chapter 2: {book.next.title}</p>
+                  {book.next.hook && <p className="story-text size-md">{inline(book.next.hook)}</p>}
+                </>
+              ) : <p className="story-big">That's the whole of chapter 1.</p>}
+              <p className="c-demo-free">{freeText} of this one are free, no sign-up. Yours can be about anything you type, in this style, with its own pictures.</p>
+              <button type="button" className="btn c-go" onClick={onOpen} disabled={busy}><span>{book.next ? 'Keep reading this one' : 'Open this one'}</span><GoArrow /></button>
             </>
           ) : f.kind === 'exercise' ? (
             <>

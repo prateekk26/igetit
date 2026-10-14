@@ -36,7 +36,6 @@ const keyOf = (t: string) => t.normalize("NFKC").toLowerCase().replace(/https?:\
 const FEATURED = ["odyssey", "iliad", "homer", "avengers", "marvel", "k-pop", "us stock", "abroad", "philosophy", "hold a room", "public speaking", "indian stock", "vibe coding", "swimming"];
 const rank = (topic: string) => { const t = topic.toLowerCase(); const i = FEATURED.findIndex((f) => t.includes(f)); return i < 0 ? FEATURED.length : i; };
 
-const firstPara = (s: string) => s.split(/\n\n+/)[0]?.trim() ?? "";
 export function weekStartIST(t = Date.now()): string {
   const d = new Date(t + 5.5 * 3600000);
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
@@ -77,17 +76,16 @@ export const content = query({
       const row = await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", keyOf(d.title)).eq("level", "new")).first();
       const ch = row?.chapters.find((c: any) => c.n === 1);
       if (!row || !ch) continue;
+      // The whole of chapter 1, every page in full with its picture (14 Oct, Prateek: "The homepage has a chapter that is very
+      // incomplete... There is absolutely no way anyone would ever sign up looking at that"; it showed each card's first
+      // paragraph, six at most). Cards a page can't show here (a counter, steps, a talk) are left out; the end teases chapter 2.
       const frames: any[] = [];
       for (const [i, c] of (ch.cards ?? []).entries()) {
-        if (frames.length >= 6) break;
-        if (c.type === "exercise") {
-          if (frames.some((f) => f.kind === "exercise")) continue;
-          frames.push({ kind: "exercise", prompt: c.prompt, options: c.options, answer: c.answer, whyNot: c.whyNot ?? {} });
-        } else if (c.type !== "watch" && typeof c.body === "string") {
-          frames.push({ kind: c.type, title: c.title, text: firstPara(c.body), picture: await pictureFor(ch, i) });
-        }
+        if (c.type === "exercise") frames.push({ kind: "exercise", prompt: c.prompt, options: c.options, answer: c.answer, whyNot: c.whyNot ?? {} });
+        else if (typeof c.body === "string" && !["watch", "move", "doit", "steps", "tryit"].includes(c.type)) frames.push({ kind: c.type, title: c.title, text: c.body.replace(/\n*\s*Next:[^\n]*$/i, "").trim(), picture: await pictureFor(ch, i) });
       }
-      demos.push({ topic: row.topic, label: d.label, title: ch.title, frames, total: (ch.cards ?? []).length, of: (row.plan?.chapters ?? []).length || 7 });
+      const next = (row.plan?.chapters ?? [])[1];
+      demos.push({ topic: row.topic, label: d.label, title: ch.title, frames, total: frames.length, of: (row.plan?.chapters ?? []).length || 7, next: next ? { title: next.title as string, hook: (next.hook ?? next.covers ?? "") as string } : null });
     }
     return {
       demos,
