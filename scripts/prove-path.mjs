@@ -72,7 +72,8 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
     await tap('Later')
   }
   if (await step('the Done screen says chapter 1 is done', `/Chapter 1(,| of \\d+: done)|^Done/.test(document.querySelector('h1')?.textContent ?? '')`, 15000)) {
-    await step('the rung bar shows one lit segment', `document.querySelectorAll('.rung span.on, .rung span.filling').length === 1`, 5000)
+    // C9 (15 Oct): the board has no rung bar; the proof is the line under "Added to what you know".
+    await step('Done shows what was added to what you know', `document.querySelectorAll('.c9-known li').length >= 1`, 5000)
     // D26 (9 Oct, Prateek): the wall is after chapter 2. After chapter 1 the main action is chapter 2, sign-in a quiet line.
     await step('no wall yet: the main action is "Start chapter 2"', `[...document.querySelectorAll('.actionbar .btn')].some((b) => b.textContent.trim().startsWith('Start chapter 2'))`, 5000)
     await step('and "Make a free account" is not a main button here', `![...document.querySelectorAll('.btn')].some((b) => b.textContent.trim().startsWith('Make a free account'))`, 2000)
@@ -84,7 +85,7 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
       for (; frames2 < 60; frames2++) {
         if (await ev(`!!document.querySelector('.story-finish') && !document.querySelector('.sheet, .story-reveal')`)) break
         if (await ev(`!!document.querySelector('.sheet, .story-reveal')`)) { await ev(`(() => { const b = [...document.querySelectorAll('.sheet .btn, .story-reveal .btn')].find((b) => /Keep going|Try again|Got it|Finish|See your rung|Turn the page|Next question/.test(b.textContent)); if (b) b.click(); return !!b })()`); await sleep(700); continue }
-        if (await ev(`!!document.querySelector('.story-opt') && !document.querySelector('.story-next')`)) { await ev(`(() => { const o = [...document.querySelectorAll('.story-opt:not(.story-dunno)')].find((b) => !b.disabled && !b.classList.contains('missed') && !b.classList.contains('miss')); if (o) o.click(); return !!o })()`); await sleep(1500); continue }
+        if (await ev(`!!document.querySelector('.story-opt') && !document.querySelector('.story-next')`)) { await ev(`(() => { const o = [...document.querySelectorAll('.story-opt:not(.story-dunno)')].find((b) => !b.disabled && !b.classList.contains('missed') && !b.classList.contains('miss')); if (o) o.click(); return !!o })()`); await sleep(700); await ev(`document.querySelector('.c7-sure-yes')?.click()`); await sleep(1500); continue }
         if (!(await tapNext())) { if (await ev(`!!document.querySelector('.story-finish')`)) break; await sleep(500); continue }
         await sleep(450)
       }

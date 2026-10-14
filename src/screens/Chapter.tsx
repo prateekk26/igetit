@@ -4,7 +4,8 @@ import { api } from '../../convex/_generated/api'
 import { speak, stopSpeaking, useLocalVoice } from '../lib/speak'
 import { track } from '../lib/track'
 import Rich, { inline } from '../components/Rich'
-import AskCard from '../components/AskCard'
+import { AskBox, AskThread } from '../components/AskCard'
+import { runningHead } from '../../convex/shortNames'
 import DoIt, { type DoItCard } from '../components/DoIt'
 import MoveFrame, { type MoveCard } from '../components/MoveFrame'
 import StepsFrame, { type StepsCard } from '../components/StepsFrame'
@@ -189,6 +190,10 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // C8 Ask Ooh opens on the page only when the reader taps Ooh in the header (14 Oct, Prateek: "It is an assistant that
   // should be there if you need it and not nagging you on every screen"); it closes when the page turns.
   const [askOpen, setAskOpen] = useState(false)
+  // C7 (15 Oct, the board): a first try at a chapter's check asks "How sure are you?" before the answer is sent. The
+  // tapped option holds an ink ring until Sure or Not sure; warm-ups and second tries go straight through.
+  const [pending, setPending] = useState<string | null>(null)
+  const [sure, setSure] = useState<'sure' | 'notsure' | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
@@ -206,7 +211,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // D24 (9 Oct, Prateek: "let's not make the activities mandatory to exit the chapter"): only a quiz holds the arrow.
   // A do-it, try-it, steps or move card is an invitation; the arrow works from the moment the card shows.
   const canAdvance = item.card.type !== 'exercise' || exercisePassed
-  const reset = () => { setAttempt(1); setPicked(null); setMissed([]); setResult(null); setError(null); setUnsure(false); setAskOpen(false) }
+  const reset = () => { setAttempt(1); setPicked(null); setMissed([]); setResult(null); setError(null); setUnsure(false); setAskOpen(false); setPending(null); setSure(null) }
 
   useEffect(() => { track('ch_open', { n }, `ch_open:${handbookId}:${n}`) }, [n, handbookId])
   useEffect(() => { if (!item.recall) track('card', { n, i: item.cardIndex }, `card:${handbookId}:${n}:${item.cardIndex}`) }, [n, handbookId, item.cardIndex, item.recall])
@@ -218,6 +223,9 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // Only × and Escape leave the chapter (review #18, 8 Oct): a tap on the left edge of the first frame used to exit silently.
   const back = () => { if (i > 0) { dir.current = 'back'; setI(i - 1); reset() } }
 
+  const asksSure = item.card.type === 'exercise' && !item.recall && attempt === 1 && (item.card as any).kind !== 'poll' && !exercisePassed
+  const tap = (optionId: string) => { if (asksSure && !result) { setPending(optionId); setUnsure(false) } else choose(optionId) }
+  const answerSure = (v: 'sure' | 'notsure') => { if (!pending) return; setSure(v); track('sure', { n, i: item.cardIndex, v }); const o = pending; setPending(null); choose(o) }
   const choose = async (optionId: string) => {
     if (item.card.type !== 'exercise' || sending || exercisePassed) return
     setSending(true); setPicked(optionId); setError(null)
@@ -265,7 +273,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
       if (result) { if (['Escape', 'Enter', 'ArrowRight', ' '].includes(e.key)) { e.preventDefault(); closeSheet() } return }
       if (e.key === 'ArrowLeft') { e.preventDefault(); back(); return }
       if (e.key === 'Escape') { onExit(); return }
-      if (item.card.type === 'exercise' && !exercisePassed && ['1', '2', '3'].includes(e.key)) { const o = item.card.options[Number(e.key) - 1]; if (o && !missed.includes(o.id)) choose(o.id); return }
+      if (item.card.type === 'exercise' && !exercisePassed && ['1', '2', '3'].includes(e.key)) { const o = item.card.options[Number(e.key) - 1]; if (o && !missed.includes(o.id)) tap(o.id); return }
       if (['ArrowRight', 'Enter', ' '].includes(e.key)) { e.preventDefault(); next() }
     }
     window.addEventListener('keydown', onKey)
@@ -298,6 +306,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const leave = (go: 'done' | 'next') => { track('after_go', { n, go }); onAfter?.(go, afterStats.current) }
   const toTeaser = () => { if (teaser) { track('after_view', { n, s: 'teaser' }); setAfter('teaser') } else leave('done') }
   const rate = (k: number) => { if (stars) return; setStars(k); track('stars', { n, v: k }); onStars?.(k).catch(() => {}); setTimeout(toTeaser, 600) }
+  const kept = useQuery(api.handbooks.keptFor, { handbookId, chapter: n, deviceToken }) ?? []
   const reteach = useQuery(api.handbooks.reteachFor, unsure && item.card.type === 'exercise' ? { handbookId, chapter: item.chapter, cardIndex: item.cardIndex, recall: !!item.recall, deviceToken } : 'skip')
   useEffect(() => { stopSpeaking(); setSpeaking(false) }, [i])
   useEffect(() => () => stopSpeaking(), [])
@@ -356,7 +365,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const warm = frames.filter((f) => f.item.recall && f.item.card.type === 'exercise')
   const warmAt = warm.findIndex((f) => f === frame) + 1
   const nextIsWarmup = !!frames[i + 1]?.item.recall && frames[i + 1]?.item.card.type === 'exercise'
-  const label = item.recall ? (c.type === 'exercise' ? `Warm-up · ${warmAt} of ${warm.length}` : `Last time · from chapter ${item.chapter}`) : c.type === 'exercise' ? `Chapter ${n} · Check` : `${topic} · Chapter ${n}`
+  const label = item.recall ? (c.type === 'exercise' ? `Warm-up · ${warmAt} of ${warm.length}` : `Last time · from chapter ${item.chapter}`) : c.type === 'exercise' ? `Chapter ${n} · Check` : `${runningHead(topic)} · Chapter ${n}`
   const pagesLeft = frames.length - 1 - i
   const readAloud = () => {
     if (!voice) return
@@ -396,25 +405,45 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
         <div className={`story-body turn-${dir.current}`} key={i} aria-live="polite">
           {c.type === 'exercise' ? (
             <>
-              <p className="story-kicker">{item.recall ? 'Remember this?' : KICKER[c.kind]}</p>
-              <p className="story-q">{inline(c.prompt)}</p>
-              <div className="story-options no-tap">
-                {c.options.map((o, k) => {
+              {/* C7 (the board, 15 Oct): the question, a quiet gap, the options at the thumb, nothing timed. A tapped option
+                  holds an ink ring until "How sure are you?" is answered; the answer then lands under the options, the
+                  right one with a marigold dot and "That's it!", a miss keeping its ring and "Your pick". No red, no strike. */}
+              <p className="story-q c7-q">{inline(c.prompt)}</p>
+              <div className="c7-gap" aria-hidden="true" />
+              <div className="story-options no-tap" role="group" aria-label="Pick one">
+                {c.options.map((o) => {
                   const cls = ['story-opt']
-                  if (exercisePassed && (picked === o.id || (picked === null && passedChoice[key] === o.id))) cls.push('pass')
+                  const won = exercisePassed && (picked === o.id || (picked === null && passedChoice[key] === o.id))
+                  if (won) cls.push('pass')
                   else if (missed.includes(o.id)) cls.push('missed')
                   if (revealId === o.id) cls.push('reveal')
+                  if (pending === o.id) cls.push('picked')
+                  const tag = won || revealId === o.id ? "That's it!" : missed.includes(o.id) ? 'Your pick' : ''
                   return (
-                    <button key={o.id} type="button" className={cls.join(' ')} onClick={() => choose(o.id)} disabled={sending || exercisePassed || missed.includes(o.id)}>
-                      <span className="k" aria-hidden="true">{k + 1}</span><span>{o.text}</span>
+                    <button key={o.id} type="button" className={cls.join(' ')} aria-pressed={pending === o.id} onClick={() => tap(o.id)} disabled={sending || exercisePassed || missed.includes(o.id)}>
+                      <span className="k" aria-hidden="true" /><span className="t">{o.text}</span>{tag && <span className="story-tag">{tag}</span>}
                     </button>
                   )
                 })}
+                {!exercisePassed && (c as any).kind !== 'poll' && !unsure && (
+                  <button type="button" className="story-opt story-dunno no-tap" onClick={() => { setUnsure(true); setPending(null); track('unsure', { n, i: item.cardIndex }) }} disabled={sending}><span className="k" aria-hidden="true" /><span className="t">I don't know yet</span></button>
+                )}
               </div>
-              {!exercisePassed && (c as any).kind !== 'poll' && (unsure
-                ? <p className="story-unsure no-tap" aria-live="polite"><Ooh size={26} /><span>{reteach === undefined ? 'One moment…' : reteach ? inline(reteach) : "Read the last page again, then pick the one that fits best."}</span></p>
-                : <button type="button" className="story-opt story-dunno no-tap" onClick={() => { setUnsure(true); track('unsure', { n, i: item.cardIndex }) }} disabled={sending}><span className="k" aria-hidden="true" /><span>I don't know yet</span></button>)}
-              {/* C7 and C5 (14 Oct): the answer lands on the page, under the options, as the boards draw it; it was a sheet. */}
+              {pending && !result && (
+                <div className="c7-sure no-tap">
+                  <p className="c7-sure-q"><Ooh size={26} /><span>How sure are you?</span></p>
+                  <div className="c7-sure-row">
+                    <button type="button" className="c7-sure-yes" onClick={() => answerSure('sure')} disabled={sending}>Sure</button>
+                    <button type="button" className="c7-sure-no" onClick={() => answerSure('notsure')} disabled={sending}>Not sure</button>
+                  </div>
+                </div>
+              )}
+              {unsure && !result && (
+                <div className="story-reveal no-tap" aria-live="polite">
+                  <p className="verdict"><Ooh face="again" size={34} /><span>That's okay.</span></p>
+                  <p className="serif">{reteach === undefined ? 'One moment…' : reteach ? inline(reteach) : 'Read the last page again, then pick the one that fits best.'}</p>
+                </div>
+              )}
               {result && (
                 <div className="story-reveal no-tap" aria-live="polite" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
           {result.correct ? (
@@ -426,14 +455,15 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
                 </>
               ) : (
                 <>
-                  <p className="verdict pass"><Ooh face="happy" size={44} /><span>{result.chapterPassed ? `That's it. Chapter ${n} passed.` : "That's it."}</span></p>
+                  <p className="verdict pass"><Ooh face="happy" size={34} /><span>{result.chapterPassed ? `That's it! Chapter ${n} passed.` : "That's it!"}</span></p>
                   {/* D38 (Prateek, 9 Oct: "Why just repeat my answer back to me?"): the option stays lit on the card; here is what it adds. */}
                   <p className="serif">{result.why ? inline(result.why) : cheer(key)}</p>
+                  {item.recall && <p className="story-again"><span className="c9-dot" aria-hidden="true" />Got it again.</p>}
                 </>
               )}
               {result.chapterPassed && !isLast ? (
                 <>
-                  <p className="serif" style={{ marginTop: 'var(--s)' }}>Your rung is lit. What's left is a bonus.</p>
+                  <p className="serif">Your rung is lit. What's left is a bonus.</p>
                   <button className="btn c-go" onClick={() => { setResult(null); finish() }} disabled={finishing}><span>See your rung</span><GoArrow /></button>
                   <button type="button" className="quiet" onClick={closeSheet}>Read the bonus first</button>
                 </>
@@ -441,14 +471,16 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
             </>
           ) : (
             <>
-              <p className="verdict"><Ooh face="again" size={44} /><span>{inline(result.whyNot)}</span></p>
+              <p className="verdict"><Ooh face="again" size={34} /><span>{sure === 'sure' && attempt === 1 ? 'Not quite, and this one fools lots of people.' : 'Not quite.'}</span></p>
+              <p className="serif">{inline(result.whyNot)}</p>
               {result.reteach && <p className="serif">{inline(result.reteach)}</p>}
-              {result.reveal && <p className="serif" style={{ marginTop: 'var(--m)' }}>It's <strong>{result.reveal.text}</strong></p>}
+              {result.reveal && <p className="serif">It's <strong>{result.reveal.text}</strong></p>}
               <button className="btn c-go" onClick={closeSheet}><span>{result.reveal ? 'Got it' : 'Try again'}</span><GoArrow /></button>
             </>
           )}
                 </div>
               )}
+              {!picked && !pending && !result && !unsure && !exercisePassed && !missed.length && <p className="c7-fresh">No timer. Take your time.</p>}
               {exercisePassed && !result && <p className="story-hint">{passedChoice[key] || item.recall ? 'Tap to keep going' : "You answered this one before. Tap to keep going."}</p>}
             </>
           ) : c.type === 'move' ? (
@@ -475,10 +507,21 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
               {frame.cover && <h1 className="story-title">{title}</h1>}
               {/* On the first frame of the chapter, whatever card it is (UX review 9 Oct: it showed only on a picture card). */}
               {i === firstChapterFrame && caution && <p className="story-caution">Study aid, verify before you act.</p>}
-              {pic ? <div className={`story-pic${credits[item.cardIndex] ? ' real' : ''}`}><img src={pic} alt={alts[item.cardIndex] ?? ''} onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')} ref={(el) => { if (el && el.complete && el.naturalWidth > 0) el.parentElement?.classList.add('loaded') }} />{credits[item.cardIndex] && <a className="story-credit no-tap" href={credits[item.cardIndex].source || undefined} target="_blank" rel="noopener noreferrer">Photo: {credits[item.cardIndex].credit}</a>}</div>
+              {/* C6 (the board, 15 Oct): each page opens on its idea as a headline, then its picture, then the words. A story,
+                  a mistake or a dare keeps its small label over the headline. With Ask open (C8) the picture steps aside. */}
+              {!frame.cover && frame.part === 0 && KICKER[c.type] && <p className="story-kicker">{KICKER[c.type]}</p>}
+              {!frame.cover && frame.part === 0 && c.title && !(item.recall && c.title === 'Last time') && <h2 className="story-idea">{inline(c.title)}</h2>}
+              {pic && !askOpen ? <div className={`story-pic${credits[item.cardIndex] ? ' real' : ''}`}><img src={pic} alt={alts[item.cardIndex] ?? ''} onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')} ref={(el) => { if (el && el.complete && el.naturalWidth > 0) el.parentElement?.classList.add('loaded') }} />{credits[item.cardIndex] && <a className="story-credit no-tap" href={credits[item.cardIndex].source || undefined} target="_blank" rel="noopener noreferrer">Photo: {credits[item.cardIndex].credit}</a>}</div>
                 : null /* no picture yet, or none: no box at all; the picture fades in when it lands */}
-              {!frame.cover && frame.part === 0 && (KICKER[c.type] || c.title) && <p className="story-kicker">{KICKER[c.type] ?? c.title}</p>}
-              <Rich text={frame.text ?? ''} className={`story-text size-${frame.cover || pic ? (pic && !frame.cover && sizeOf(frame.text ?? '') === 'xl' ? 'lg' : 'md') : sizeOf(frame.text ?? '')}`} />
+              <Rich text={frame.text ?? ''} className={`story-text size-${frame.cover || pic || (!frame.cover && frame.part === 0 && c.title) ? (pic && !frame.cover && sizeOf(frame.text ?? '') === 'xl' ? 'lg' : 'md') : sizeOf(frame.text ?? '')}`} />
+              {/* C8 "Keep it here": an answer the reader kept stays under its page's words. */}
+              {!askOpen && !item.recall && frame.part === frame.parts - 1 && kept.filter((k) => k.cardIndex === item.cardIndex).map((k) => (
+                <div key={String(k._id)} className="story-kept c8">
+                  <p className="ask-label">You asked</p>
+                  <p className="ask-q">{k.question}</p>
+                  <p className="ask-a"><Ooh size={26} /><span>{inline(k.answer)}</span></p>
+                </div>
+              ))}
               {isLast && (
                 <button type="button" className="story-finish no-tap" onClick={finish} disabled={finishing}>{finishing ? 'Saving…' : `Finish chapter ${n}`}</button>
               )}
@@ -490,11 +533,14 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
             <button type="button" className="story-finish no-tap" onClick={finish} disabled={finishing}>{finishing ? 'Saving…' : `Finish chapter ${n}`}</button>
           )}
           {error && <p className="story-error no-tap">{error}</p>}
-          {askOpen && <div className="no-tap story-ask" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}><AskCard handbookId={handbookId} chapter={item.chapter} cardIndex={item.cardIndex} deviceToken={deviceToken} autoFocus /></div>}
+          {askOpen && <div className="no-tap story-ask"><AskThread handbookId={handbookId} chapter={item.chapter} cardIndex={item.cardIndex} deviceToken={deviceToken} /></div>}
         </div>
 
         {/* Offline, a tapped answer or Finish waited 20+ s in silence (UX review 9 Oct, #18); they go through on reconnect. */}
         {!online && <p className="story-offline no-tap" role="status">Offline. What you do here saves when you're back online.</p>}
+        {askOpen ? (
+          <div className="story-tools story-askbar no-tap"><AskBox handbookId={handbookId} chapter={item.chapter} cardIndex={item.cardIndex} deviceToken={deviceToken} autoFocus /></div>
+        ) : (c.type !== 'exercise' || (canAdvance && !result && !isLast)) && (
         <div className="story-tools no-tap">
           <div className="story-tools-left">
             {c.type !== 'exercise' && <span className="story-left">{pagesLeft === 0 ? 'Last page' : `${pagesLeft} ${pagesLeft === 1 ? 'page' : 'pages'} left`}</span>}
@@ -503,14 +549,15 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
               {speaking ? 'Stop reading' : 'Read it to me'}</button>}
           </div>
           {/* A real button (UX review #17, 8 Oct): the move and do-it frames are full of things to tap, so "next" needs a target of its own; keyboard and screen readers get one too. */}
-          {/* While the answer shows, its own button is the one way on (C7). */}
-          {result ? null : canAdvance
-            ? (isLast ? null : <div className="story-turns">
-                {i > 0 && <button type="button" className="story-back" onClick={back} aria-label="Back a page"><span aria-hidden="true">←</span></button>}
-                <button type="button" className="story-next" onClick={next}>Next <span aria-hidden="true">→</span></button>
-              </div>)   /* the last frame has its own Finish button; one finisher (second critique). Its name is its words (UX review 9 Oct: "Tap →" was named "Next" for voice control). */
-            : <span className="story-tapnote">No timer. Take your time.</span>}
+          {/* While an answer shows, its own button is the one way on (C7); a check shows no tools until it's passed. */}
+          {result || !canAdvance || isLast ? null : (
+            <div className="story-turns">
+              {i > 0 && <button type="button" className="story-back" onClick={back} aria-label="Back a page"><span aria-hidden="true">←</span></button>}
+              <button type="button" className="story-next" onClick={next}>Next <span aria-hidden="true">→</span></button>
+            </div>
+          )}   {/* the last frame has its own Finish button; one finisher (second critique). */}
         </div>
+        )}
       </div>
 
     </div>

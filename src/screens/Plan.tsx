@@ -43,16 +43,16 @@ type Props = {
   libraryCount?: number
   nextUp?: { kind: 'resume'; n: number; card: number; left: number } | { kind: 'next'; n: number } | null
   whatsNext?: React.ReactNode
+  onBack?: () => void   // C3's own header: the back arrow goes to Tonight, or home on a first visit
+  more?: React.ReactNode   // the handbook's own extras (what Ooh knows, print, start another), under the list
 }
 
 // The handbook (14 Oct, the C boards "The plan" and "Tonight"): for a reader coming back, tonight's chapter on a marigold
 // card with its own Start; then the picture, the title, Ooh's line (the outcome) and "What's in it", one numbered row a
 // chapter, each answering a tap as the old path's stops did. A first visit has no card; the bar's button starts chapter 1.
-export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan, passed, current, chapterReady, chapterFailed, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext }: Props) {
+export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan, passed, current, chapterReady, chapterFailed, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf: _onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext, onBack, more }: Props) {
   useEffect(() => { track('plan_view', undefined, 'plan_view:' + topic) }, [topic])
   const first = passed.length === 0 && current === 1   // a reader who came in at chapter 2 from a post is on 2
-  const upTitle = nextUp ? plan.chapters[nextUp.n - 1]?.title : null
-  const upHook = nextUp ? plan.chapters[nextUp.n - 1]?.hook : null
   const resuming = nextUp?.kind === 'resume'
   // "Later, if you keep going: …" under "Later peaks:" read "Later peaks: Later, …" (UX review 9 Oct): the model's own
   // opener is dropped.
@@ -63,40 +63,36 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
   const mins = (n: number) => plan.chapters[n - 1]?.minutes
   // Tonight's card holds the one main button when it can start the chapter; otherwise the bar below does (a lock, a
   // failed chapter, one still being written, or the account ask after a "Not now").
-  const cardStart = !!nextUp && chapterReady && !lockNote && !chapterFailed && !(declined && nextUp.kind === 'next')
+  // C3 (the board, 15 Oct): the plan reads as a letter, the same for a first visit and a reader coming back. Its own top
+  // line: the back arrow, and the book's length on the right. Ooh's line ends on what's next and how long it takes.
+  const totalMin = plan.chapters.reduce((a, c) => a + (c.minutes ?? 0), 0)
+  const upN = nextUp?.n ?? current
+  const tail = passed.length >= total ? ''
+    : resuming ? ` You stopped partway through chapter ${upN}.`
+    : first ? (mins(1) ? ` Tonight is chapter 1. It takes ${mins(1)} minutes.` : ' Tonight is chapter 1.')
+    : mins(upN) ? ` Next is chapter ${upN}. It takes ${mins(upN)} minutes.` : ` Next is chapter ${upN}.`
   return (
     <>
-      {nextUp && chapterReady && (
-        <section className="c4-tonight" aria-label="Tonight's chapter">
-          <span className="c4-kicker">{resuming ? `You stopped at card ${nextUp.card}` : `Chapter ${nextUp.n} of ${total}`}</span>
-          <h2>{upTitle ?? `Chapter ${nextUp.n}`}</h2>
-          <span className="c4-meta">{nextUp.kind === 'resume' ? `${nextUp.left} card${nextUp.left === 1 ? '' : 's'} left, about ${Math.max(2, nextUp.left * 2)} minutes` : mins(nextUp.n) ? `About ${mins(nextUp.n)} minutes` : upHook ?? ''}</span>
-          {cardStart && <button type="button" className="c4-go" onClick={onStart}><span>{needsAccount ? 'Start (free account)' : resuming ? 'Continue' : 'Start'}</span><GoArrow /></button>}
-          {/* After a "Not now" the card keeps a quiet line to the account, never the same ask twice (9 Oct, 05's critique). */}
-          {declined && nextUp.kind === 'next' && (
-            <span className="c4-quiet">
-              <button type="button" className="quiet" onClick={onSignUp ?? onStart}>Chapter {nextUp.n} opens with a free account. When you're ready.</button>
-              {onShelf && <button type="button" className="quiet" onClick={onShelf}>The Shelf: every ready handbook</button>}
-            </span>
-          )}
-        </section>
-      )}
+      <header className="c3-top">
+        {onBack ? <button type="button" className="c3-back" onClick={onBack} aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="m11 6-6 6 6 6" /></svg></button> : <span />}
+        <span className="c3-meta">{total} chapter{total === 1 ? '' : 's'}{totalMin ? ` · about ${totalMin} min` : ''}</span>
+      </header>
       {passed.length >= total && whatsNext}
+      <div className="c3-page">
+      {coverPicture && <img className="c3-pic" src={coverPicture} alt="" />}
+      <div className="c3-side-col">
       <section className="c3">
-        {coverPicture && <img className="c3-pic" src={coverPicture} alt="" />}
         <h1>{topic}</h1>
         {plan.pushback && <p className="c3-says"><Ooh size={28} /><span>{plan.pushback}</span></p>}
         {/* A quick handbook (a recap, one recipe; 7 Oct) says so up top: no weeks of study for this one. */}
         {!plan.pushback && plan.framing && <p className="c3-says"><Ooh size={28} /><span>{plan.framing}</span></p>}
-        <p className="c3-says"><Ooh size={28} idle /><span>{plan.outcome7}{first && mins(1) ? ` Tonight is chapter 1. It takes ${mins(1)} minutes.` : ''}</span></p>
+        <p className="c3-says"><Ooh size={28} idle /><span>{plan.outcome7}{tail}</span></p>
         {caution && <p className="roadmap-caution c3-caution">Study aid, verify before you act.</p>}
-        {plan.picture && <p className="c3-picture">The picture for the whole way: {plan.picture.line}</p>}
       </section>
 
-      {nextTopics ?? null}
       {voiceNote && <p className="note" style={{ marginBottom: 'var(--m)' }}>{voiceNote}</p>}
 
-      <h2 className="c3-h">What's in it <small>{passed.length} of {total} done</small></h2>
+      <h2 className="c3-h">What's in it {passed.length > 0 && <small>{passed.length} of {total} done</small>}</h2>
       <ol className="c3-list">
         {plan.chapters.map((c) => {
           const done = passed.includes(c.n)
@@ -133,6 +129,9 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
         })}
       </ol>
       {total === 7 && later && <p className="c3-later">Later, if you keep going: {later}</p>}
+      {plan.picture && <p className="c3-picture">The picture for the whole way: {plan.picture.line}</p>}
+      {nextTopics ?? null}
+      {more}
 
       {/* Prateek, 9 Oct ("Do we really need all of these links before we ask the user to resume?"): the path, then the main
           button. The Shelf strip, "Who teaches you" and "Your handbooks" live in the side rail on a laptop and the ☰ menu on
@@ -145,7 +144,9 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
         </div>
       )}
 
-      {!cardStart && <ActionBar busy={!chapterReady && !chapterFailed} note={!chapterReady && !chapterFailed ? `Writing chapter ${current} and checking its facts… about two minutes.` : undefined}>
+      </div>
+      </div>
+      <ActionBar busy={!chapterReady && !chapterFailed} note={!chapterReady && !chapterFailed ? `Writing chapter ${current} and checking its facts… about two minutes.` : undefined}>
         {lockNote ? (
           <>
             <div className="lock-card">
@@ -165,7 +166,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
           declined && passed.length > 0 && onOpenChapter ? <button className="btn c-go" onClick={() => onOpenChapter(passed[passed.length - 1])}><span>{`Read chapter ${passed[passed.length - 1]} again`}</span><GoArrow /></button>
           : <button className="btn c-go" onClick={onStart} disabled={!chapterReady}><span>{passed.length >= total ? `Read chapter ${current} again` : needsAccount ? `Start chapter ${current} (free account)` : resuming ? `Continue chapter ${current}` : `Start chapter ${current}`}</span><GoArrow /></button>
         )}
-      </ActionBar>}
+      </ActionBar>
     </>
   )
 }

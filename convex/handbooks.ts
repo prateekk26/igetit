@@ -1771,6 +1771,38 @@ export const myProfile = query({
   },
 });
 
+// C11 "What Ooh knows about you" (15 Oct): everything a chapter is written from, in one place. How they like to be
+// taught (the profile), what each book is for (the goal they tapped and their level), and what's tricky right now: the
+// last questions they missed and haven't got right since, newest first, at most three.
+export const aboutYou = query({
+  args: { deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { deviceToken }) => {
+    const userId = await getAuthUserId(ctx);
+    const p = await profileFor(ctx, userId, deviceToken);
+    const books: { topic: string; goal: string | null; level: string }[] = [];
+    const tricky: { prompt: string; topic: string; at: number }[] = [];
+    for (const h of (await ownedBooks(ctx, userId, deviceToken)).sort((a, b) => b.createdAt - a.createdAt)) {
+      if (h.status === "declined") continue;
+      books.push({ topic: h.topic, goal: h.goal ?? null, level: h.level });
+      const answers = await ctx.db.query("answers").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).collect();
+      const last = new Map<string, Doc<"answers">>();
+      for (const a of answers.sort((x, y) => x.at - y.at)) last.set(`${a.chapter}:${a.cardIndex}`, a);
+      for (const a of last.values()) {
+        if (a.correct) continue;
+        const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", a.chapter)).unique();
+        const card: any = Array.isArray(ch?.cards) ? (ch!.cards as any[])[a.cardIndex] : null;
+        if (card?.type === "exercise" && typeof card.prompt === "string") tricky.push({ prompt: card.prompt, topic: h.topic, at: a.at });
+      }
+    }
+    tricky.sort((a, b) => b.at - a.at);
+    return {
+      profile: p ? { persona: p.persona ?? "", tone: p.tone ?? "", likes: p.likes ?? [], examplesFrom: p.examplesFrom ?? "", avoid: p.avoid ?? "" } : null,
+      books: books.slice(0, 4),
+      tricky: tricky.slice(0, 3),
+    };
+  },
+});
+
 // Save how they want to be taught. Unread chapters across all their handbooks are marked stale and
 // rewritten only when opened; nothing already read is touched; plans are never regenerated.
 export const saveProfile = mutation({
@@ -1990,7 +2022,29 @@ export const questionsFor = query({
   handler: async (ctx, { handbookId, chapter, cardIndex, deviceToken }) => {
     await ownedHandbook(ctx, handbookId, deviceToken);
     const rows = await ctx.db.query("cardQuestions").withIndex("by_card", (q) => q.eq("handbookId", handbookId).eq("chapter", chapter).eq("cardIndex", cardIndex)).collect();
-    return rows.sort((a, b) => a.at - b.at).map((r) => ({ _id: r._id, question: r.question, answer: r.answer, sources: r.sources ?? [], status: r.status }));
+    return rows.sort((a, b) => a.at - b.at).map((r) => ({ _id: r._id, question: r.question, answer: r.answer, sources: r.sources ?? [], status: r.status, kept: !!r.kept }));
+  },
+});
+
+// C8 "Keep it here" (15 Oct): an answered question stays on its page, under the words, every time the page opens.
+export const keepAnswer = mutation({
+  args: { questionId: v.id("cardQuestions"), kept: v.boolean(), deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { questionId, kept, deviceToken }) => {
+    const row = await ctx.db.get(questionId);
+    if (!row) throw new Error("Not found");
+    await ownedHandbook(ctx, row.handbookId, deviceToken);
+    if (row.status !== "ready" && kept) throw new Error("Not answered yet");
+    await ctx.db.patch(questionId, { kept });
+  },
+});
+
+// The kept answers of one chapter, by page, for the pages themselves.
+export const keptFor = query({
+  args: { handbookId: v.id("handbooks"), chapter: v.number(), deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { handbookId, chapter, deviceToken }) => {
+    await ownedHandbook(ctx, handbookId, deviceToken);
+    const rows = await ctx.db.query("cardQuestions").withIndex("by_chapter", (q) => q.eq("handbookId", handbookId).eq("chapter", chapter)).collect();
+    return rows.filter((r) => r.kept && r.answer).sort((a, b) => a.at - b.at).map((r) => ({ _id: r._id, cardIndex: r.cardIndex, question: r.question, answer: r.answer! }));
   },
 });
 

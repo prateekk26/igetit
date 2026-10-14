@@ -21,6 +21,7 @@ import { nameOf, isId } from './lib/name'
 import { deferred, preloadWhenIdle } from './lib/deferred'
 import { Wordmark } from './components/Ooh'
 import Known from './screens/Known'
+import Memory from './screens/Memory'
 import Tonight from './screens/Tonight'
 
 // Screens outside the first screen (11 Oct): fetched in the background once the first screen is up, so they still
@@ -29,14 +30,14 @@ const Done = deferred(() => import('./screens/Done'))
 const SignIn = deferred(() => import('./screens/SignIn'))
 const Pricing = deferred(() => import('./screens/Pricing'))
 const Shelf = deferred(() => import('./screens/Shelf'))
-const Tune = deferred(() => import('./screens/Tune'))
 const Compare = deferred(() => import('./screens/Compare'))
 
-type View = 'auto' | 'plan' | 'chapter' | 'done' | 'signin' | 'start-again' | 'tune' | 'compare' | 'library' | 'pricing' | 'explore' | 'known' | 'manage'
+type View = 'auto' | 'plan' | 'chapter' | 'done' | 'signin' | 'start-again' | 'tune' | 'compare' | 'library' | 'pricing' | 'explore' | 'known' | 'manage' | 'memory'
 
 export default function App() {
   useEffect(() => preloadWhenIdle([Done, SignIn, Shelf, Pricing]), [])   // the reader's next screens, once this one is up
   const token = useMemo(() => deviceToken(), [])
+  const [memoryFrom, setMemoryFrom] = useState<View>('library')
   const { isAuthenticated } = useConvexAuth()
   const { signOut } = useAuthActions()
   // A saved id that isn't a real one (a hand-edited or damaged value) crashed every page until the site data was cleared
@@ -75,17 +76,16 @@ export default function App() {
   const startFromLibrary = useMutation(api.library.start)
   const setTomorrow = useMutation(api.handbooks.setTomorrow)
   const attachToMe = useMutation(api.handbooks.attachToMe)
-  const saveProfile = useMutation(api.handbooks.saveProfile)
   const removeHandbook = useMutation(api.handbooks.remove)
   const takeSuggested = useMutation(api.handbooks.takeSuggested)
   const refreshIfStale = useMutation(api.handbooks.refreshIfStale)
   const compareModels = useMutation(api.handbooks.compareModels)
   const voteModel = useMutation(api.handbooks.voteModel)
   const syncFromCache = useMutation(api.handbooks.syncFromCache)
-  const profile = useQuery(api.handbooks.myProfile, { deviceToken: token })
 
   // /pricing (8 Oct night) and /shelf (UX review 9 Oct: the Shelf could not be linked to from a post) are real addresses.
   const [view, setView] = useState<View>(() => { const p = window.location.pathname.replace(/\/+$/, ''); return p === '/pricing' ? 'pricing' : p === '/shelf' ? 'explore' : 'auto' })
+  const openMemory = (from: View) => { setMemoryFrom(from === 'memory' ? 'library' : from === 'auto' || from === 'tune' || from === 'chapter' || from === 'done' ? 'plan' : from); setView('memory'); window.scrollTo({ top: 0 }) }
   // The phone's Back button (9 Oct, 55's phone review): one Back used to leave the site from inside a chapter. Each
   // screen change pushes a history entry; Back restores the previous screen; a chapter closes to the handbook.
   const poppingRef = useRef(false)
@@ -338,7 +338,7 @@ export default function App() {
   const libRows = lib?.handbooks ?? []
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   // C4 Tonight is the home of a reader with books (14 Oct); the old list, with remove and the sign-in nudge, is Manage.
-  acct = { manage: () => setView('manage'), plans: goPricing, signIn: lib?.signedIn ? null : () => signIn('library') }
+  acct = { manage: () => setView('manage'), plans: goPricing, signIn: lib?.signedIn ? null : () => signIn('library'), memory: () => openMemory(view) }
   if (view === 'library' || (hold === 'library' && data === undefined)) {
     return (
       <Shell tab="tonight" onSignOut={isAuthenticated ? signOut : undefined}>
@@ -355,6 +355,14 @@ export default function App() {
           onContinue={(id) => { setHold('library'); pin(id); setDoneN(null); setReadingN(null); setView('chapter') }}
           onRemove={async (id) => { await removeHandbook({ handbookId: id as any, deviceToken: token }); if (pinned === id) { pin(null); setDoneN(null) } }}
           onNew={startAnother} onSignIn={() => signIn('library')} onPlans={goPricing} onExplore={goExplore} />
+      </Shell>
+    )
+  }
+  // C11 "What Ooh knows about you" (15 Oct): from the account menu or the handbook; back goes where it came from.
+  if (view === 'memory') {
+    return (
+      <Shell bare>
+        <Memory deviceToken={token} backLabel={memoryFrom === 'plan' ? 'Your book' : memoryFrom === 'known' ? 'What you know' : 'Tonight'} onBack={() => setView(memoryFrom)} />
       </Shell>
     )
   }
@@ -488,7 +496,7 @@ export default function App() {
       <div className="rail-links">
         <button type="button" className="quiet" onClick={() => { setDoneN(null); setView('plan') }}>The handbook</button>
         <button type="button" className="quiet" onClick={() => setView('library')}>Your handbooks{libRows.length > 1 ? ` (${libRows.length})` : ''}</button>
-        <button type="button" className="quiet" onClick={() => setView('tune')}>Who teaches you, and how</button>
+        <button type="button" className="quiet" onClick={() => openMemory('plan')}>What Ooh knows about you</button>
         <button type="button" className="quiet" onClick={goPricing}>Pricing</button>
         {isMember ? <a className="quiet" href={`/print?h=${hb._id}`} target="_blank" rel="noopener">Print or save as PDF</a> : <button type="button" className="quiet" onClick={goPricing}>Print or save as PDF (members)</button>}
         <button type="button" className="quiet" onClick={startAnother}>Start another topic</button>
@@ -519,8 +527,8 @@ export default function App() {
 
   if (resolved === 'tune') {
     return (
-      <Shell rail={rail} back={toPlan}>
-        <Tune initial={profile ?? null} onSave={async (p) => saveProfile({ deviceToken: token, ...p })} onBack={() => setView('plan')} signedIn={isAuthenticated} onSignIn={() => signIn('tune')} />
+      <Shell bare>
+        <Memory deviceToken={token} backLabel="Your book" onBack={() => setView('plan')} />
         {previewSheet}
       </Shell>
     )
@@ -656,7 +664,8 @@ export default function App() {
 
   return (
     // The handbook page had no way back (Prateek, 9 Oct: "the back button seems conspicuously missing"): it goes to Your handbooks.
-    <Shell onSignOut={isAuthenticated ? signOut : undefined} rail={rail} back={libRows.length > 0 ? { label: 'Tonight', onClick: () => setView('library') } : undefined}>
+    // C3 (15 Oct): the plan draws its own top line (back arrow, the book's length), as its board does; no side rail.
+    <Shell onSignOut={isAuthenticated ? signOut : undefined} bare>
       {/* "Not now" on the wall only quiets the ask when the next chapter really needs an account (UX review 9 Oct, #4):
           before, one "Not now" made every handbook's free chapter 2 say it needed one. */}
       <Plan needsAccount={!isAuthenticated && currentN > freeChapters} {...({ declined: wallDeclined && !isAuthenticated && currentN > freeChapters, onShelf: goExplore } as any)}
@@ -687,6 +696,13 @@ export default function App() {
           ? { kind: 'resume', n: currentN, card: (progress?.currentCard ?? 0) + 1, left: Math.max(1, chapter.cards.length - (progress?.currentCard ?? 0)) }
           : passed.length > 0 && !passed.includes(currentN) ? { kind: 'next', n: currentN } : null}
         whatsNext={<WhatsNext topic={name} deviceToken={token} onReady={async (t) => { const r = await create({ topic: t, level: 'new', voice: 'friend', deviceToken: token }); pin(String(r.handbookId)); setView('auto') }} onShared={async (id) => { const r = await startFromLibrary({ libraryId: id, deviceToken: token }); pin(String(r.handbookId)); setView('auto') }} />}
+        onBack={() => { if (libRows.length > 0) setView('library'); else goHome?.() }}
+        more={<div className="roadmap-links c3-more">
+          <button type="button" className="quiet" onClick={() => openMemory('plan')}>What Ooh knows about you</button>
+          {isMember ? <a className="quiet" href={`/print?h=${hb._id}`} target="_blank" rel="noopener">Print or save as PDF</a> : null}
+          <button type="button" className="quiet" onClick={startAnother}>Start another topic</button>
+          <button type="button" className="quiet" onClick={goExplore}>The Shelf</button>
+        </div>}
         onRetry={() => { setFlash(null); retry({ handbookId: hb._id, deviceToken: token }).catch((e) => setFlash(limitMessage(e) ?? "Couldn't start it again just now. Try in a minute.")) }}
         onChangeLine={() => { setReplacing(String(hb._id)); setDraftTopic(hb.topic); setView('start-again') }}
       />
@@ -702,7 +718,7 @@ let goShelf: (() => void) | null = null
 let goTonight: (() => void) | null = null
 let goKnown: (() => void) | null = null
 // The account circle's menu on hub screens (C4): manage the books, plans, sign in.
-let acct: { manage: () => void; plans: () => void; signIn: (() => void) | null } | null = null
+let acct: { manage: () => void; plans: () => void; signIn: (() => void) | null; memory: () => void } | null = null
 
 // A ?l= link's first second (D25): the one book, lifted off its plank the way a Shelf tap lifts it, while the handbook
 // is copied to this phone. No landing page, no splash. The cover comes from the Shelf's list when it has answered.
@@ -750,6 +766,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
           <nav className="menu-sheet hub-menu" onClick={(e) => { if ((e.target as HTMLElement).closest('button, a')) setMenu(false) }}>
             <p className="verdict" style={{ fontSize: 'var(--ui)' }}>Your account</p>
             {acct?.signIn && <button type="button" className="btn" onClick={acct.signIn}>Sign in or make a free account</button>}
+            <button type="button" className="quiet" onClick={() => acct?.memory()}>What Ooh knows about you</button>
             <button type="button" className="quiet" onClick={() => acct?.manage()}>Manage your books</button>
             <button type="button" className="quiet" onClick={() => acct?.plans()}>{member ? 'Your membership' : 'Plans and pricing'}</button>
             {onSignOut && <button type="button" className="quiet" onClick={() => onSignOut()}>Sign out</button>}

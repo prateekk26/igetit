@@ -172,8 +172,9 @@ export default defineSchema({
     answer: v.optional(v.string()),
     sources: v.optional(v.array(v.object({ url: v.string(), title: v.string() }))),
     status: v.union(v.literal("thinking"), v.literal("ready"), v.literal("failed")),
+    kept: v.optional(v.boolean()),   // C8 "Keep it here" (15 Oct): the answer stays on its page, shown without opening Ask
     at: v.number(),
-  }).index("by_card", ["handbookId", "chapter", "cardIndex"]),
+  }).index("by_card", ["handbookId", "chapter", "cardIndex"]).index("by_chapter", ["handbookId", "chapter"]),
 
   // Willingness to pay, week 1: no payment taken, just "keep me going at this price".
   // One row per phone per day it opened the app (India time), for the public /stats page.

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import ActionBar from '../components/ActionBar'
-import RungBar from '../components/RungBar'
 import Confetti from '../components/Confetti'
 import TeachBack from '../components/TeachBack'
 import ShelfStrip from '../components/ShelfStrip'
@@ -64,26 +63,8 @@ function pretty(t: string) {
 }
 
 // The rung lights. Sign-in is asked only here, after the night is done.
-// A little love when the chapter's done (agent copy until Prateek rewrites it). Compares only with our own
-// 20-minute budget and their own score, never with an average we don't have yet.
-function cheer(n: number, s?: { minutes: number; right: number; total: number } | null): string | null {
-  if (!s) return null
-  const perfect = s.total > 0 && s.right === s.total
-  const fast = s.minutes < 20
-  const score = s.total ? `${s.right} of ${s.total} first try` : ''
-  const mins = `${s.minutes} minute${s.minutes === 1 ? '' : 's'}`
-  // A reading-only chapter (chapter 1 since 6 Oct) earns no "show-off": a 1-minute skim is not a win to cheer (8 Oct night, critique).
-  if (!s.total) return s.minutes >= 4 ? `You took your time with it. That's how it sticks.` : null
-  if (fast && perfect) return [`${mins}, ${score}. We budgeted 20. Show-off.`, `${score}, in ${mins}. Your brain called; it wants a raise.`, `Chapter ${n}, done before your chai went cold. ${score}, too.`][n % 3]
-  if (perfect) return `${score}. Someone's been paying attention.`
-  if (fast) return `${mins}, and you fixed every miss on the way. That's exactly how it sticks.`
-  return `You took your time, and it stuck. That's the whole point.`
-}
-
-export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture: _nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false }: Props) {
+export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture: _nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats: _stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
-  const [note, setNote] = useState('')
-  const line = cheer(n, stats)
   const [stay, setStay] = useState(false)
   const last = n >= total
   // The wall (Prateek, 8 Oct night, Shaktimaan's advice): a visitor's free chapters are read, so the next chapter opens
@@ -112,7 +93,6 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
       </section>
       <p className="c9-topic">{topic}</p>
       <h1 className="c9-h">{total === 1 ? <>Done,<br />and you got it!</> : <>Chapter {n},<br />and you got it!</>}</h1>
-      <RungBar passed={passed} filling={n} total={total} />
       {/* The proof of the night comes first (8 Oct night, critique): what they can now do, before any question is asked of them. */}
       {outcomeLine && (
         <>
@@ -137,27 +117,8 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
       {/* The price is information under the card, never inside the free one (55's review, 8 Oct night): a mixed signal otherwise. */}
       {wall && nextTitle && priceLine && <p className="note">Chapter {n + 1} costs nothing. {priceLine} <button type="button" className="quiet" style={{ padding: 0 }} onClick={onPricing}>See pricing</button></p>}
       {wall && onShelf && <ShelfStrip where="done" onOpen={onShelf} />}
-      {line && <p className="cheer c9-says"><Ooh size={26} /><span>{line}</span></p>}
-      {/* D96 (13 Oct, Prateek): the question looks at the next chapter. A member's answer rewrites it (members can add a line);
-          a free reader's is noted, the chapter stays as written, and one quiet line says members get it. Copy (agent). */}
-      {onRate && !last && (
-        <div className="rate" role="group" aria-label={`What do you want from chapter ${n + 1}?`}>
-          <p className="rate-q">{rated ? (!isMember ? 'Noted.' : rated === 'just_right' && !note.trim() ? 'Noted. Same pace.' : `Got it. Chapter ${n + 1} gets written around this.`) : `What do you want from chapter ${n + 1}? (optional)`}</p>
-          {!rated && isMember && (
-            <input className="input rate-note" placeholder="Anything else? Then tap one" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} aria-label={`Anything else for chapter ${n + 1}?`} />
-          )}
-          {!rated && (
-            <div className="rate-row">
-              {([['lost_me', 'Slow down'], ['just_right', 'Same pace'], ['too_easy', 'Go deeper']] as const).map(([k, label]) => (
-                <button key={k} type="button" className="chip" onClick={() => { setRated(k); track('feedback', { n, v: k, note: note.trim() ? 1 : 0 }); onRate(k, isMember ? note.trim() || undefined : undefined).catch(() => {}) }}>{label}</button>
-              ))}
-            </div>
-          )}
-          {rated && !isMember && (
-            <p className="note rate-members">Members get chapter {n + 1} rewritten around this. <button type="button" className="quiet" style={{ padding: 0 }} onClick={onPricing}>See membership</button></p>
-          )}
-        </div>
-      )}
+      {/* C9 (15 Oct, the board): no rung bar, no cheer line and no pace question here; the band, the line, what was added,
+          Say it back and the next chapter. D96's pace question waits for the one-time "About you" (Prateek to decide). */}
       {onRate && last && !starred && (
         <div className="rate" role="group" aria-label={`How was chapter ${n}?`}>
           <p className="rate-q">{rated ? 'Thanks, noted.' : `How was chapter ${n}? (optional)`}</p>

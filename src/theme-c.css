@@ -834,3 +834,132 @@ div.c3-row { cursor: default; }
 .c9-tomorrow { align-self: center; }
 @media (max-width: 599px) { .c9-stage { height: 288px; } .c9-stage .c9-ooh { top: 58px; } .c9-stage .c9-stem { top: 196px; } }   /* the board's band: 288 px, Ooh's face at 80 */
 .shell:not(:has(> .top)):not(:has(> .hub-top)) > main > .c9-stage:first-child, main > .c9-stage { margin-top: 0; }
+
+/* ---------- 15 Oct: the C boards, final pass ---------- */
+/* Every board keeps a 24 px margin on a phone. */
+@media (max-width: 599px) {
+  .shell { padding-left: max(24px, env(safe-area-inset-left)); padding-right: max(24px, env(safe-area-inset-right)); }
+  .story-frame { padding-left: 24px; padding-right: 24px; }
+}
+/* C6 and C7: a page starts under its running head, never floated to the middle. */
+@media (max-width: 1023px) {
+  .story-body > :first-child { margin-top: 0; }
+  .story-body { padding-top: 8px; }
+}
+/* C6: the page's idea as its headline; a marked phrase gets the marigold marker. */
+.story-idea { margin: 0 0 18px; font: 700 30px/1.1 var(--head); font-variation-settings: 'wdth' 90, 'opsz' 60; letter-spacing: -0.01em; color: var(--ink); text-wrap: pretty; }
+.story-idea strong { font-weight: 700; color: var(--ink); padding: 0 0.16em; margin: 0 -0.06em; border-radius: 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; background-image: linear-gradient(var(--accent), var(--accent)); background-repeat: no-repeat; background-size: 0% 100%; animation: hl 500ms 80ms var(--ease) forwards; }
+.story-kicker + .story-idea { margin-top: -2px; }
+.story-idea + .story-pic { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { .story-idea strong { animation: none; background-size: 100% 100%; } }
+
+/* C7: the question, a gap, the options at the thumb. */
+.c7-q { margin: 0; }
+.c7-gap { flex: 1 1 auto; min-height: 14px; }
+.story-options { gap: 8px; padding-right: 0; }
+.story-opt { background: var(--paper-2); align-items: center; }
+.story-opt .t { flex: 1; min-width: 0; }
+.story-opt .k { width: 22px; height: 22px; min-width: 22px; border: 2px solid var(--ink); background: transparent; transition: border-width 160ms; }
+.story-opt.picked { background: var(--leaf-2); }
+.story-opt.picked .k { border-width: 6px; }
+.story-opt.pass, .story-opt.reveal { background: var(--paper-2); }
+.story-opt.pass .k, .story-opt.reveal .k { border: 0; background: var(--accent); animation: c7-pop 420ms cubic-bezier(0.3, 0.7, 0.3, 1) both; }
+.story-opt.missed { opacity: 1; background: transparent; text-decoration: none; }
+.story-opt.missed .k { border: 2px solid var(--ink); }
+.story-opt:disabled:not(.pass):not(.reveal):not(.missed) { opacity: 1; }
+.story-body:has(.story-opt.pass, .story-opt.reveal) .story-opt:not(.pass):not(.reveal):not(.missed) { background: transparent; color: var(--ink-2); }
+.story-body:has(.story-opt.pass, .story-opt.reveal) .story-opt:not(.pass):not(.reveal):not(.missed) .k { border-color: #CFC8BA; }
+.story-tag { flex: none; font: 700 15px var(--sans); color: var(--ink); }
+.story-opt.missed .story-tag { color: var(--ink-2); }
+.story-opt.story-dunno { background: transparent; color: var(--ink-2); margin-top: 0; min-height: 62px; }
+.story-opt.story-dunno .k { border: 2px solid var(--ink-2); }
+@keyframes c7-pop { 0% { transform: scale(0.2); } 65% { transform: scale(1.25); } 100% { transform: none; } }
+.c7-fresh { margin: 14px 0 0; text-align: center; font: 600 15px var(--sans); color: var(--ink-2); }
+.c7-sure { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; animation: c1-rise 240ms ease-out both; }
+.c7-sure-q { margin: 0; display: flex; gap: 10px; align-items: center; font: 600 18px var(--sans); color: var(--voice); }
+.c7-sure-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.c7-sure-row button { height: 52px; border: 0; border-radius: 26px; font: 700 17px var(--sans); cursor: pointer; }
+.c7-sure-yes { background: var(--ink); color: var(--paper); }
+.c7-sure-no { background: var(--paper-2); color: var(--ink); }
+.story-reveal .verdict .ooh { margin-top: -4px; }
+.story-reveal .serif { margin-left: 46px; }
+.story-again { margin: 0 0 0 46px; display: flex; gap: 10px; align-items: center; font: 600 15px var(--sans); color: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { .story-opt.pass .k, .story-opt.reveal .k, .c7-sure { animation: none; } }
+
+/* C8: the thread under the page, the box where the page's buttons were, a kept answer under its words. */
+.story-ask { margin-top: 18px; }
+.story-kept { margin-top: 18px; }
+.c8 .ask-foot { margin: 8px 0 0 36px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.c8 .ask-src { margin: 0; font: 600 15px/1.4 var(--sans); color: var(--ink-2); }
+.ask-keep { min-height: 44px; padding: 0; border: 0; background: none; color: var(--ink); font: 700 15px var(--sans); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; cursor: pointer; }
+.ask-keep[aria-pressed="true"] { color: var(--ink-2); text-decoration: none; }
+.story-askbar { display: block; }
+.story-askbar .ask-box { width: 100%; }
+.c8 .ask-note { margin: 0 0 10px; }
+.story-askbar .error { margin: 0 0 10px; }
+.story-text em, .story-idea em, .story-q em { font-family: inherit; font-weight: inherit; }
+
+/* C3: its own top line (back, the book's length), the picture, the letter, what's in it; on a laptop, the picture on the
+   left and the letter on the right, as the 1440 board draws it. The boards have no rule over the main button. */
+.actionbar { border-top: 0; }
+.c3-top { display: flex; align-items: center; justify-content: space-between; min-height: 60px; margin: 0 -12px 4px; }
+.c3-back, .c11-back { display: inline-flex; align-items: center; gap: 8px; min-width: 48px; min-height: 48px; padding: 0 12px; border: 0; border-radius: 24px; background: none; color: var(--ink); font: 700 16px var(--sans); cursor: pointer; }
+.c3-back:focus-visible, .c11-back:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.c3-meta { padding-right: 12px; font: 600 15px var(--sans); color: var(--ink-2); }
+.c3-pic { height: 150px; }
+.c3-more { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+@media (min-width: 1024px) {
+  .shell:has(.c3-page) { max-width: 1264px; grid-template-columns: minmax(0, 1fr); }
+  .c3-page { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 0 96px; align-items: start; }
+  .c3-page:not(:has(> .c3-pic)) { grid-template-columns: minmax(0, 720px); }
+  .c3-page > .c3-pic { position: sticky; top: 24px; height: min(780px, calc(100dvh - 120px)); border-radius: 22px; }
+  .c3-side-col { position: relative; padding-bottom: 120px; }
+  .c3-page:has(> .c3-pic) .c3-side-col::before { content: ''; position: absolute; left: -48px; top: 0; bottom: 120px; border-left: 1px solid var(--rule); }
+  .c3-side-col h1 { margin-top: 12px; }
+  .shell:has(.c3-page > .c3-pic) .actionbar > div { max-width: 1216px; padding-left: 656px; align-items: flex-start; box-sizing: border-box; }
+  .shell:has(.c3-page) .actionbar .btn { width: 420px; max-width: 100%; }
+}
+
+/* C11: What Ooh knows about you */
+.c11 h1 { margin: 6px 0 0; font-size: 44px; line-height: 0.95; letter-spacing: -0.012em; font-variation-settings: 'wdth' 82, 'opsz' 96; text-wrap: balance; }
+.c11 .c3-says { margin-top: 14px; align-items: center; }
+.c11-back { gap: 6px; }
+.c11-h { margin: 22px 0 2px; font: 700 15px var(--sans); color: var(--ink-2); letter-spacing: 0; font-variation-settings: normal; }
+.c11-list { list-style: none; margin: 0; padding: 0; }
+.c11-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 0; border-bottom: 1px solid var(--rule); animation: c1-rise 360ms ease-out both; }
+.c11-row:last-child { border-bottom: 0; }
+.c11-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font: 500 19px/1.35 var(--sans); color: var(--ink); }
+.c11-text small { font: 600 14px var(--sans); color: var(--ink-2); }
+.c11-empty { color: var(--ink-2); font-size: 17px; }
+.c11-pen { flex: none; width: 48px; height: 48px; margin-right: -12px; border: 0; border-radius: 50%; background: none; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.c11-pen:hover { background: var(--paper-2); }
+.c11-edit { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.c11-edit .input { height: 52px; min-height: 52px; border-radius: 22px; font-size: 17px; }
+.c11-likes { display: flex; flex-wrap: wrap; gap: 8px; }
+.c11-edit-row { display: flex; gap: 12px; align-items: center; }
+.c11-save { height: 48px; padding: 0 24px; border: 0; border-radius: 24px; background: var(--ink); color: var(--paper); font: 700 16px var(--sans); cursor: pointer; }
+.c11-none { margin: 8px 0 0; font: 500 17px/1.45 var(--sans); color: var(--ink-2); }
+.c11-note { margin: 16px 0 0; font: 600 16px/1.45 var(--sans); color: var(--voice); }
+.c11-foot { margin-top: 28px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.c11-ask { width: 100%; box-sizing: border-box; padding: 18px; border-radius: 22px; background: var(--paper-2); display: flex; flex-direction: column; gap: 14px; }
+.c11-ask-q { margin: 0; display: flex; gap: 10px; align-items: center; font: 600 18px/1.35 var(--sans); color: var(--voice); }
+.c11-ask-q .ooh { flex: none; }
+.c11-ask-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.c11-ask-row button { height: 52px; border: 0; border-radius: 26px; font: 700 17px var(--sans); cursor: pointer; }
+.c11-yes { background: var(--ink); color: var(--paper); }
+.c11-no { background: var(--paper); color: var(--ink); }
+.c11-forget { min-height: 44px; border: 0; background: none; color: var(--ink); font: 700 15px var(--sans); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; cursor: pointer; }
+@media (min-width: 1024px) {
+  .c11 h1 { font-size: 72px; }
+  .c11-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 56px; }
+  .c11-foot { flex-direction: row; justify-content: space-between; align-items: center; }
+  .c11-ask { width: auto; flex-direction: row; align-items: center; gap: 24px; padding: 14px 14px 14px 24px; }
+  .c11-ask-row { grid-template-columns: auto auto; }
+  .c11-ask-row button { padding: 0 28px; }
+}
+@media (prefers-reduced-motion: reduce) { .c11-row { animation: none; } }
+/* Full-bleed bands follow the 24 px phone margin (the C9 band showed an 8 px edge). */
+@media (max-width: 599px) {
+  .c9-stage { margin-left: calc(-1 * max(24px, env(safe-area-inset-left))); margin-right: calc(-1 * max(24px, env(safe-area-inset-right))); }
+  .c12-pills { margin-left: -24px; margin-right: -24px; padding: 0 24px; }
+}

@@ -11,6 +11,11 @@ One entry per decision: what, why, what it replaced, and when to look at it agai
 
 How to add: at the end of a session, append under today's date. A decision Prateek made says "(Prateek)"; one the agent made in his stead says "(agent, authorised)". Never rewrite an old entry; add a new one that supersedes it.
 
+## 2026-10-15
+
+### Decisions
+- **D108. The C boards, finished and launched (Prateek: "Yes, finish all of it and launch it").** The seven screens that were close and C11 now follow their boards: a 24 px phone margin everywhere; C6 a page opens on its idea as a headline over its picture, the running head uses a short name ("Balance sheets · Chapter 1", convex/shortNames.ts runningHead); C7 a first try asks "How sure are you?" (Sure / Not sure) before the answer goes in, the right option gets a marigold dot and "That's it!", a miss keeps its ring and "Your pick", no strike-through, "No timer. Take your time." under the options; C5 warm-ups use the same page without the sure step and say "Got it again."; C8 the thread sits under the page, the box at the bottom where the buttons were, "From this page, no internet." or the links, and "Keep it here" keeps an answer on its page (cardQuestions.kept, keepAnswer, keptFor); C9 loses the rung bar, the cheer line and the pace question; C3 has its own top line (back, "N chapters · about M min"), no marigold card, extras under the list, and the 1440 board's two columns; C11 "What Ooh knows about you" replaces "Who teaches you, and how" (same profile and save; what each book is for; what's tricky right now from missed questions; Yes / Not quite; Forget all of it). Not built, each waiting on Prateek: the mic on C8 (speech goes to an outside service), typed free-recall warm-ups on C5 (a model call to mark them), the in-app explainer figures (model choice, D107), and the one-time "About you" that would bring back the pace question (Prateek has not answered on pace). Look again when he answers any of the four.
+
 ## 2026-10-14
 
 ### Decisions
