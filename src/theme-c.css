@@ -707,3 +707,35 @@ div.c3-row { cursor: default; }
 @media (min-width: 1024px) { .c12-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 20px; } .c12 h1 { font-size: 64px; } }
 @media (prefers-reduced-motion: reduce) { .c12-grid li { animation: none; } }
 @media (min-width: 1024px) { .c12-pills { flex-wrap: wrap; overflow: visible; margin: 18px 0 0; padding: 0; } }
+
+/* ---------- C2, a new book (the C board "A new book"): the goal question ---------- */
+.c2 { display: flex; flex-direction: column; min-height: calc(100dvh - 24px); padding: 0 0 24px; }
+.c2-top { display: flex; align-items: center; gap: 4px; height: 60px; padding-top: 4px; margin-left: -12px; font: 600 16px var(--sans); color: var(--ink-2); }
+.c2-back { width: 48px; height: 48px; border: 0; border-radius: 24px; background: none; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.c2-back:hover { background: var(--paper-2); }
+.c2-kicker { margin: 8px 0 0; font: 600 15px var(--sans); color: var(--ink-2); }
+.c2 h1 { margin: 4px 0 0; font-size: 40px; line-height: 0.96; letter-spacing: -0.012em; font-variation-settings: 'wdth' 82, 'opsz' 96; text-wrap: balance; }
+.c2-says { margin: 22px 0 0; display: flex; gap: 12px; align-items: center; font: 600 20px/1.35 var(--sans); color: var(--voice); animation: c1-rise 400ms 200ms ease-out both; }
+.c2-says .ooh { flex: none; }
+.c2-ready { all: unset; box-sizing: border-box; cursor: pointer; margin-top: 16px; display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border-radius: 22px; background: var(--accent); font: 500 16px/1.4 var(--sans); color: var(--ink); background-image: url(/images/grain.png); background-size: 256px; }
+.c2-ready-go { font-weight: 700; }
+.c2-options { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+.c2-row { width: 100%; min-height: 64px; border: 0; border-radius: 22px; background: var(--paper-2); padding: 10px 20px; display: flex; align-items: center; gap: 14px; font: 600 18px/1.3 var(--sans); color: var(--ink); text-align: left; cursor: pointer; }
+.c2-row:active { background: var(--leaf-2); }
+.c2-dot { flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); }
+.c2-picked { border-radius: 22px; background: var(--leaf-2); padding: 0 0 16px; animation: c2-open 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.c2-picked .c2-row { background: none; font-weight: 700; }
+.c2-picked .c2-dot { background: var(--accent); box-shadow: 0 0 0 4px var(--paper); }
+@keyframes c2-open { from { opacity: 0.6; } to { opacity: 1; } }
+.c2-more { padding: 0 20px 0 50px; margin-top: 2px; }
+.c2-more + .c2-more { margin-top: 14px; }
+.c2-more p, .c2-more label { display: block; margin: 0; font: 600 17px/1.35 var(--sans); color: var(--voice); }
+.c2-more .input { margin-top: 10px; width: 100%; height: 52px; min-height: 52px; background: var(--paper); font-size: 17px; }
+.c2-yn { margin-top: 10px; display: flex; gap: 8px; }
+.c2-yn button { height: 48px; padding: 0 22px; border: 0; border-radius: 24px; background: var(--paper); color: var(--ink); font: 600 16px var(--sans); cursor: pointer; }
+.c2-yn button[aria-pressed="true"] { background: var(--ink); color: var(--paper); font-weight: 700; }
+.c2-fill { flex: 1; min-height: 20px; }
+.c2-note { margin: 0 0 14px; font: 600 15px/1.4 var(--sans); color: var(--ink-2); text-align: center; }
+.c2-go { width: 100%; }
+@media (min-width: 600px) { .c2 h1 { font-size: 52px; } .c2-go { max-width: 420px; align-self: center; } }
+@media (prefers-reduced-motion: reduce) { .c2-says, .c2-picked { animation: none; } }

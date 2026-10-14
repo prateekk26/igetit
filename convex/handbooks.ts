@@ -699,12 +699,13 @@ export const skipIntent = internalMutation({
 });
 // The reader taps a goal, types their own, or skips. Then the plan is written for that goal.
 export const chooseIntent = mutation({
-  args: { handbookId: v.id("handbooks"), goal: v.optional(v.string()), mode: v.optional(v.string()), deviceToken: v.optional(v.string()) },
-  handler: async (ctx, { handbookId, goal, mode, deviceToken }) => {
+  // level (C2, 14 Oct): "Have you tried this before?" under the goal; the homepage no longer asks it.
+  args: { handbookId: v.id("handbooks"), goal: v.optional(v.string()), mode: v.optional(v.string()), level: v.optional(v.union(v.literal("new"), v.literal("some"))), deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { handbookId, goal, mode, level, deviceToken }) => {
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
     if (h.status !== "intent") return;
     const m = mode && ["skill", "story", "subject", "decision"].includes(mode) ? mode : undefined;
-    await ctx.db.patch(handbookId, { status: "planning", goal: goal?.trim().slice(0, 120) || undefined, mode: m, goalChosenAt: Date.now(), planSince: Date.now() });
+    await ctx.db.patch(handbookId, { status: "planning", goal: goal?.trim().slice(0, 120) || undefined, mode: m, goalChosenAt: Date.now(), planSince: Date.now(), ...(level ? { level } : {}) });
     // Someone already made this topic for the same kind of goal: reuse their plan and chapter 1 (instant, no tokens).
     if (await matchForIntent(ctx, (await ctx.db.get(handbookId))!, m)) return;
     await ctx.scheduler.runAfter(0, internal.handbooks.generatePlan, { handbookId });

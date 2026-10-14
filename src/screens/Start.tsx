@@ -7,7 +7,7 @@ import { api } from '../../convex/_generated/api'
 import { isMemberLimit, limitMessage } from '../lib/limits'
 import { nameOf } from '../lib/name'
 import { typedBoxText, typedPickText, type TypedAllowance } from '../lib/free'
-import Ooh from '../components/Ooh'
+import Ooh, { GoArrow } from '../components/Ooh'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
@@ -16,7 +16,8 @@ type Props = {
   status: 'idle' | 'intent' | 'writing' | 'question' | 'failed' | 'declined'
   question?: string
   intents?: { question: string; goals: { label: string; mode: string }[] } | null
-  onChooseIntent?: (goal?: string, mode?: string) => Promise<void>
+  onChooseIntent?: (goal?: string, mode?: string, level?: 'new' | 'some') => Promise<void>
+  onBack?: () => void   // C2's back arrow
   suggested?: { title: string; topic: string } | null
   onTakeSuggested?: () => Promise<void>
   error?: string
@@ -49,7 +50,7 @@ type Props = {
 }
 
 // The first screen, and the empty state of the whole product (DESIGN.md section 4, Start).
-export default function Start({ initialTopic = '', status, question, intents, onChooseIntent, suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal , allowance, replacingName}: Props) {
+export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal , allowance, replacingName}: Props) {
   const declined = status === 'declined'
   // Ready handbook names, to tell a ready suggestion (free) from one that would be written for this reader.
   const keyOf = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
@@ -61,6 +62,9 @@ export default function Start({ initialTopic = '', status, question, intents, on
   const [level, setLevel] = useState<Level>('new')
   const [voice, setVoice] = useState<Voice>('friend')
   const [answer, setAnswer] = useState('')
+  // C2: the goal picked (an index into the goals, or 'own' for their own words) and whether they've tried it before.
+  const [goalAt, setGoalAt] = useState<number | 'own' | null>(null)
+  const [tried, setTried] = useState<'new' | 'some' | null>(null)
   const [verySlow, setVerySlow] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   // One tap starts one thing (UX review 9 Oct: no busy state, so a double tap could start things twice).
@@ -144,34 +148,67 @@ export default function Start({ initialTopic = '', status, question, intents, on
     )
   }
 
-  // "What's it for?" (6 Oct): a goal in one tap shapes the whole handbook. Skipping is fine.
+  // "What's it for?" (6 Oct): a goal shapes the whole handbook. C2 (14 Oct, the board "A new book"): what they typed, big;
+  // Ooh asks; the goals are rows with a ring, and the picked one opens "Have you tried this before?" (the level the
+  // homepage stopped asking); "Something else" opens their own words; "Make my book" with nothing picked skips, as before.
   if (status === 'intent') {
-    const choose = (goal?: string, mode?: string) => { if (sending) return; setSending(true); track('submit', { via: goal ? 'goal' : 'skip' }); onChooseIntent?.(goal, mode).catch((e) => { setLocalError(friendly(e)); setSending(false) }) }
+    const goals = intents?.goals ?? []
+    const make = () => {
+      if (sending) return
+      const g = typeof goalAt === 'number' ? goals[goalAt] : null
+      const own = goalAt === 'own' ? answer.trim() : ''
+      if (goalAt === 'own' && !own) { setLocalError('Say it in a few words, or pick one above.'); return }
+      setSending(true); setLocalError(null)
+      track('submit', { via: g || own ? 'goal' : 'skip' })
+      onChooseIntent?.(g?.label ?? (own || undefined), g?.mode, tried ?? undefined).catch((e) => { setLocalError(friendly(e)); setSending(false) })
+    }
+    const pickRow = (k: number | 'own') => { setGoalAt(k); setLocalError(null) }
+    const triedRow = (
+      <div className="c2-more">
+        <p>Have you tried this before?</p>
+        <div className="c2-yn" role="group" aria-label="Have you tried this before?">
+          <button type="button" aria-pressed={tried === 'some'} onClick={() => setTried('some')}>Yes</button>
+          <button type="button" aria-pressed={tried === 'new'} onClick={() => setTried('new')}>Not really</button>
+        </div>
+      </div>
+    )
     return (
-      <div className="intent">
-        <p className="plan-wait-kicker">{shown}</p>
-        <h1>{intents?.question ?? "What's it for?"}</h1>
-        <p className="lede">Pick one and the handbook is built around it.</p>
+      <div className="c2">
+        <header className="c2-top">
+          {onBack && <button type="button" className="c2-back" onClick={onBack} aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="m11 6-6 6 6 6" /></svg></button>}
+          <span>A new book</span>
+        </header>
+        <p className="c2-kicker">You wrote</p>
+        <h1>“{shown}”</h1>
+        <p className="c2-says"><Ooh size={48} idle /><span>{intents ? 'Great question. What do you want from this book?' : 'Great question. Thinking of what you might want from it…'}</span></p>
         {/* D40: a ready handbook that may cover it is offered, never swapped in. Copy (agent). */}
         {suggested && onTakeSuggested && (
-          <div className="intent-offer">
-            <p><strong>Ready now: {suggested.title}.</strong> It may cover this, in seven chapters, free. Or pick a goal below for one written on “{shown}”.</p>
-            <button type="button" className="btn btn-ghost" onClick={() => { track('submit', { via: 'suggested' }); onTakeSuggested().catch((e) => setLocalError(friendly(e))) }}>Open {suggested.title} instead</button>
-          </div>
+          <button type="button" className="c2-ready" onClick={() => { track('submit', { via: 'suggested' }); onTakeSuggested().catch((e) => setLocalError(friendly(e))) }}>
+            <span><b>Ready now: {suggested.title}.</b> It may cover this, free, and opens at once.</span><span className="c2-ready-go">Open it →</span>
+          </button>
         )}
-        <div className="intent-goals">
-          {intents ? intents.goals.map((g) => (
-            <button key={g.label} type="button" className="intent-goal" disabled={sending} onClick={() => choose(g.label, g.mode)}>{g.label}</button>
-          )) : <p className="note intent-thinking" role="status">Thinking of three reasons people learn this… a few seconds. Or say it in your words below.</p>}
+        <div className="c2-options" role="group" aria-label="What do you want from this book?">
+          {goals.map((g, k) => goalAt === k ? (
+            <div key={g.label} className="c2-picked">
+              <button type="button" className="c2-row" aria-pressed="true" onClick={() => pickRow(k)}><span className="c2-dot" aria-hidden="true" />{g.label}</button>
+              {triedRow}
+            </div>
+          ) : <button key={g.label} type="button" className="c2-row" aria-pressed="false" disabled={sending} onClick={() => pickRow(k)}><span className="c2-dot" aria-hidden="true" />{g.label}</button>)}
+          {goalAt === 'own' ? (
+            <div className="c2-picked">
+              <button type="button" className="c2-row" aria-pressed="true" onClick={() => pickRow('own')}><span className="c2-dot" aria-hidden="true" />Something else</button>
+              <div className="c2-more">
+                <label htmlFor="intent-own">In your words, what's it for?</label>
+                <input id="intent-own" className="input" value={answer} onChange={(e) => setAnswer(e.target.value)} maxLength={120} enterKeyHint="go" disabled={sending} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') make() }} />
+              </div>
+              {triedRow}
+            </div>
+          ) : <button type="button" className="c2-row" aria-pressed="false" disabled={sending} onClick={() => pickRow('own')}><span className="c2-dot" aria-hidden="true" />Something else</button>}
         </div>
-        {/* The own-words box had no label and no button; only the keyboard's Go sent it (UX review 9 Oct). */}
-        <form className="intent-own" onSubmit={(e) => { e.preventDefault(); if (answer.trim()) choose(answer.trim()) }}>
-          <label htmlFor="intent-own" className="lp-visually-hidden">Or say what it's for, in your words</label>
-          <input id="intent-own" className="input" placeholder="Or say it in your words" value={answer} onChange={(e) => setAnswer(e.target.value)} maxLength={120} enterKeyHint="go" disabled={sending} />
-          <button type="submit" className="btn btn-ghost intent-own-go" disabled={sending || !answer.trim()}>Use this</button>
-        </form>
+        <div className="c2-fill" />
         {localError && <p className="error" role="alert">{localError}</p>}
-        <button type="button" className="quiet intent-skip" disabled={sending} onClick={() => choose()}>Skip, just teach me</button>
+        <p className="c2-note">This decides what the chapters cover and how fast they go.</p>
+        <button type="button" className="c1-go c2-go" onClick={make} disabled={sending}><span>{sending ? 'Making your book…' : 'Make my book'}</span><GoArrow /></button>
       </div>
     )
   }

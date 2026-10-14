@@ -406,7 +406,7 @@ export default function App() {
     const backToBooks = view === 'start-again' && replacing && hb?.status === 'ready' ? { label: 'Handbook', onClick: () => { setReplacing(null); setView('plan') } }
       : others && (view === 'start-again' || ['failed', 'declined', 'writing', 'question', 'intent'].includes(status)) ? { label: 'Your handbooks', onClick: () => setView('library') } : undefined
     return (
-      <Shell back={backToBooks}>
+      <Shell back={backToBooks} bare={status === 'intent'}>
         {view === 'start-again' && libRows.length > 0 && !lib?.signedIn && <SignupNudge onSignIn={() => signIn('start-again')} context="second-topic" compact freeChapters={freeChapters} />}
         <Start
           chapterOneReady={ch1Status === 'ready'}
@@ -423,7 +423,8 @@ export default function App() {
           intents={(hb as any)?.intents ?? null}
           suggested={(hb as any)?.suggested ?? null}
           onTakeSuggested={async () => { if (hb) await takeSuggested({ handbookId: hb._id, deviceToken: token }) }}
-          onChooseIntent={async (goal, mode) => { if (hb) await chooseIntent({ handbookId: hb._id, goal, mode, deviceToken: token }) }}
+          onChooseIntent={async (goal, mode, level) => { if (hb) await chooseIntent({ handbookId: hb._id, goal, mode, level, deviceToken: token }) }}
+          onBack={status === 'intent' ? (backToBooks?.onClick ?? (() => { setDraftTopic(hb?.topic ?? ''); setView('start-again') })) : undefined}
           error={hb?.error}
           examples={examples}
           allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null}
