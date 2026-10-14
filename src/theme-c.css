@@ -339,3 +339,5 @@ em, i, .picture, .card.picture-card .serif, .story-text em { font-style: normal;
   .story-frame .story-opt { min-height: 72px; font-size: 1.25rem; }
 }
 a.wordmark { display: inline-flex; flex-direction: column; justify-content: center; min-height: 44px; }   /* Baloo's shorter line made the link 36 px */
+/* the hero has no picture (14 Oct, Prateek: "Remove the picture"): one column of words on the marigold field */
+@media (min-width: 1024px) { .lp-hero { grid-template-columns: minmax(0, 1fr); min-height: 0; } }

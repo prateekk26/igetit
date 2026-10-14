@@ -230,7 +230,6 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
           <p className="lp-lede">Twenty minutes a day: a small step. 7 days: a small jump.</p>
           {form('hero')}
         </div>
-        <figure className="lp-hero-art"><img src="/images/landing/hero.jpg" alt="Someone climbing out of the fog toward one bright summit" /></figure>
       </section>
 
       {c && c.top.length > 0 && <TopCarousel items={c.top as Top[]} busy={busy} picked={pickedRow} onPick={(t) => pick(t, 'top')} />}
