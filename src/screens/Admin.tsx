@@ -3,7 +3,10 @@ import AdminPipeline from '../components/AdminPipeline'
 import AdminReview from '../components/AdminReview'
 import { AdminAlerts, AdminRuns } from '../components/AdminWatch'
 import AdminEvals from '../components/AdminEvals'
-import { SECTIONS, byShelfOrder, sectionOrder } from '../../convex/shelfSections'
+import AdminShelf from '../components/AdminShelf'
+import { How, Seg } from '../components/AdminUi'
+import { Wordmark } from '../components/Ooh'
+import './admin.css'
 import { deviceToken } from '../lib/device'
 import { useConvexAuth, useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
@@ -14,7 +17,9 @@ import { api } from '../../convex/_generated/api'
 // D39 (Prateek, 9 Oct: "we need to have some scroll bars in different sections or create tabs"): one tab at a time,
 // remembered in the address (#shelf), so a reload lands on the same one.
 const TABS = [{ k: 'matters', label: 'What matters' }, { k: 'shelf', label: 'Shelf and review' }, { k: 'trending', label: 'Trending and rewrites' }, { k: 'payments', label: 'Payments' }, { k: 'ai', label: 'AI and cost' }, { k: 'evals', label: 'Evals' }, { k: 'people', label: 'People and funnel' }]
-const WINDOWS = [{ d: 1, label: 'Today' }, { d: 7, label: '7 days' }, { d: 30, label: '30 days' }, { d: 0, label: 'All time' }]
+// The time window only changes the numbers on these two tabs (14 Oct: it sat over every tab and did nothing on five).
+const WINDOWED = new Set(['matters', 'people'])
+const WINDOWS = [{ v: 1, label: 'Today' }, { v: 7, label: '7 days' }, { v: 30, label: '30 days' }, { v: 0, label: 'All time' }]
 const SECTION_NAMES: Record<string, string> = { hero: 'Top (box)', saved: '"You saved the reel"', steps: 'How tonight works', demo: 'Demo chapter', path: 'Seven nights', shelf: 'Ready tonight shelf', best: 'Top handbooks carousel', offer: 'Price', final: 'Box again (bottom)' }
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0)
 const time = (t: number) => new Date(t).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -28,26 +33,33 @@ export default function Admin() {
   // recognise it"): until it has, the owner query is not asked, so a signed-in owner never sees the sign-in form flash.
   const { isLoading } = useConvexAuth()
   const d = useQuery(api.admin.dashboard, isLoading ? 'skip' : { days })
+  // What waits for the owner, as a count on its tab: typed handbooks to review, AI alerts not yet seen.
+  const owner = !!d && !d.denied
+  const queue = useQuery(api.library.reviewQueue, owner ? {} : 'skip')
+  const alerts = useQuery(api.watch.open, owner ? {} : 'skip')
+  const waiting: Record<string, number> = { shelf: (queue ?? []).filter((r) => r.review === 'pending').length, ai: (alerts ?? []).filter((a) => !a.acked).length }
 
   return (
     <div className="adm">
       <header className="adm-top">
-        <a href="/" className="wordmark" style={{ color: 'inherit', textDecoration: 'none' }}>I Get It · Admin</a>
-        <div className="adm-tabs" role="group" aria-label="Time window">
-          {WINDOWS.map((w) => <button key={w.d} type="button" aria-pressed={days === w.d} onClick={() => setDays(w.d)}>{w.label}</button>)}
-        </div>
+        <a href="/" className="wordmark adm-mark" aria-label="I Get It, home"><Wordmark /> <span className="adm-mark-tag">admin</span></a>
+        {owner && WINDOWED.has(tab) && <Seg label="Numbers for" value={days} onChange={setDays} options={WINDOWS} />}
       </header>
 
       {d === undefined ? <p className="note">Loading…</p> : d.denied ? <OwnerSignIn signedIn={d.signedIn} /> : (
         <>
-          <p className="note">Updated live. Your own phones and accounts are left out. {d.trackingSince ? `Landing steps (marked •) are counted from ${time(d.trackingSince)}, when page tracking began.` : 'Landing steps (marked •) start counting from the next visit.'}</p>
+          <nav className="adm-nav" aria-label="Sections">{TABS.map((t) => (
+            <button key={t.k} type="button" aria-pressed={tab === t.k} onClick={() => go(t.k)}>
+              {t.label}{waiting[t.k] ? <span className="adm-badge" aria-label={`${waiting[t.k]} waiting`}>{waiting[t.k]}</span> : null}
+            </button>
+          ))}</nav>
 
-          <nav className="adm-tabs adm-nav" aria-label="Sections">{TABS.map((t) => <button key={t.k} type="button" aria-pressed={tab === t.k} onClick={() => go(t.k)}>{t.label}</button>)}</nav>
+          {WINDOWED.has(tab) && <p className="adm-status">Updated live. Your own phones and accounts are left out. {d.trackingSince ? `Landing steps (marked •) are counted from ${time(d.trackingSince)}, when page tracking began.` : 'Landing steps (marked •) start counting from the next visit.'}</p>}
 
           {/* D37 (Prateek, 9 Oct): the page opens on the metrics that matter, in the order they cause each other. D39: every
               other section is a tab, and each has its actions (approve, reject, delete forever, build, rewrite, move). */}
           {tab === 'matters' && <><Metrics days={days} sources={d.sources} /><MineCard /></>}
-          {tab === 'shelf' && <><AdminReview /><ArrangeCard /><ShelfCard /></>}
+          {tab === 'shelf' && <><AdminReview /><AdminShelf /></>}
           {tab === 'trending' && <><TrendingCard /><ExperimentsCard /></>}
           {tab === 'payments' && <PaymentsCard />}
           {/* AI and cost together (8 Oct, Tanisha): what every step takes and costs, by handbook, then spend by day. */}
@@ -128,7 +140,7 @@ export default function Admin() {
           <div className="adm-grid">
             <section className="adm-card">
               <h2>Why people stop</h2>
-              <p className="note">Each visitor's most likely reason, from what they did last.</p>
+              <p className="adm-status">Each visitor's most likely reason, from what they did last.</p>
               <ul className="adm-list">{d.reasons.map((r) => <li key={r.reason}><span>{r.reason}</span><b>{r.n}</b></li>)}</ul>
             </section>
             <section className="adm-card">
@@ -139,7 +151,7 @@ export default function Admin() {
 
           <section className="adm-card adm-wide">
             <h2>Each person's path</h2>
-            <p className="note">Latest 50 visitors. Tap one to see everything they did, in order.</p>
+            <p className="adm-status">Latest 50 visitors. Tap one to see everything they did, in order.</p>
             <div className="adm-journeys">
               {d.recent.map((r) => (
                 <details key={r.visitor + r.first} className="adm-j">
@@ -223,12 +235,12 @@ function Metrics({ days, sources }: { days: number; sources: { source: string; v
         <Tile big={inr($.perDay)} label="Burn a day" sub="fixed ÷ 30 + model cost, last 7 days ÷ 7" />
       </div>
       <h3>By channel</h3>
-      <p className="note">Where each person first came from (utm_source, else the referring site), for this window. Revenue by channel needs a payment to carry its source; none has yet.</p>
+      <How>Where each person first came from (utm_source, else the referring site), for this window. Revenue by channel needs a payment to carry its source; none has yet.</How>
       <div className="adm-scroll"><table className="adm-table">
         <thead><tr><th>Channel</th><th>Visitors</th><th>Started</th><th>Opened ch 1</th><th>Passed ch 1</th><th>Signed up</th></tr></thead>
         <tbody>{sources.length === 0 ? <tr><td colSpan={6}><small>No visits in this window.</small></td></tr> : sources.map((s) => <tr key={s.source}><td>{s.source}</td><td>{s.visitors}</td><td>{s.started} <small>{p(s.started, s.visitors)}</small></td><td>{s.opened}</td><td>{s.passed} <small>{p(s.passed, s.started)}</small></td><td>{s.signedUp}</td></tr>)}</tbody>
       </table></div>
-      <h3>Fixed costs <button type="button" className="quiet" onClick={() => setForm({ name: '', amount: '', kind: 'monthly', from: new Date().toISOString().slice(0, 10), to: '', note: '' })}>Add one</button></h3>
+      <h3>Fixed costs <button type="button" className="quiet" onClick={() => setForm({ name: '', amount: '', kind: 'monthly', from: new Date().toISOString().slice(0, 10), to: '', note: '' })}>Add a cost</button></h3>
       {m.fixed.length === 0 && !form && <p className="note">Nothing entered yet. Add what you pay for: Claude Code, Convex, the domain, Runway credits, anything with a bill. Monthly ones count from their start date to today; one-offs count once.</p>}
       {m.fixed.length > 0 && (
         <div className="adm-scroll"><table className="adm-table">
@@ -245,7 +257,7 @@ function Metrics({ days, sources }: { days: number; sources: { source: string; v
         <form className="adm-form" onSubmit={(e) => { e.preventDefault(); submit() }}>
           <input className="input" placeholder="Name (Claude Code, Convex…)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={60} />
           <input className="input" type="number" min={0} step={1} placeholder="Rupees" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-          <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as any })}><option value="monthly">a month</option><option value="once">one-off</option></select>
+          <select className="adm-select" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as any })} aria-label="How often"><option value="monthly">a month</option><option value="once">one-off</option></select>
           <input className="input" type="date" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} aria-label="From" />
           <input className="input" type="date" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} aria-label="To (optional)" />
           <input className="input" placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} maxLength={120} />
@@ -319,7 +331,7 @@ function ProviderSwitch() {
     <section className="adm-card adm-wide">
       <h2>AI provider</h2>
       <p className="note">Plans, chapters, fact checks, teach-backs and picture scenes use this. Ask or object stays on Claude (its web search is Claude's).{st.since ? ` Switched ${time(st.since)}.` : ''}</p>
-      <div className="adm-tabs" role="group" aria-label="AI provider" style={{ marginTop: 10 }}>
+      <div className="adm-seg" role="group" aria-label="AI provider">
         <button type="button" aria-pressed={st.provider === 'claude'} disabled={busy} onClick={() => flip('claude')}>Claude (Anthropic)</button>
         <button type="button" aria-pressed={st.provider === 'inference'} disabled={busy || !st.inferenceKeySet} onClick={() => flip('inference')}>DeepSeek v4 Pro (The Inference Company)</button>
       </div>
@@ -329,139 +341,6 @@ function ProviderSwitch() {
     </section>
   )
 }
-
-// The Shelf (D34, 9 Oct, Prateek: "clean up the Shelf, keep only the best"): every handbook that could be on it, on or
-// off with one tap (off is reversible and recorded), the Spotlight as the server ranks it with a pin to force one in,
-// and the Awards (D34a): a title and a citation line typed here, shown on the Shelf's Awards row.
-// Arrange the Shelf (13 Oct, Prateek: "Let the admins rearrange the shelf"): the Shelf as readers see it, the free
-// shelf first, then the five subject shelves in order, then "More". ↑ ↓ move a shelf, or a book along its shelf; the
-// dropdown moves a book to another shelf (it joins the end of the placed ones). Books in the Spotlight or the Awards
-// are not on a shelf, as on the real Shelf; pin and award them in the table below.
-const ago = (t: number) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago` }
-function ArrangeCard() {
-  const rows = useQuery(api.shelf.adminList, {})
-  const layout = useQuery(api.shelf.layout, {})
-  const setBookOrder = useMutation(api.shelf.setBookOrder)
-  const setShelfOrder = useMutation(api.shelf.setShelfOrder)
-  const setSection = useMutation(api.shelf.setSection)
-  const recount = useMutation(api.shelf.recountReadWeek)
-  const setFree = useMutation(api.shelf.setFree)
-  const [err, setErr] = useState<string | null>(null)
-  const [recounting, setRecounting] = useState(false)
-  if (!rows || !layout) return null
-  type Row = (typeof rows)[number]
-  const order = sectionOrder(layout.shelves)
-  const live = rows.filter((r) => r.on)
-  const aside = live.filter((r) => r.spot || r.award)
-  const left = new Set(live.filter((r) => !r.spot && !r.award).map((r) => r.id))
-  const take = (pick: (r: Row) => boolean) => { const xs = live.filter((r) => left.has(r.id) && pick(r)).sort(byShelfOrder); xs.forEach((r) => left.delete(r.id)); return xs }
-  const shelves = [
-    { key: 'free', label: 'Free, every chapter', fixed: true, books: take((r) => !!r.free) },
-    ...order.map((k) => { const sec = SECTIONS.find((x) => x.key === k)!; return { key: k, label: sec.label, fixed: false, books: take((r) => r.section === k) } }),
-    { key: 'more', label: 'More (not sorted yet)', fixed: true, books: take(() => true) },
-  ]
-  const fail = (e: unknown) => setErr(String((e as Error)?.message ?? e))
-  const moveShelf = (k: string, d: -1 | 1) => { const i = order.indexOf(k), j = i + d; if (j < 0 || j >= order.length) return; const next = [...order]; [next[i], next[j]] = [next[j], next[i]]; setErr(null); setShelfOrder({ keys: next }).catch(fail) }
-  const moveBook = (books: Row[], i: number, d: -1 | 1) => { const j = i + d; if (j < 0 || j >= books.length) return; const next = [...books]; [next[i], next[j]] = [next[j], next[i]]; setErr(null); setBookOrder({ ids: next.map((b) => b.id) }).catch(fail) }
-  return (
-    <section className="adm-card adm-wide adm-arrange">
-      <h2>Arrange the Shelf</h2>
-      <p className="note">The Shelf as readers see it, top to bottom. The free shelf always comes first; the first subject shelf sits next to it, above the Spotlight. ↑ ↓ moves a shelf, or a book along its shelf (left to right on the Shelf). The dropdown sends a book to another shelf. Make free puts a ready handbook on the free shelf with no daily chapter limit (the sign-up after chapter 2 stays); tap it again to take it off. Books you never moved follow the ones you did, the most finished first.</p>
-      {/* D98 (13 Oct, Prateek: "how many copies are there of it or how many active users have read it"): copies are the
-          readers who have it (our own phones left out); "read this week" is recounted hourly (shelf.countReadWeek). */}
-      <p className="note">Under each book: copies (readers who have it), how many of them opened it in the last 7 days, how many finished chapter 1, and the average stars readers gave its chapters (how many ratings in brackets). Our own phones are left out. Read this week: {layout.readWeekAt ? `counted ${ago(layout.readWeekAt)}` : 'not counted yet'}.{' '}
-        <button type="button" className="quiet" disabled={recounting} onClick={() => { setRecounting(true); setErr(null); recount().catch(fail).finally(() => setTimeout(() => setRecounting(false), 4000)) }}>{recounting ? 'Counting…' : 'Recount now'}</button></p>
-      {aside.length > 0 && <p className="note">Not on a shelf, because they are in the Spotlight or the Awards: {aside.map((r) => r.title).join(' · ')}.</p>}
-      {err && <p className="error" role="alert">{err}</p>}
-      {shelves.map((sh) => sh.books.length === 0 && sh.fixed ? null : (
-        <div key={sh.key} className="adm-shelf">
-          <div className="adm-shelf-head">
-            <h3>{sh.label} <small>{sh.books.length} {sh.books.length === 1 ? 'book' : 'books'}{sh.key === order[0] ? ' · above the Spotlight' : ''}</small></h3>
-            {!sh.fixed && <span className="adm-arrows">
-              <button type="button" className="quiet" aria-label={`Move ${sh.label} up`} disabled={order.indexOf(sh.key) === 0} onClick={() => moveShelf(sh.key, -1)}>↑</button>
-              <button type="button" className="quiet" aria-label={`Move ${sh.label} down`} disabled={order.indexOf(sh.key) === order.length - 1} onClick={() => moveShelf(sh.key, 1)}>↓</button>
-            </span>}
-          </div>
-          <ol className="adm-books">
-            {sh.books.map((b, i) => (
-              <li key={b.id}>
-                <span className="adm-book-n">{i + 1}</span>
-                <span className="adm-book-t">{b.title}{b.kind === 'shared' ? <small> · shared</small> : null}<small> · {b.starts} {b.starts === 1 ? 'copy' : 'copies'} · {b.readWeek ?? '–'} read this week · {b.passes} finished chapter 1 · {b.stars ? `★ ${b.stars.avg} (${b.stars.n})` : 'no stars yet'}</small>
-                  {/* D99: make a ready handbook free (no daily limit, the Free shelf); the sign-up after chapter 2 stays */}
-                  {b.kind === 'ready' && <><br /><button type="button" className="quiet adm-free" aria-pressed={b.free} onClick={() => { setErr(null); setFree({ id: b.id, free: !b.free }).catch(fail) }}>{b.free ? 'Free ✓ · take off free' : 'Make free'}</button></>}</span>
-                <span className="adm-arrows">
-                  <button type="button" className="quiet" aria-label={`Move ${b.title} up`} disabled={i === 0} onClick={() => moveBook(sh.books, i, -1)}>↑</button>
-                  <button type="button" className="quiet" aria-label={`Move ${b.title} down`} disabled={i === sh.books.length - 1} onClick={() => moveBook(sh.books, i, 1)}>↓</button>
-                </span>
-                {sh.key !== 'free' && <select value={b.section ?? ''} onChange={(e) => { setErr(null); setSection({ id: b.id, section: e.target.value }).catch(fail) }} aria-label={`Shelf for ${b.title}`}>
-                  <option value="" disabled>not sorted</option>{order.map((k) => <option key={k} value={k}>{SECTIONS.find((x) => x.key === k)!.label}</option>)}
-                </select>}
-              </li>
-            ))}
-          </ol>
-        </div>
-      ))}
-    </section>
-  )
-}
-
-function ShelfCard() {
-  const rows = useQuery(api.shelf.adminList, {})
-  const setOn = useMutation(api.shelf.setOnShelf)
-  const setPick = useMutation(api.shelf.setPick)
-  const setAward = useMutation(api.shelf.setAward)
-  const setSection = useMutation(api.shelf.setSection)
-  const destroy = useMutation(api.library.destroy)
-  const [confirmGone, setConfirmGone] = useState<string | null>(null)
-  const [editing, setEditing] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
-  const [line, setLine] = useState('')
-  if (!rows) return null
-  const on = rows.filter((r) => r.on).length
-  const startEdit = (r: { id: string; award: { title: string; line: string } | null }) => { setEditing(r.id); setTitle(r.award?.title ?? ''); setLine(r.award?.line ?? '') }
-  return (
-    <section className="adm-card adm-wide">
-      <h2>The Shelf</h2>
-      <p className="note">Every handbook that could be on the Shelf, ready or typed by a reader (the review queue above decides which typed ones get here). {on} on the Shelf of {rows.length}. Spotlight: the three on the Shelf with the most readers finishing chapter 1 (starts break ties, a pinned one goes first, an awarded one is left out). "Take off" hides a handbook from the Shelf, the landing carousel, the wait stories and What's next; readers who already have it keep it, and you can put it back. A shared handbook taken off is also unpublished (its ?l= link stops), with the reason in the review list.</p>
-      <div className="adm-scroll">
-        <table className="adm-table">
-          <thead><tr><th>Handbook</th><th>Shelf</th><th>Kind</th><th>Starts</th><th>Finished ch 1</th><th>Spotlight</th><th>Award</th><th>On the Shelf</th></tr></thead>
-          <tbody>{rows.map((r) => (
-            <tr key={r.id} style={r.on ? undefined : { opacity: 0.55 }}>
-              <td>{r.title}{r.goal ? <small> · for: {r.goal}</small> : null}{!r.cover && <small> · no cover</small>}</td>
-              <td><select value={r.section ?? ''} onChange={(e) => setSection({ id: r.id, section: e.target.value })} aria-label="Shelf"><option value="" disabled>not sorted</option>{SECTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</select></td>
-              <td>{r.kind}{r.mode ? ` · ${r.mode}` : ''}</td><td>{r.starts}</td><td>{r.passes}</td>
-              <td>{r.spot ? `No. ${r.spot}` : ''} <button type="button" className="quiet" onClick={() => setPick({ id: r.id, pick: !r.pick })}>{r.pick ? 'Pinned ✓' : 'Pin'}</button></td>
-              <td>
-                {editing === r.id ? (
-                  <span style={{ display: 'inline-grid', gap: 4 }}>
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Award title" maxLength={60} />
-                    <input value={line} onChange={(e) => setLine(e.target.value)} placeholder="One citation line" maxLength={200} style={{ width: 320 }} />
-                    <span>
-                      <button type="button" className="quiet" onClick={() => { if (title.trim() && line.trim()) { setAward({ id: r.id, award: { title, line } }); setEditing(null) } }}>Save</button>{' '}
-                      {r.award && <button type="button" className="quiet" onClick={() => { setAward({ id: r.id, award: null }); setEditing(null) }}>Remove</button>}{' '}
-                      <button type="button" className="quiet" onClick={() => setEditing(null)}>Cancel</button>
-                    </span>
-                  </span>
-                ) : (
-                  <>{r.award ? <small>{r.award.title}</small> : null} <button type="button" className="quiet" onClick={() => startEdit(r)}>{r.award ? 'Edit' : 'Give award'}</button></>
-                )}
-              </td>
-              <td>
-                <button type="button" className="quiet" onClick={() => setOn({ id: r.id, on: !r.on })}>{r.on ? 'On · take off' : 'Off · put back'}</button>
-                {r.offWhy && <small> {r.offWhy}</small>}
-                {r.kind === 'shared' && r.libraryId && (confirmGone === r.id
-                  ? <> <small>Gone for good?</small> <button type="button" className="quiet" onClick={() => { destroy({ id: r.libraryId as any }); setConfirmGone(null) }}>Yes, delete forever</button> <button type="button" className="quiet" onClick={() => setConfirmGone(null)}>Keep</button></>
-                  : <> <button type="button" className="quiet" onClick={() => setConfirmGone(r.id)}>Delete forever</button></>)}
-              </td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
-    </section>
-  )
-}
-
 
 // This week's trending handbooks (6 Oct): built every Monday 6:30am IST from what's trending on social media.
 function TrendingCard() {
@@ -474,14 +353,15 @@ function TrendingCard() {
   return (
     <section className="adm-card adm-wide">
       <h2>Trending topics</h2>
-      <p className="note">Every Monday 6:30am IST, Claude searches what's trending in India and parks topics here (D39). Nothing is written until you tap <b>Build it</b>: a plan, 7 checked chapters and pictures, about ₹100 and 15 minutes, then it is on the Shelf under its subject.{found?.at ? ` Last search ${time(found.at)}.` : ''}</p>
+      <p className="adm-status">{found?.at ? `Last search ${time(found.at)}.` : 'Not searched yet this week.'} Building one costs about ₹100 and takes about 15 minutes.</p>
+      <How>Every Monday 6:30am IST, Claude searches what's trending in India and parks topics here (D39). Nothing is written until you tap <b>Build it</b>: a plan, 7 checked chapters and pictures, then it is on the Shelf under its subject.</How>
       {!found || found.picks.length === 0 ? <p className="note">No topics found yet this week.</p> : (
         <div className="adm-scroll"><table className="adm-table">
           <thead><tr><th>Topic</th><th>Why this week</th><th>Goal</th><th>Kind</th><th></th></tr></thead>
           <tbody>{found.picks.map((p: any) => (
             <tr key={p.line}>
               <td><b>{p.line}</b></td><td><small>{p.why}</small></td><td><small>{p.goal}</small></td><td>{p.mode || ''}</td>
-              <td>{p.state === 'building' ? <small>Building since {time(p.startedAt)}…</small> : <button type="button" className="quiet" onClick={() => buildOne({ line: p.line, goal: p.goal || undefined, mode: p.mode || undefined })}>Build it · put on the Shelf</button>}</td>
+              <td>{p.state === 'building' ? <small>Building since {time(p.startedAt)}…</small> : <button type="button" className="btn adm-btn-sm" onClick={() => buildOne({ line: p.line, goal: p.goal || undefined, mode: p.mode || undefined })}>Build it</button>}</td>
             </tr>
           ))}</tbody>
         </table></div>
@@ -529,8 +409,11 @@ function CostsCard() {
   return (
     <section className="adm-card adm-wide">
       <h2>What we spend (estimated)</h2>
-      <p className="note">About {inr(total)} over the last {days} days. Tap a day for its models, a model for what it was used for. List prices at ₹84 a dollar; the providers' bills are the real numbers.</p>
-      <p className="note">{[7, 14, 30].map((n) => <button key={n} type="button" className="quiet" style={{ marginRight: 12, fontWeight: n === days ? 700 : 400 }} onClick={() => setDays(n)}>{n} days</button>)}</p>
+      <div className="adm-head-row">
+        <p className="adm-big"><b>{inr(total)}</b> over the last {days} days</p>
+        <Seg label="Cost window" value={days} onChange={setDays} options={[7, 14, 30].map((n) => ({ v: n, label: `${n} days` }))} />
+      </div>
+      <How>Tap a day for its models, a model for what it was used for. List prices at ₹84 a dollar; the providers' bills are the real numbers.</How>
       <ul className="adm-list">{[...byModel.values()].sort((a, b) => b.inr - a.inr).map((m) => <li key={m.model}><span>{m.provider} · {m.model} · {m.calls} calls</span><b>{inr(m.inr)}</b></li>)}</ul>
       {rows.map((d) => (
         <details key={d.day} className="cost-day">
@@ -563,10 +446,10 @@ function ExperimentsCard() {
   return (
     <section className="adm-card adm-wide">
       <h2>Chapter 1 rewrites (A/B tests)</h2>
-      <p className="note">What you can do here: start a rewrite of chapter 1 for any ready topic (the doctor diagnoses the current chapter 1 and writes a B version; new readers are split half and half); on a running test, make B the default or stop it. The nightly 4am scan starts tests by itself where 2 or more readers quit chapter 1; B replaces A on its own with 8+ readers a side and a clear win.</p>
+      <How>Start a rewrite of chapter 1 for any ready topic: the doctor diagnoses the current chapter 1 and writes a B version, and new readers are split half and half. On a running test, make B the default or stop it. The nightly 4am scan starts tests by itself where 2 or more readers quit chapter 1; B replaces A on its own with 8+ readers a side and a clear win.</How>
       <p className="adm-inline">
-        <select value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Ready topic"><option value="">Pick a ready topic…</option>{ready.map((t) => <option key={t} value={t}>{t}</option>)}</select>
-        <button type="button" className="quiet" disabled={!pick || started === pick} onClick={async () => { await rewrite({ topic: pick }); setStarted(pick) }}>{started === pick ? 'Started: the test appears below in a few minutes' : 'Rewrite chapter 1 now'}</button>
+        <select className="adm-select" value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Ready topic"><option value="">Pick a ready topic…</option>{ready.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+        <button type="button" className="btn adm-btn-sm" disabled={!pick || started === pick} onClick={async () => { await rewrite({ topic: pick }); setStarted(pick) }}>{started === pick ? 'Started: the test appears below in a few minutes' : 'Rewrite chapter 1 now'}</button>
       </p>
       {rows.length === 0 ? <p className="note">No tests yet.</p> : rows.map((e) => (
         <div key={e.id} className="adm-exp">
@@ -609,7 +492,7 @@ function PeopleCard({ rows }: { rows: PersonRow[] }) {
   return (
     <section className="adm-card adm-wide">
       <h2>Each person, where they got to, and why they stopped</h2>
-      <p className="note">Latest 50 people in this window, newest first. "Why" is the best guess from the last thing they did. Tap a row in "Each person's path" below for every step.</p>
+      <How>Latest 50 people in this window, newest first. "Why" is the best guess from the last thing they did. Tap a row in "Each person's path" below for every step.</How>
       <div className="adm-scroll adm-tall"><table className="adm-table">
         <thead><tr><th>Came</th><th>From</th><th>Phone</th><th>Topic</th><th>Got to</th><th>Stayed</th><th>Last seen</th><th>Signed up</th><th>Why they stopped (guess)</th></tr></thead>
         <tbody>{rows.map((r) => (

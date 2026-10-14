@@ -9,7 +9,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { subscribe, canInstall, install, isIOS, isStandalone } from '../lib/push'
 import type { Id } from '../../convex/_generated/dataModel'
-import Ooh from '../components/Ooh'
+import Ooh, { GoArrow } from '../components/Ooh'
 
 type Props = {
   total?: number
@@ -79,7 +79,7 @@ function cheer(n: number, s?: { minutes: number; right: number; total: number } 
   return `You took your time, and it stuck. That's the whole point.`
 }
 
-export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false }: Props) {
+export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture: _nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const line = cheer(n, stats)
@@ -95,16 +95,26 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
   // 9 Oct: it dropped the reader on the handbook page to wait).
   const nextBtn = (label: string, ghost = false) => nextWriting && !nextReady && !nextFailed
     ? <button className="btn" disabled aria-busy="true">{`Writing chapter ${n + 1}… about a minute`}</button>
-    : <button className={ghost ? 'btn btn-ghost' : 'btn'} onClick={onNext}>{nextFailed ? `Chapter ${n + 1} didn't write. Try again` : label}</button>
+    : <button className={ghost ? 'btn btn-ghost' : 'btn c-go'} onClick={onNext}><span>{nextFailed ? `Chapter ${n + 1} didn't write. Try again` : label}</span>{!ghost && <GoArrow />}</button>
   return (
     <>
       <Confetti fire />
+      {/* C9 (14 Oct, the C board "Chapter done"): Ooh lands on its "i" on a marigold band, then the topic, the line, and
+          what was added to what they know. The rung bar stays under it, small. Copy (agent). */}
+      <section className="c9-stage" aria-hidden="true">
+        <span className="c1-stem c9-stem" />
+        <Ooh face="happy" tone="cream" size={132} className="c9-ooh" />
+      </section>
+      <p className="c9-topic">{topic}</p>
+      <h1 className="c9-h">{total === 1 ? <>Done,<br />and you got it!</> : <>Chapter {n},<br />and you got it!</>}</h1>
       <RungBar passed={passed} filling={n} total={total} />
-      <p className="sub" style={{ marginTop: 10 }}>{topic}</p>
-      <Ooh face="getit" size={72} className="done-ooh" />
-      <h1>{total === 1 ? 'Done.' : `Chapter ${n} of ${total}: done.`}</h1>
       {/* The proof of the night comes first (8 Oct night, critique): what they can now do, before any question is asked of them. */}
-      {outcomeLine && <p className="done-line">{outcomeLine}</p>}
+      {outcomeLine && (
+        <>
+          <h2 className="c9-label">Added to what you know</h2>
+          <ul className="c9-known"><li><span className="c9-dot" aria-hidden="true" />{outcomeLine}</li></ul>
+        </>
+      )}
       {/* The wall, as one printed block right under the outcome: what chapter N+1 is, that it is free with an account, what the
           account costs them (an email and a code), and what they keep either way. The only button is the one in the action
           bar, within thumb reach; this card explains it. Copy (agent). */}
@@ -122,7 +132,7 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
       {/* The price is information under the card, never inside the free one (55's review, 8 Oct night): a mixed signal otherwise. */}
       {wall && nextTitle && priceLine && <p className="note">Chapter {n + 1} costs nothing. {priceLine} <button type="button" className="quiet" style={{ padding: 0 }} onClick={onPricing}>See pricing</button></p>}
       {wall && onShelf && <ShelfStrip where="done" onOpen={onShelf} />}
-      {line && <p className="cheer">{line}</p>}
+      {line && <p className="cheer c9-says"><Ooh size={26} /><span>{line}</span></p>}
       {/* D96 (13 Oct, Prateek): the question looks at the next chapter. A member's answer rewrites it (members can add a line);
           a free reader's is noted, the chapter stays as written, and one quiet line says members get it. Copy (agent). */}
       {onRate && !last && (
@@ -157,17 +167,9 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
       )}
       {handbookId && deviceToken && <TeachBack handbookId={handbookId} n={n} deviceToken={deviceToken} />}
       {/* Up next (7 Oct, Prateek): the next chapter as a card worth tapping, with its own button. Behind the wall the card above says it instead. */}
+      {/* Up next (7 Oct, Prateek; C9 14 Oct): one line over the main button says what's next; the button is in the bar. */}
       {!last && nextTitle && !wall && (
-        <section className="upnext" aria-label={`Up next: chapter ${n + 1}`}>
-          {nextPicture && <div className="upnext-pic"><img src={nextPicture} alt="" onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')} ref={(el) => { if (el && el.complete && el.naturalWidth > 0) el.parentElement?.classList.add('loaded') }} /></div>}
-          <div className="upnext-body">
-            <p className="upnext-kicker">Up next · Chapter {n + 1} of {total}</p>
-            <h2 className="upnext-title">{nextTitle}</h2>
-            {nextHook && <p className="upnext-hook">{nextHook}</p>}
-            {/* No button in the card (D26, 9 Oct): the one main action sits in the bar, within thumb reach; the card only says what's next. */}
-            {!nextReady && !nextFailed && !quick && onNext && <p className="note" style={{ margin: '8px 0 0' }}>Being written for you now, about a minute.</p>}
-          </div>
-        </section>
+        <p className="c9-next" aria-label={`Up next: chapter ${n + 1}`}>Next · chapter {n + 1}: {nextTitle}{!nextReady && !nextFailed && !quick && onNext ? ' · being written for you now, about a minute' : ''}</p>
       )}
       {last && <p className="lede" style={{ marginTop: 'var(--l)' }}>{left > 0 ? `That's the last chapter. ${left === 1 ? 'One earlier chapter is' : `${left} earlier chapters are`} still yours to read, on the handbook page.` : quick ? "That's all of it. Quick and done." : total === 7 ? "That's the whole handbook. Seven chapters, done." : `That's the whole handbook. ${total} chapters, done.`}</p>}
       {last && learnMore}
@@ -188,7 +190,7 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
       <ActionBar>
         {wall ? (
           <>
-            <button className="btn" onClick={() => { track('wall_tap', { n }); onKeep() }}>Make a free account</button>
+            <button className="btn c-go" onClick={() => { track('wall_tap', { n }); onKeep() }}><span>Make a free account</span><GoArrow /></button>
             <button type="button" className="quiet" onClick={onContinue}>Back to the handbook</button>
           </>
         ) : quick && !last && onNext ? (

@@ -17,11 +17,13 @@ const arcs = (
   </g>
 )
 
-export default function Ooh({ face = 'curious', size = 40, className = '' }: { face?: OohFace; size?: number; className?: string }) {
+// tone "cream" is Ooh on a marigold page (C1, C9): a paper face with an indigo shadow a step down and right.
+export default function Ooh({ face = 'curious', size = 40, className = '', tone = 'marigold' }: { face?: OohFace; size?: number; className?: string; tone?: 'marigold' | 'cream' }) {
   return (
     <svg className={`ooh ooh-${face} ${className}`} width={size} height={size} viewBox="-6 -8 52 52" aria-hidden="true" focusable="false">
       <g className="ooh-body">
-        <circle cx="20" cy="20" r="20" fill="#F2A93B" />
+        {tone === 'cream' && <circle cx="21" cy="21" r="19.5" fill="#2F3478" />}
+        <circle cx="20" cy="20" r={tone === 'cream' ? 19.5 : 20} fill={tone === 'cream' ? '#FAF7F0' : '#F2A93B'} />
         {face === 'happy' ? arcs
           : face === 'getit' ? <><g className="ooh-la" fill={INK}>{eyes()}</g><g className="ooh-lb">{arcs}</g></>
           : face === 'making' ? <g className="ooh-eyes" fill={INK}>{eyes(2.8, 3.6, 15)}</g>
@@ -36,6 +38,15 @@ export function Wordmark() {
   return (
     <span className="wm" aria-hidden="true">
       <span className="wm-i">ı<span className="wm-dot" /></span> get it
+    </span>
+  )
+}
+
+// The round arrow at the end of a main button (C1, C3, C4, C9): ink circle, marigold arrow; on an ink button, the reverse.
+export function GoArrow() {
+  return (
+    <span className="go-arrow" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
     </span>
   )
 }

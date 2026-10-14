@@ -284,6 +284,31 @@ export const library = query({
   },
 });
 
+// "What you know" (C4's middle tab, the C board "What you know", 14 Oct): every chapter this reader passed, across their
+// handbooks, as the line it taught (the chapter's outcomeLine, else its plan outcome). Fuzzy when the reader's latest
+// warm-up question on that chapter (a recall quiz) was missed. Nothing new is stored; it reads progress and answers.
+export const known = query({
+  args: { deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { deviceToken }) => {
+    const userId = await getAuthUserId(ctx);
+    const items: { handbookId: Id<"handbooks">; topic: string; n: number; title: string; line: string; fuzzy: boolean; at: number }[] = [];
+    for (const h of await ownedBooks(ctx, userId, deviceToken)) {
+      if (h.status === "declined") continue;
+      const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).unique();
+      if (!p?.chaptersPassed.length) continue;
+      const recalls = (await ctx.db.query("answers").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).collect()).filter((a) => a.recall);
+      for (const n of [...p.chaptersPassed].sort((a, b) => a - b)) {
+        const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).unique();
+        const planCh = ((h.plan as any)?.chapters ?? [])[n - 1];
+        const last = recalls.filter((a) => a.chapter === n).sort((a, b) => b.at - a.at)[0];
+        items.push({ handbookId: h._id, topic: h.topic, n, title: ch?.title ?? planCh?.title ?? `Chapter ${n}`, line: ch?.outcomeLine ?? planCh?.outcome ?? "", fuzzy: !!last && !last.correct, at: p.updatedAt ?? h.createdAt });
+      }
+    }
+    items.sort((a, b) => Number(b.fuzzy) - Number(a.fuzzy) || b.at - a.at || a.n - b.n);
+    return { items, fuzzy: items.filter((i) => i.fuzzy).length };
+  },
+});
+
 export const current = query({
   args: { deviceToken: v.optional(v.string()), handbookId: v.optional(v.id("handbooks")) },
   handler: async (ctx, { deviceToken, handbookId }) => {
@@ -1408,6 +1433,25 @@ export const openChapter = mutation({
     const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
     if (p && p.currentChapter < n && !p.chaptersPassed.includes(n)) await ctx.db.patch(p._id, { currentChapter: n, currentCard: 0, currentPart: 0, updatedAt: Date.now() });
     return { ok: true };
+  },
+});
+
+// "I don't know yet" (C7, 14 Oct): the quiz's second explanation, before any pick. The writer is told it never says or
+// hints which option is right (CHAPTER_PROMPT's reteach rule), so it is safe to show before an answer; nothing is
+// recorded, so it never counts as a miss. Same owner and open-chapter checks as recordAnswer.
+export const reteachFor = query({
+  args: { handbookId: v.id("handbooks"), chapter: v.number(), cardIndex: v.number(), recall: v.optional(v.boolean()), deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { handbookId, chapter, cardIndex, recall, deviceToken }) => {
+    await ownedHandbook(ctx, handbookId, deviceToken);
+    const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
+    if (!recall && !isOpen(p, chapter)) return null;
+    const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", chapter)).unique();
+    const card = cardIndex >= RECALL_BASE
+      ? recallWithTier((ch?.recallCards ?? []) as any[], (ch as any)?.recallTiers, tierOf(p, chapter + 1))[cardIndex - RECALL_BASE]
+      : (ch?.cards ? withTier(ch.cards as any[], (ch as any).quizTiers, tierOf(p, chapter)) : [])[cardIndex];
+    if (!card || card.type !== "exercise" || card.kind === "poll") return null;
+    const base = (cardIndex >= RECALL_BASE ? ((ch?.recallCards ?? []) as any[])[cardIndex - RECALL_BASE] : (ch?.cards as any[] | undefined)?.[cardIndex]) as any;
+    return (card.reteach || base?.reteach || null) as string | null;
   },
 });
 

@@ -1,6 +1,7 @@
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { AdminCheckScorer, AdminQuality } from './AdminWatch'
+import { How } from './AdminUi'
 
 // /admin, Evals tab (D82, 11 Oct; Prateek: "a separate section on the dashboard called evals. Design it well"). Top to
 // bottom: how this week's chapters grade against last week's, checking the grader by hand, the last test run (sent by
@@ -107,7 +108,7 @@ function LastRun({ o }: { o: NonNullable<ReturnType<typeof useOverview>> }) {
           <ul className="adm-list">{o.earlier.map((e) => <li key={e.stamp}><span>{when(e.at)} · {e.cases} cases × {e.runs}{e.full ? '' : ' (partial)'}</span><small>gate {e.gate}</small></li>)}</ul>
         </details>
       )}
-      <p className="note">The grades per run read left to right, then their average against last night's; ⚑ and amber mark a topic down a full level or more (look at it, it doesn't fail the gate), green a grade at or above the target, amber "can't tell" a grade the grader couldn't decide (left out of the average). ✗ is a failed safety check or no chapter written, which fails the gate. Cases and floors: evals/cases.json. Full report: evals/runs/{r.stamp}/report.md.</p>
+      <How label="How to read this">The grades per run read left to right, then their average against last night's; ⚑ and amber mark a topic down a full level or more (look at it, it doesn't fail the gate), green a grade at or above the target, amber "can't tell" a grade the grader couldn't decide (left out of the average). ✗ is a failed safety check or no chapter written, which fails the gate. Cases and floors: evals/cases.json. Full report: evals/runs/{r.stamp}/report.md.</How>
     </section>
   )
 }

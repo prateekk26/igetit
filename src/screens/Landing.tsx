@@ -6,9 +6,9 @@ import Rich, { inline } from '../components/Rich'
 import { track } from '../lib/track'
 import { PolicyLinks } from '../components/PolicyLinks'
 import { limitMessage } from '../lib/limits'
-import ShelfStrip, { ShelfButton } from '../components/ShelfStrip'
+import ShelfStrip from '../components/ShelfStrip'
 import { freeChaptersText, TYPED_RULE, typedBoxText, type TypedAllowance } from '../lib/free'
-import { Wordmark } from '../components/Ooh'
+import Ooh, { Wordmark } from '../components/Ooh'
 
 // The landing page, for first-time visitors (DESIGN.md, Landing). A printed risograph poster that sells
 // before it asks: the promise and the box, the ready topics, how tonight works, a real chapter to tap, one line
@@ -144,6 +144,8 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
   useEffect(() => { if (!pickedRow) { setSlow(false); return } const t = setTimeout(() => setSlow(true), 12000); return () => clearTimeout(t) }, [pickedRow])   // the carousel card that flies up while its handbook opens (8 Oct night)
   const [error, setError] = useState<string | null>(null)
   const heroInput = useRef<HTMLInputElement>(null)
+  // C1's three topic chips: ready handbooks that open at once, the top ones first, else the free ones.
+  const chips = [...new Set([...(c?.top ?? []).map((t) => t.topic), ...(c?.shelf ?? []).filter((t) => t.free).map((t) => t.topic)])].slice(0, 3)
 
   // For the owner's /admin funnel: the page was seen, and how far down each visitor got.
   useEffect(() => {
@@ -181,58 +183,81 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
     catch (e: any) { setError(limitMessage(e) ?? (String(e?.message ?? e).includes('busy') ? 'Busy right now. Try again in a few minutes.' : "Couldn't start it just now. Your line is still here; try once more in a minute.")); setBusy(false) }
   }
 
-  const form = (where: 'hero' | 'final') => (
+  // The bottom box (the top one is C1's, in the hero below).
+  const form = (where: 'final') => (
     <form className={`lp-form lp-form-${where}`} onSubmit={(e) => { e.preventDefault(); go() }}>
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What do you keep meaning to learn?</label>
       <div className="lp-field">
-        <input id={`lp-topic-${where}`} ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
+        <input id={`lp-topic-${where}`} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
           placeholder="Public speaking, the stock market, sourdough…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
         <button type="submit" disabled={busy}>{busy ? 'Finding your way…' : 'Show me the way'}</button>
       </div>
       {/* A phone whose typed handbook was removed still lands here with its one free typed topic used (removed ones count). */}
       <p className="lp-allow">{allowance && !allowance.member && allowance.used >= allowance.limit ? typedBoxText(allowance) : TYPED_RULE}</p>
-      {where === 'hero' && (
-        <details className="lp-options">
-          <summary>{level === 'new' ? 'New to this' : 'Know some'}, {voice === 'friend' ? 'talks like a friend' : voice === 'straight' ? 'straight to the point' : 'in stories'}. Change</summary>
-          <div className="lp-seg" role="group" aria-label="Level">
-            <button type="button" aria-pressed={level === 'new'} onClick={() => setLevel('new')}>New to this</button>
-            <button type="button" aria-pressed={level === 'some'} onClick={() => setLevel('some')}>Know some</button>
-          </div>
-          <div className="lp-seg" role="group" aria-label="Voice">
-            <button type="button" aria-pressed={voice === 'friend'} onClick={() => setVoice('friend')}>Like a friend</button>
-            <button type="button" aria-pressed={voice === 'straight'} onClick={() => setVoice('straight')}>Straight</button>
-            <button type="button" aria-pressed={voice === 'stories'} onClick={() => setVoice('stories')}>Stories</button>
-          </div>
-        </details>
-      )}
       {error && <p className="lp-error" role="alert">{error}</p>}
-      {slow && pickedRow && where === 'hero' && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
-      {/* Said once, under the first box (UX review 9 Oct, #10: it was on the page twice, and said chapter 1 after D26). */}
-      {where === 'hero' && <p className="lp-fine">{freeText} free, no sign-up. A free account opens the rest; no card. Topics you start can appear on the Shelf, never with your name.</p>}
-      {where === 'hero' && onExplore && <ShelfStrip where="landing" onOpen={onExplore} />}
-      {where === 'hero' && c && c.shelf.length > 0 && <Carousel items={c.shelf as Shelf[]} busy={busy} picked={pickedRow} onPick={(t) => pick(t, 'row')} onExplore={onExplore} />}
     </form>
   )
 
   return (
     <div className={`lp${pickedRow ? ' lifting' : ''}`}>
-      <header className="lp-top">
-        <a className="lp-mark" href="/" aria-label="I Get It, home"><Wordmark /></a>
-        {onExplore && <ShelfButton onOpen={onExplore} className="lp-top-shelf" />}
-        <button type="button" className="lp-top-cta" onClick={toBox}>Start tonight</button>
-      </header>
-
-      <section className="lp-hero">
-        <div className="lp-hero-copy">
-          {/* Prateek's words, DESIGN.md section 5 */}
-          <p className="lp-for">For everything you saved and never got back to.</p>
-          <h1 className="lp-poster"><span>Seven nights</span> <span className="lp-poster-small">from “I keep meaning to”</span> <span>to “I get it”.</span></h1>
-          <p className="lp-lede">Twenty minutes a day: a small step. 7 days: a small jump.</p>
-          {form('hero')}
+      {/* C1 (14 Oct, Prateek: "do all six layout screens"; the C board "First page"): the marigold stage with Ooh as the
+          dot of a tall "i", then one question, the box, three ready topics to tap, the one button. Under 1024 the stage
+          is the top of the screen; from 1024 it is the left half. The headline was Prateek's "Seven nights…" until
+          14 Oct; the board's line replaces it (agent). The free row and the Shelf strip moved below the top handbooks. */}
+      <section className="lp-hero c1">
+        <div className="c1-stage" aria-hidden="true">
+          <span className="c1-stem" />
+          <Ooh face="curious" tone="cream" className="c1-ooh" size={132} />
+        </div>
+        <header className="c1-top">
+          <a className="lp-mark" href="/" aria-label="I Get It, home"><Wordmark /></a>
+          {onExplore && <button type="button" className="c1-shelf" onClick={() => { track('submit', { via: 'explore_open' }); onExplore() }}>The Shelf</button>}
+        </header>
+        <div className="c1-copy">
+          <div className="c1-main">
+            <h1>What have you been wondering about?</h1>
+            <form className="lp-form lp-form-hero c1-form" onSubmit={(e) => { e.preventDefault(); go() }}>
+              <label htmlFor="lp-topic-hero" className="lp-visually-hidden">What have you been wondering about?</label>
+              <input id="lp-topic-hero" className="c1-input" ref={heroInput} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
+                placeholder="Public speaking, the stock market…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
+              {chips.length > 0 && (
+                <div className="c1-chips" role="group" aria-label="Or open a ready one">
+                  {chips.map((t) => <button key={t} type="button" className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'row')}>{pickedRow === t ? 'Opening…' : t}</button>)}
+                </div>
+              )}
+              <button type="submit" className="c1-go" disabled={busy}>
+                <span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span>
+                <span className="c1-go-arrow" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg></span>
+              </button>
+              {error && <p className="lp-error" role="alert">{error}</p>}
+              {slow && pickedRow && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
+              <details className="lp-options">
+                <summary>{level === 'new' ? 'New to this' : 'Know some'}, {voice === 'friend' ? 'talks like a friend' : voice === 'straight' ? 'straight to the point' : 'in stories'}. Change</summary>
+                <div className="lp-seg" role="group" aria-label="Level">
+                  <button type="button" aria-pressed={level === 'new'} onClick={() => setLevel('new')}>New to this</button>
+                  <button type="button" aria-pressed={level === 'some'} onClick={() => setLevel('some')}>Know some</button>
+                </div>
+                <div className="lp-seg" role="group" aria-label="Voice">
+                  <button type="button" aria-pressed={voice === 'friend'} onClick={() => setVoice('friend')}>Like a friend</button>
+                  <button type="button" aria-pressed={voice === 'straight'} onClick={() => setVoice('straight')}>Straight</button>
+                  <button type="button" aria-pressed={voice === 'stories'} onClick={() => setVoice('stories')}>Stories</button>
+                </div>
+              </details>
+            </form>
+          </div>
+          <p className="c1-says"><Ooh face="curious" size={28} /><span>Tell me in a line. I'll make you a little book, one short chapter a night.</span></p>
+          <p className="lp-fine c1-fine">{allowance && !allowance.member && allowance.used >= allowance.limit ? typedBoxText(allowance) : TYPED_RULE} {freeText} free, no sign-up. Topics you start can appear on the Shelf, never with your name.</p>
         </div>
       </section>
 
       {c && c.top.length > 0 && <TopCarousel items={c.top as Top[]} busy={busy} picked={pickedRow} onPick={(t) => pick(t, 'top')} />}
+
+      {c && (c.shelf.length > 0 || onExplore) && (
+        <section className="lp-shelf c1-more">
+          {onExplore && <ShelfStrip where="landing" onOpen={onExplore} />}
+          {c.shelf.length > 0 && <Carousel items={c.shelf as Shelf[]} busy={busy} picked={pickedRow} onPick={(t) => pick(t, 'row')} onExplore={onExplore} />}
+        </section>
+      )}
 
 
       <section className="lp-steps">

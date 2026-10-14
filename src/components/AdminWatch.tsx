@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { How, Seg } from './AdminUi'
 
 // /admin, AI tab (D72, D73, 11 Oct night): alerts on a failure or cost spike, search across runs, two runs side by
 // side, the rubric scores of every chapter written, and the eval test set with "add a low score to the set".
@@ -17,7 +18,7 @@ export function AdminAlerts() {
   return (
     <section className="adm-card adm-wide">
       <h2>Alerts</h2>
-      <p className="note">Checked every 10 minutes: over 20% of readers' AI calls failing in an hour, or an hour costing over ₹300 and 3 times a typical hour. With ALERT_EMAIL set in the Convex env, each alert is also emailed.</p>
+      <How>Checked every 10 minutes: over 20% of readers' AI calls failing in an hour, or an hour costing over ₹300 and 3 times a typical hour. With ALERT_EMAIL set in the Convex env, each alert is also emailed.</How>
       {open.length === 0 ? <p className="note">Nothing open.</p> : (
         <ul className="adm-list">
           {open.map((a) => (
@@ -41,12 +42,10 @@ export function AdminRuns() {
   return (
     <section className="adm-card adm-wide">
       <h2>Find and compare runs</h2>
-      <p className="note">Search handbooks by words in the topic, or paste a handbook id. Tick two to see their runs side by side, step by step.</p>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input className="input" style={{ flex: '1 1 220px' }} placeholder="Topic words or a handbook id" value={text} onChange={(e) => setText(e.target.value)} />
-        <div className="adm-tabs" role="group" aria-label="Search window">
-          {[7, 30, 0].map((n) => <button key={n} type="button" aria-pressed={days === n} onClick={() => setDays(n)}>{n ? `${n} days` : 'All'}</button>)}
-        </div>
+      <p className="adm-status">Search by topic words or a handbook id. Tick two to see their runs side by side, step by step.</p>
+      <div className="adm-find">
+        <input className="input" type="search" placeholder="Topic words or a handbook id" value={text} onChange={(e) => setText(e.target.value)} aria-label="Find a run" />
+        <Seg label="Search window" value={days} onChange={setDays} options={[7, 30, 0].map((n) => ({ v: n, label: n ? `${n} days` : 'All' }))} />
       </div>
       {hits && (hits.length === 0 ? <p className="note">No handbook matches.</p> : (
         <div className="adm-scroll"><table className="adm-table">
@@ -87,10 +86,11 @@ export function AdminQuality() {
   return (
     <section className="adm-card adm-wide">
       <h2>Chapter quality (rubric {q.rubric})</h2>
-      <p className="note">Every chapter written is scored after it is saved, one lever per call, levels 1 (worst) to 5 (best), with the line that decided it (convex/rubric.ts; docs/evals). {q.scored} scores in this window{q.cantTell ? `, ${q.cantTell} "can't tell"` : ''}.</p>
-      <div className="adm-tabs" role="group" aria-label="Quality window" style={{ margin: '4px 0 12px' }}>
-        {[1, 7, 30].map((n) => <button key={n} type="button" aria-pressed={days === n} onClick={() => setDays(n)}>{n === 1 ? 'Today' : `${n} days`}</button>)}
+      <div className="adm-head-row">
+        <p className="adm-status">{q.scored} scores in this window{q.cantTell ? `, ${q.cantTell} "can't tell"` : ''}.</p>
+        <Seg label="Quality window" value={days} onChange={setDays} options={[1, 7, 30].map((n) => ({ v: n, label: n === 1 ? 'Today' : `${n} days` }))} />
       </div>
+      <How>Every chapter written is scored after it is saved, one lever per call, levels 1 (worst) to 5 (best), with the line that decided it (convex/rubric.ts; docs/evals).</How>
       <div className="adm-scroll"><table className="adm-table">
         <thead><tr><th>Lever</th><th>L1</th><th>L2</th><th>L3</th><th>L4</th><th>L5</th></tr></thead>
         <tbody>{q.levers.map((l) => <tr key={l.lever}><td>{l.name}</td>{l.counts.map((c, i) => <td key={i}>{i < 2 && c ? <b>{c}</b> : c}</td>)}</tr>)}</tbody>
@@ -106,7 +106,7 @@ export function AdminQuality() {
         })}</ul>
       )}
       <h3>Test set: cases from live</h3>
-      <p className="note">The fixed cases live in evals/cases.json; these come from the button above. Both run with npm run eval:gate before a prompt or model change ships.</p>
+      <How>The fixed cases live in evals/cases.json; these come from the button above. Both run with npm run eval:gate before a prompt or model change ships.</How>
       {!cases || cases.length === 0 ? <p className="note">None yet.</p> : (
         <ul className="adm-list">{cases.map((c) => (
           <li key={c.id}><span>{c.name} · {c.list === 'fix' ? 'fix next' : 'must keep working'}<br /><small>{c.topic} · expects {Object.entries(c.expect ?? {}).map(([l, v]) => `${l} ≥ ${v}`).join(', ')}</small></span>
@@ -133,7 +133,8 @@ export function AdminCheckScorer({ progress }: { progress?: { checked: number; g
   return (
     <section className="adm-card adm-wide">
       <h2>Check the grader</h2>
-      <p className="note">Grade a chapter yourself before you see what the AI grader said. 30 chapters, a mix of good and bad, tell you how far to trust it, above all on the bad ones.</p>
+      <p className="adm-status">Grade a chapter yourself before you see what the AI grader said.</p>
+      <How>30 chapters, a mix of good and bad, tell you how far to trust the grader, above all on the bad ones.</How>
       {progress && (
         <div className="adm-progress" aria-label={`${progress.checked} of ${progress.goal} chapters graded`}>
           <span className="adm-fbar"><i style={{ width: `${Math.min(100, (progress.checked / progress.goal) * 100)}%` }} /></span>
@@ -161,7 +162,7 @@ export function AdminCheckScorer({ progress }: { progress?: { checked: number; g
           {next.levers.map((l) => (
             <div key={l.lever} style={{ margin: '10px 0' }}>
               <b>{l.name}</b>
-              <div className="adm-tabs" role="group" aria-label={l.name} style={{ marginTop: 6 }}>
+              <div className="adm-seg" role="group" aria-label={l.name}>
                 {[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" aria-pressed={levels[l.lever] === n} onClick={() => setLevels((x) => ({ ...x, [l.lever]: n }))}>L{n}</button>)}
                 <button type="button" aria-pressed={levels[l.lever] === null} onClick={() => setLevels((x) => ({ ...x, [l.lever]: null }))}>n/a</button>
               </div>

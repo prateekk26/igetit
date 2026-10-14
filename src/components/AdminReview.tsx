@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
+import { How } from './AdminUi'
 import type { Id } from '../../convex/_generated/dataModel'
 
 // /admin "Review" (D32, Prateek 9 Oct: nothing typed goes public until he approves it). Pending rows newest first with
@@ -31,16 +32,16 @@ export default function AdminReview() {
       {r.text.map((t, i) => <p key={i} className="serif" style={{ margin: '4px 0' }}>{t}</p>)}
       <p className="note">Judge: {r.judge ? (r.judge.error ? `failed (${r.judge.error})` : `${r.judge.score} of 12${r.judge.weakest ? `, weakest: ${r.judge.weakest}` : ''}`) : 'not run'} · {r.starts} started, {r.passes} passed chapter 1{r.why ? ` · privacy check: ${r.why}` : ''}</p>
       <div className="adm-review-actions">
-        <button type="button" className="btn" onClick={() => act(r.id, true)}>Approve · put it on the Shelf</button>
+        <button type="button" className="btn adm-btn-sm" onClick={() => act(r.id, true)}>Approve · put it on the Shelf</button>
         {gone === r.id
-          ? <><span className="note">Delete the shared copy for good? Its reader keeps their own handbook.</span><button type="button" className="btn btn-ghost" onClick={() => { destroy({ id: r.id }); setGone(null) }}>Yes, delete forever</button><button type="button" className="quiet" onClick={() => setGone(null)}>Keep</button></>
+          ? <><span className="note">Delete the shared copy for good? Its reader keeps their own handbook.</span><button type="button" className="quiet" onClick={() => { destroy({ id: r.id }); setGone(null) }}>Yes, delete forever</button><button type="button" className="quiet" onClick={() => setGone(null)}>Keep</button></>
           : <button type="button" className="quiet" onClick={() => setGone(r.id)}>Delete forever</button>}
         {/* D42: write it again with today's pipeline; the new chapter 1 comes back here as its own row, this one steps aside. */}
         <button type="button" className="quiet" disabled={rebuilding === r.id} onClick={async () => { setRebuilding(r.id); try { await rebuild({ id: r.id }) } catch (e: any) { setError(String(e?.message ?? e).slice(0, 160)); setRebuilding(null) } }}>{rebuilding === r.id ? 'Rebuilding…' : 'Rebuild'}</button>
         {!auto && (
           <>
             <input className="input" placeholder="Why not (optional)" value={reason[r.id] ?? ''} onChange={(e) => setReason((x) => ({ ...x, [r.id]: e.target.value }))} />
-            <button type="button" className="btn btn-ghost" onClick={() => act(r.id, false)}>Reject</button>
+            <button type="button" className="quiet" onClick={() => act(r.id, false)}>Reject</button>
           </>
         )}
       </div>
@@ -48,19 +49,19 @@ export default function AdminReview() {
   )
   return (
     <section className="adm-card adm-wide">
-      <h2>Review: typed handbooks waiting to go public</h2>
-      <p className="note">A typed topic reaches here once its own reader passed chapter 1 and it cleared the automatic filter (privacy check, judge 9 of 12 or more, a real topic, not one of our phones). Nothing is shared until you tap Approve.</p>
+      <div className="adm-head"><h2>Review</h2><span className="adm-sub">{pending.length ? `${pending.length} typed ${pending.length === 1 ? 'handbook' : 'handbooks'} waiting to go public` : 'Typed handbooks waiting to go public'}</span></div>
+      <How>A typed topic reaches here once its own reader passed chapter 1 and it cleared the automatic filter (privacy check, judge 9 of 12 or more, a real topic, not one of our phones). Nothing is shared until you tap Approve.</How>
       {error && <p className="error">{error}</p>}
       {pending.length === 0 ? <p className="note">Nothing waiting.</p> : <ul className="adm-review">{pending.map((r) => <Row key={r.id} r={r} />)}</ul>}
       {building.length > 0 && <p className="note">Rebuilding now: {building.map((r) => r.topic).join('; ')}. Research, plan and chapter 1 take about three minutes; the new chapter 1 appears above as its own row.</p>}
       {byMe.length > 0 && (
-        <details style={{ marginTop: 12 }}>
+        <details className="adm-fold">
           <summary>Rejected by you ({byMe.length})</summary>
           <ul className="adm-review">{byMe.map((r) => <Row key={r.id} r={r} auto />)}</ul>
         </details>
       )}
       {auto.length > 0 && (
-        <details style={{ marginTop: 12 }}>
+        <details className="adm-fold">
           <summary>Rejected automatically ({auto.length}): approve to override, or delete forever</summary>
           <ul className="adm-review">{auto.map((r) => <Row key={r.id} r={r} auto />)}</ul>
         </details>

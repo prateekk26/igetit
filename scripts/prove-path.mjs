@@ -53,7 +53,7 @@ await step('landing shows the topic box and the ready topics', `!!document.query
 const topic = await ev(`document.querySelector('.lp-carousel button strong')?.textContent ?? ''`)
 console.log(`     first ready topic: ${topic}`)
 await ev(`document.querySelector('.lp-carousel button').click()`)
-if (await step('chapter 1 opens as full-screen frames', `!!document.querySelector('.story') && /Chapter 1 of/.test(document.querySelector('.story-label')?.textContent ?? '')`, 20000)) {
+if (await step('chapter 1 opens as full-screen frames', `!!document.querySelector('.story') && /Chapter 1\\b/.test(document.querySelector('.story-label')?.textContent ?? '')`, 20000)) {
   await step('the first frame has words', `(document.querySelector('.story-text, .story-q')?.textContent ?? '').length > 20`, 10000)
   await step('a picture is on the first frame', `!!document.querySelector('.story-pic img')`, 15000)
   // read to the end: tap the next button until the finish button shows (at most 40 frames)
@@ -70,20 +70,20 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
     console.log(`     teaser for chapter 2: ${await shot('teaser-2')}`)
     await tap('Later')
   }
-  if (await step('the Done screen says chapter 1 is done', `/Chapter 1 of \\d+: done/.test(document.querySelector('h1')?.textContent ?? '')`, 15000)) {
+  if (await step('the Done screen says chapter 1 is done', `/Chapter 1(,| of \\d+: done)|^Done/.test(document.querySelector('h1')?.textContent ?? '')`, 15000)) {
     await step('the rung bar shows one lit segment', `document.querySelectorAll('.rung span.on, .rung span.filling').length === 1`, 5000)
     // D26 (9 Oct, Prateek): the wall is after chapter 2. After chapter 1 the main action is chapter 2, sign-in a quiet line.
     await step('no wall yet: the main action is "Start chapter 2"', `[...document.querySelectorAll('.actionbar .btn')].some((b) => b.textContent.trim().startsWith('Start chapter 2'))`, 5000)
     await step('and "Make a free account" is not a main button here', `![...document.querySelectorAll('.btn')].some((b) => b.textContent.trim().startsWith('Make a free account'))`, 2000)
     console.log(`     Done after chapter 1: ${await shot('done-1')}`)
     await tap('Start chapter 2')
-    if (await step('chapter 2 opens for a fresh phone (free chapter 2)', `!!document.querySelector('.story') && /Chapter 2 of|Remember this\\?/.test(document.querySelector('.story-label')?.textContent ?? '')`, 30000)) {
+    if (await step('chapter 2 opens for a fresh phone (free chapter 2)', `!!document.querySelector('.story') && /Chapter 2\\b|Remember this\\?/.test(document.querySelector('.story-label')?.textContent ?? '')`, 30000)) {
       // read chapter 2 to the end: tap through, and answer any quiz (first option, then the next until one is right)
       let frames2 = 0
       for (; frames2 < 60; frames2++) {
         if (await ev(`!!document.querySelector('.story-finish') && !document.querySelector('.sheet')`)) break
         if (await ev(`!!document.querySelector('.sheet')`)) { await ev(`(() => { const b = [...document.querySelectorAll('.sheet .btn')].find((b) => /Keep going|Try again|Got it|Finish|See your rung/.test(b.textContent)); if (b) b.click(); return !!b })()`); await sleep(700); continue }
-        if (await ev(`!!document.querySelector('.story-opt') && !document.querySelector('.story-next')`)) { await ev(`(() => { const o = [...document.querySelectorAll('.story-opt')].find((b) => !b.disabled && !b.classList.contains('missed') && !b.classList.contains('miss')); if (o) o.click(); return !!o })()`); await sleep(1500); continue }
+        if (await ev(`!!document.querySelector('.story-opt') && !document.querySelector('.story-next')`)) { await ev(`(() => { const o = [...document.querySelectorAll('.story-opt:not(.story-dunno)')].find((b) => !b.disabled && !b.classList.contains('missed') && !b.classList.contains('miss')); if (o) o.click(); return !!o })()`); await sleep(1500); continue }
         if (!(await tapNext())) { if (await ev(`!!document.querySelector('.story-finish')`)) break; await sleep(500); continue }
         await sleep(450)
       }
@@ -96,7 +96,7 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
         await step('the teaser shows chapter 3 with "Open chapter 3 →"', `[...document.querySelectorAll('button')].some((b) => b.textContent.trim().startsWith('Open chapter 3'))`, 5000)
         await tap('Open chapter 3')
       }
-      if (await step('the Done screen says chapter 2 is done', `/Chapter 2 of \\d+: done/.test(document.querySelector('h1')?.textContent ?? '')`, 20000)) {
+      if (await step('the Done screen says chapter 2 is done', `/Chapter 2(,| of \\d+: done)|^Done/.test(document.querySelector('h1')?.textContent ?? '')`, 20000)) {
         await step('the sign-up wall is the main action ("Make a free account")', `[...document.querySelectorAll('button')].some((b) => b.textContent.trim().startsWith('Make a free account'))`, 5000)
         await step('and it is the only one (no doubled button)', `[...document.querySelectorAll('button')].filter((b) => b.textContent.trim().startsWith('Make a free account')).length === 1`, 2000)
         await step('the wall card names chapter 3 under the outcome line', `[...document.querySelectorAll('h2')].some((h) => /Chapter 3 is free with an account/.test(h.textContent))`, 2000)
@@ -116,7 +116,7 @@ console.log(`\nScenario 2: post link ?t=public-speaking&ch=2`)
 await send('Storage.clearDataForOrigin', { origin: BASE, storageTypes: 'all' }).catch(() => {})
 await goto(`${BASE}/?t=public-speaking&ch=2&utm_source=internal`)
 await step('the link opens the topic, not the landing page', `!document.querySelector('.lp') && (!!document.querySelector('.story') || !!document.querySelector('.roadmap-hero') || !!document.querySelector('#email'))`, 25000)
-await step('a fresh phone reads chapter 2 straight away (free chapter 2, D26)', `!!document.querySelector('.story') && /Chapter 2 of|Remember this\\?/.test(document.querySelector('.story-label')?.textContent ?? '')`, 20000)
+await step('a fresh phone reads chapter 2 straight away (free chapter 2, D26)', `!!document.querySelector('.story') && /Chapter 2\\b|Remember this\\?/.test(document.querySelector('.story-label')?.textContent ?? '')`, 20000)
 await step('no sign-in screen in the way', `!document.querySelector('#email')`, 1000)
 console.log(`     screenshot: ${await shot('post-link')}`)
 
@@ -134,7 +134,7 @@ try { const r = await (await fetch(`${CONVEX}/api/query`, { method: 'POST', head
 if (!sharedId) { console.log('     (no shared handbook on this deployment; the real-id half is skipped)') } else {
   await send('Storage.clearDataForOrigin', { origin: BASE, storageTypes: 'all' }).catch(() => {})
   await goto(`${BASE}/?l=${sharedId}&utm_source=internal`)
-  await step('a real id opens chapter 1 of that handbook, no landing page', `!document.querySelector('.lp') && /Chapter 1 of/.test(document.querySelector('.story-label')?.textContent ?? '')`, 30000)
+  await step('a real id opens chapter 1 of that handbook, no landing page', `!document.querySelector('.lp') && /Chapter 1\\b/.test(document.querySelector('.story-label')?.textContent ?? '')`, 30000)
   console.log(`     screenshot: ${await shot('shared-link')}`)
 }
 

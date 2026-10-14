@@ -20,6 +20,7 @@ import { ShelfButton } from './components/ShelfStrip'
 import { nameOf, isId } from './lib/name'
 import { deferred, preloadWhenIdle } from './lib/deferred'
 import { Wordmark } from './components/Ooh'
+import Known from './screens/Known'
 
 // Screens outside the first screen (11 Oct): fetched in the background once the first screen is up, so they still
 // open instantly; Tune and Compare, rarely opened, load when opened.
@@ -30,7 +31,7 @@ const Shelf = deferred(() => import('./screens/Shelf'))
 const Tune = deferred(() => import('./screens/Tune'))
 const Compare = deferred(() => import('./screens/Compare'))
 
-type View = 'auto' | 'plan' | 'chapter' | 'done' | 'signin' | 'start-again' | 'tune' | 'compare' | 'library' | 'pricing' | 'explore'
+type View = 'auto' | 'plan' | 'chapter' | 'done' | 'signin' | 'start-again' | 'tune' | 'compare' | 'library' | 'pricing' | 'explore' | 'known'
 
 export default function App() {
   useEffect(() => preloadWhenIdle([Done, SignIn, Shelf, Pricing]), [])   // the reader's next screens, once this one is up
@@ -307,10 +308,13 @@ export default function App() {
     if (!k || haveMap[k]) continue
     haveMap[k] = r.passed >= (r.total ?? 7) ? 'You finished it' : r.passed > 0 || (r.card ?? 0) > 0 ? `You're on chapter ${r.current}` : 'In your handbooks'
   }
+  goTonight = () => { setDoneN(null); setView(hb ? 'plan' : 'library'); window.scrollTo({ top: 0 }) }
+  goKnown = () => { setDoneN(null); setView('known'); window.scrollTo({ top: 0 }) }
+  const tabs = (lib?.handbooks?.length ?? 0) > 0 || !!hb   // C4's bar shows once there is a handbook to come back to
   // Explore: ready topics and the ones other readers started (6 Oct).
   if (view === 'explore' || (hold === 'explore' && (data === undefined || holdable))) {
     return (
-      <Shell hideShelf>
+      <Shell hideShelf tab={tabs ? 'shelf' : undefined}>
         <Shelf onBack={() => { setShelfNotice(null); setView(exploreFrom) }} notice={shelfNotice} have={haveMap}
           onReady={async (topic) => { setHold('explore'); const r = await create({ topic, level: 'new', voice: 'friend', deviceToken: token }); pin(String(r.handbookId)); setView('auto') }}
           onShared={async (id) => { setHold('explore'); const r = await startFromLibrary({ libraryId: id, deviceToken: token }); pin(String(r.handbookId)); setView('auto') }} />
@@ -324,11 +328,18 @@ export default function App() {
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   if (view === 'library' || (hold === 'library' && data === undefined)) {
     return (
-      <Shell back={hb ? { label: 'Handbook', onClick: () => setView('plan') } : undefined}>
+      <Shell back={hb ? { label: 'Handbook', onClick: () => setView('plan') } : undefined} tab={tabs ? 'tonight' : undefined}>
         <Library rows={libRows as any} signedIn={!!lib?.signedIn} isMember={isMember} freeChapters={freeChapters} activeId={hb?._id} onOpen={(id) => { setHold('library'); pin(id); setDoneN(null); setView('plan') }}
           onContinue={(id) => { setHold('library'); pin(id); setDoneN(null); setReadingN(null); setView('chapter') }}
           onRemove={async (id) => { await removeHandbook({ handbookId: id as any, deviceToken: token }); if (pinned === id) { pin(null); setDoneN(null) } }}
           onNew={startAnother} onSignIn={() => signIn('library')} onPlans={goPricing} onExplore={goExplore} />
+      </Shell>
+    )
+  }
+  if (view === 'known') {
+    return (
+      <Shell tab={tabs ? 'known' : undefined}>
+        <Known deviceToken={token} onOpen={(id, n) => { pin(String(id)); setReadingN(n); setDoneN(null); setView('chapter') }} />
       </Shell>
     )
   }
@@ -621,7 +632,7 @@ export default function App() {
 
   return (
     // The handbook page had no way back (Prateek, 9 Oct: "the back button seems conspicuously missing"): it goes to Your handbooks.
-    <Shell onSignOut={isAuthenticated ? signOut : undefined} rail={rail} back={libRows.length > 0 ? { label: 'Your handbooks', onClick: () => setView('library') } : undefined}>
+    <Shell onSignOut={isAuthenticated ? signOut : undefined} rail={rail} back={libRows.length > 0 ? { label: 'Your handbooks', onClick: () => setView('library') } : undefined} tab="tonight">
       {/* "Not now" on the wall only quiets the ask when the next chapter really needs an account (UX review 9 Oct, #4):
           before, one "Not now" made every handbook's free chapter 2 say it needed one. */}
       <Plan needsAccount={!isAuthenticated && currentN > freeChapters} {...({ declined: wallDeclined && !isAuthenticated && currentN > freeChapters, onShelf: goExplore } as any)}
@@ -663,6 +674,9 @@ export default function App() {
 // The wordmark takes you home (7 Oct, Prateek): App sets this on every render; there is one App.
 let goHome: (() => void) | null = null
 let goShelf: (() => void) | null = null
+// C4's tab bar (14 Oct): Tonight (the handbook you're on), What you know, the Shelf.
+let goTonight: (() => void) | null = null
+let goKnown: (() => void) | null = null
 
 // A ?l= link's first second (D25): the one book, lifted off its plank the way a Shelf tap lifts it, while the handbook
 // is copied to this phone. No landing page, no splash. The cover comes from the Shelf's list when it has answered.
@@ -688,13 +702,13 @@ function LinkOpening({ book }: { book: { key: string; topic: string; cover: stri
   )
 }
 
-function Shell({ children, onSignOut, rail, back, hideShelf }: { children: React.ReactNode; onSignOut?: () => Promise<void> | void; rail?: React.ReactNode; back?: { label: string; onClick: () => void }; hideShelf?: boolean }) {
+function Shell({ children, onSignOut, rail, back, hideShelf, tab }: { children: React.ReactNode; onSignOut?: () => Promise<void> | void; rail?: React.ReactNode; back?: { label: string; onClick: () => void }; hideShelf?: boolean; tab?: 'tonight' | 'known' | 'shelf' }) {
   // The member mark (7 Oct): paying should show, on every screen.
   const member = useQuery(api.membership.status, { deviceToken: deviceToken() })?.member
   // On a phone the side menu is hidden, so ☰ opens the same menu as a sheet (7 Oct, Prateek).
   const [menu, setMenu] = useState(false)
   return (
-    <div className="shell">
+    <div className={`shell${tab ? ' has-tabs' : ''}`}>
       <header className="top">
         <button type="button" className="wordmark wordmark-btn" onClick={() => goHome?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Twenty minutes at a time.</small></button>
         {/* The Shelf (8 Oct, Prateek): always one tap away, on every screen. */}
@@ -712,6 +726,13 @@ function Shell({ children, onSignOut, rail, back, hideShelf }: { children: React
             {onSignOut && <button type="button" className="quiet" onClick={() => onSignOut()}>Sign out</button>}
           </nav>
         </Sheet>
+      )}
+      {tab && (
+        <nav className="tabbar" aria-label="Main">
+          {([['tonight', 'Tonight', goTonight], ['known', 'What you know', goKnown], ['shelf', 'Shelf', goShelf]] as const).map(([k, label, go]) => (
+            <button key={k} type="button" aria-current={tab === k ? 'page' : undefined} onClick={() => { if (tab !== k) go?.() }}><span className="tabbar-dot" aria-hidden="true" />{label}</button>
+          ))}
+        </nav>
       )}
       {rail && <aside className="rail">{rail}</aside>}
       <main>{children}</main>

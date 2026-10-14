@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { How, Seg } from './AdminUi'
 
 // /admin, "AI pipeline" (8 Oct): every AI and media call behind a handbook, from the goal question to the last picture.
 // Top line, each step (time, failures, retries, tokens, cost), each handbook with its call timeline and a link to its
@@ -43,10 +44,11 @@ export default function AdminPipeline() {
   return (
     <section className="adm-card adm-wide">
       <h2>AI pipeline</h2>
-      <p className="note">Every AI and photo call behind a handbook: time, tokens, retries, failures and estimated cost. Prices are list prices at ₹84 a dollar; the providers' bills are the real numbers.</p>
-      <div className="adm-tabs" role="group" aria-label="Pipeline window" style={{ margin: '4px 0 12px' }}>
-        {WINDOWS.map((w) => <button key={w.d} type="button" aria-pressed={days === w.d} onClick={() => setDays(w.d)}>{w.label}</button>)}
+      <div className="adm-head-row">
+        <p className="adm-status">Every AI and photo call behind a handbook.</p>
+        <Seg label="Pipeline window" value={days} onChange={setDays} options={WINDOWS.map((w) => ({ v: w.d, label: w.label }))} />
       </div>
+      <How>Time, tokens, retries, failures and estimated cost for each call. Prices are list prices at ₹84 a dollar; the providers' bills are the real numbers.</How>
 
       <ul className="adm-list">
         <li><span>Typed handbooks</span><b>{t.handbooks}</b></li>
