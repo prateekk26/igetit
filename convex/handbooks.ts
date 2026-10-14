@@ -103,7 +103,7 @@ function owns(h: Doc<"handbooks">, who: { userId: Id<"users"> | null; deviceToke
   return false;
 }
 
-async function ownedHandbook(ctx: QueryCtx | MutationCtx, handbookId: Id<"handbooks">, deviceToken?: string) {
+export async function ownedHandbook(ctx: QueryCtx | MutationCtx, handbookId: Id<"handbooks">, deviceToken?: string) {
   const h = await ctx.db.get(handbookId);
   if (!h) throw new Error("No such handbook");
   if (!owns(h, await viewer(ctx, deviceToken))) throw new Error("Not yours");
@@ -406,7 +406,7 @@ function recallWithTier(recall: any[], tiers: any, tier: Tier) {
   return Array.isArray(alt) && alt.length ? recall.map((c, i) => alt[i] ?? c) : recall;
 }
 
-const RECALL_BASE = 100;   // recall quizzes are addressed as cardIndex 100, 101 on their chapter
+export const RECALL_BASE = 100;   // recall quizzes are addressed as cardIndex 100, 101 on their chapter
 
 export const recallFor = query({
   args: { handbookId: v.id("handbooks"), deviceToken: v.optional(v.string()) },
@@ -1471,9 +1471,12 @@ export const reteachFor = query({
 });
 
 // The check. Returns the feedback the client is allowed to see; the rung moves only on a pass.
+// auto (15 Oct, Prateek: "We want auto scroll (quizes auto answered)"): in auto-play the right option is filled in for
+// the reader and stored with auto: true, so it passes the quiz (the chapter can finish and the next one open) but never
+// reads as a miss or a first-try win.
 export const recordAnswer = mutation({
-  args: { handbookId: v.id("handbooks"), chapter: v.number(), cardIndex: v.number(), optionId: v.string(), attempt: v.number(), recall: v.optional(v.boolean()), deviceToken: v.optional(v.string()) },
-  handler: async (ctx, { handbookId, chapter, cardIndex, optionId, attempt, recall, deviceToken }) => {
+  args: { handbookId: v.id("handbooks"), chapter: v.number(), cardIndex: v.number(), optionId: v.string(), attempt: v.number(), recall: v.optional(v.boolean()), deviceToken: v.optional(v.string()), auto: v.optional(v.boolean()) },
+  handler: async (ctx, { handbookId, chapter, cardIndex, optionId: tapped, attempt, recall, deviceToken, auto }) => {
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
     const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", chapter)).unique();
     // Grade against the version this reader was shown (quiz versions, 7 Oct).
@@ -1484,6 +1487,7 @@ export const recordAnswer = mutation({
     if (!card || card.type !== "exercise") throw new Error("Not an exercise");
     // D38: an easier or harder version of the quiz may lack its own line; the base card's serves.
     const baseWhy: string | null = ((cardIndex >= RECALL_BASE ? ((ch?.recallCards ?? []) as any[])[cardIndex - RECALL_BASE] : (ch?.cards as any[] | undefined)?.[cardIndex]) as any)?.whyRight ?? null;
+    const optionId = auto ? (card.kind === "poll" ? card.options?.[0]?.id ?? tapped : card.answer) : tapped;
     const correct = card.kind === "poll" ? true : card.answer === optionId;   // story mode polls have no wrong answer
     // Passing the chapter's last quiz starts writing the next chapter, so the closing card and the Done
     // screen hide most of the wait. Its writer reads how this chapter went (readingReport).
@@ -1493,7 +1497,7 @@ export const recordAnswer = mutation({
     const lastQuiz = Math.max(...(ch!.cards as any[]).map((c, i) => (c?.type === "exercise" ? i : -1)));
     if (correct && !recall && cardIndex === lastQuiz && chapter < total) await ensureChapter(ctx, h, chapter + 1);
     const key = `${chapter}:${cardIndex}`;
-    await ctx.db.insert("answers", { handbookId, chapter, cardIndex, optionId, correct, attempt, recall: !!recall, at: Date.now() });
+    await ctx.db.insert("answers", { handbookId, chapter, cardIndex, optionId, correct, attempt, recall: !!recall, at: Date.now(), ...(auto ? { auto: true } : {}) });
     if (p && !recall) {
       const passed = new Set(p.passedExercises); const missed = new Set(p.missedExercises);
       if (correct && attempt === 1) passed.add(key);
@@ -1513,12 +1517,12 @@ export const recordAnswer = mutation({
         if (cardIndex !== lastQuiz && chapter < total) await ensureChapter(ctx, h, chapter + 1);   // passed on an earlier quiz
         if (chapter === 1) { if (h.source === "cache") await ctx.scheduler.runAfter(0, internal.shelf.countReady, { topic: h.topic, passed: true, handbookId }); await ctx.scheduler.runAfter(0, internal.library.countPass, { handbookId }); await ctx.scheduler.runAfter(0, internal.doctor.countPass, { handbookId }); if (h.source === "live" && !(h as any).fromLibrary && !(h as any).test) await ctx.scheduler.runAfter(0, internal.library.consider, { handbookId }); }
         const right = card.options.find((o: any) => o.id === optionId);
-        return { correct: true as const, text: right?.text ?? "", why: card.whyRight ?? baseWhy, chapterPassed: true as const };
+        return { correct: true as const, text: right?.text ?? "", why: card.whyRight ?? baseWhy, chapterPassed: true as const, ...(auto ? { optionId } : {}) };
       }
     }
     if (correct) {
       const right = card.options.find((o: any) => o.id === optionId);
-      return { correct: true as const, text: right?.text ?? "", why: card.whyRight ?? baseWhy };
+      return { correct: true as const, text: right?.text ?? "", why: card.whyRight ?? baseWhy, ...(auto ? { optionId } : {}) };
     }
     const whyNot = card.whyNot?.[optionId] ?? "Not that one.";
     if (attempt >= 2) {

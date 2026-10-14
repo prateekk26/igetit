@@ -963,3 +963,99 @@ div.c3-row { cursor: default; }
   .c9-stage { margin-left: calc(-1 * max(24px, env(safe-area-inset-left))); margin-right: calc(-1 * max(24px, env(safe-area-inset-right))); }
   .c12-pills { margin-left: -24px; margin-right: -24px; padding: 0 24px; }
 }
+
+/* ---------- 15 Oct: slides with colour (Prateek: "There were clear background colors in the last version which changed
+   per slide… Right now it is just like notes app") ---------- */
+:root { --serif: 'Fraunces', Georgia, serif; }
+.story-frame.tone-marigold { background: #F2A93B url(/images/grain.png); background-size: 256px; --fg: #1B1A17; --fg2: rgba(27, 26, 23, 0.78); --mark: #1B1A17; --mark-fg: #FAF7F0; --pop: #1B1A17; --voice: #1B1A17; --chip: rgba(27, 26, 23, 0.1); --go: #1B1A17; --go-fg: #F2A93B; }
+.story-frame.tone-coral { background: #E8604C url(/images/grain.png); background-size: 256px; --fg: #1B1A17; --fg2: rgba(27, 26, 23, 0.82); --mark: #FAF7F0; --mark-fg: #1B1A17; --pop: #1B1A17; --voice: #1B1A17; --chip: rgba(27, 26, 23, 0.12); --go: #1B1A17; --go-fg: #E8604C; }
+.story-frame.tone-indigo { background: #2F3478 url(/images/grain-light.png); background-size: 256px; --fg: #FAF7F0; --fg2: rgba(250, 247, 240, 0.82); --mark: #F2A93B; --mark-fg: #1B1A17; --pop: #F2A93B; --voice: #F9D79B; --chip: rgba(250, 247, 240, 0.14); --go: #F2A93B; --go-fg: #1B1A17; }
+.story-frame.tone-ink { background: #1B1A17 url(/images/grain-light.png); background-size: 256px; --fg: #FAF7F0; --fg2: rgba(250, 247, 240, 0.8); --mark: #F2A93B; --mark-fg: #1B1A17; --pop: #F2A93B; --voice: #F9D79B; --chip: rgba(250, 247, 240, 0.14); --go: #F2A93B; --go-fg: #1B1A17; }
+.story-frame.tone-green { background: #1F6B45 url(/images/grain-light.png); background-size: 256px; --fg: #FAF7F0; --fg2: rgba(250, 247, 240, 0.9); --mark: #F2A93B; --mark-fg: #1B1A17; --pop: #F9D79B; --voice: #F9D79B; --chip: rgba(250, 247, 240, 0.16); --go: #F2A93B; --go-fg: #1B1A17; }
+.story-frame.tone-cream { background: var(--paper); --fg: #1B1A17; --fg2: #4D4A43; --mark: #F2A93B; --mark-fg: #1B1A17; --pop: #2F3478; --voice: #2F3478; --chip: var(--paper-2); --go: #F2A93B; --go-fg: #1B1A17; }
+.story-frame { color: var(--fg); transition: background-color 300ms; }
+.story-frame .story-head .story-label, .story-frame .story-folio, .story-frame .story-left { color: var(--fg2); }
+.story-frame .story-close { color: var(--fg); }
+.story-frame .story-askbtn { color: var(--voice); }
+.story-frame .story-askbtn:hover, .story-frame .story-askbtn[aria-pressed="true"] { background: var(--chip); }
+.story-frame .story-idea, .story-frame .story-title, .story-frame .story-text, .story-frame .story-q { color: var(--fg); }
+.story-frame .story-idea strong { background-image: linear-gradient(var(--mark), var(--mark)); color: var(--mark-fg); }
+.story-frame .story-text strong { background-image: linear-gradient(var(--mark), var(--mark)); color: var(--mark-fg); }
+.story-frame .story-tools button:not(.story-next), .story-frame .story-tools > span:not(.story-tapnote):not(.story-left) { background: var(--chip); color: var(--fg); }
+.story-frame .story-tools .story-read[aria-pressed="true"] { background: var(--fg); color: var(--mark-fg); }
+.story-frame .story-tools .story-next { background: var(--go); color: var(--go-fg); }
+.story-frame .story-unsure, .story-frame .c8 .ask-a, .story-frame .story-kept .ask-a { color: var(--voice); }
+.story-frame .c8 .ask-label, .story-frame .c8 .ask-src { color: var(--fg2); }
+.story-frame .c8 .ask-q { background: var(--chip); color: var(--fg); }
+.story-frame .ask-keep { color: var(--fg); }
+.story-frame .story-finish { background: var(--go); color: var(--go-fg); }
+.story-frame .story-caution { color: var(--fg); border-color: var(--fg); }
+/* the kicker as a sticker: a tilted pill in the page's marker colour */
+.story-frame .story-kicker { align-self: flex-start; display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--mark); color: var(--mark-fg); transform: rotate(-2deg); font: 700 14px var(--sans); margin-bottom: 14px; }
+.story-frame.tone-cream .story-kicker { background: #2F3478; color: #FAF7F0; }
+
+/* A page without a picture sits in the middle of the screen; one with a picture starts at the top. */
+.story-body.no-pic > :first-child { margin-top: auto; }
+.story-body.no-pic > :last-child { margin-bottom: auto; }
+.story-body.no-pic:has(> .story-options) > :first-child { margin-top: 0; }
+.story-body.no-pic .story-text.size-md, .story-body.no-pic .story-text.size-lg { font-size: 1.375rem; line-height: 1.45; }
+
+/* type with a voice of its own */
+.story-text em, .story-idea em, .story-q em { font-family: var(--serif); font-style: italic; font-weight: 600; letter-spacing: -0.005em; }
+.story-text .rt-num { font-weight: 800; color: var(--pop); font-variant-numeric: tabular-nums; }
+.story-text.size-xl .rt-num { font-family: var(--head); }
+.story-text .rt-quote { text-decoration: underline wavy var(--pop); text-decoration-thickness: 2px; text-underline-offset: 5px; text-decoration-skip-ink: none; }
+.story-text.size-xl { font-size: clamp(2rem, 1.6rem + 2vw, 2.5rem); line-height: 1.08; }
+.story-body.no-pic .story-text.size-xl p:first-child::first-letter { color: var(--pop); }
+.story-frame.tone-indigo .story-text.size-xl, .story-frame.tone-ink .story-text.size-xl { text-wrap: balance; }
+
+/* 15 Oct: a right answer is a moment. A marigold card, a big line, a burst from the option, the chapter's tally. */
+.story-reveal.won { padding: 18px 18px 16px; border-radius: 22px; background: #F2A93B url(/images/grain.png); background-size: 256px; animation: c7-win 520ms cubic-bezier(0.3, 1.4, 0.4, 1) both; }
+.story-reveal.won .verdict { font: 800 30px/1.05 var(--head); font-variation-settings: 'wdth' 85, 'opsz' 60; letter-spacing: -0.01em; color: #1B1A17; align-items: center; }
+.story-reveal.won .verdict .ooh { margin-top: 0; }
+.story-reveal.won .serif { margin-left: 0; color: #1B1A17; font-weight: 600; }
+.story-reveal.won .story-again { margin-left: 0; color: #1B1A17; }
+.story-reveal.won .btn.c-go { background: #1B1A17; color: #FAF7F0; }
+.story-reveal.won .btn.c-go .go-arrow, .story-reveal.won .btn.c-go svg { color: #F2A93B; }
+.story-reveal.won .quiet { color: #1B1A17; }
+.c7-tally { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; font: 700 15px var(--sans); color: #1B1A17; }
+.c7-tally:empty { display: none; }
+.c7-tally span { padding: 3px 10px; border-radius: 999px; background: rgba(27, 26, 23, 0.1); }
+.c7-tally .c7-streak { background: #1B1A17; color: #F2A93B; }
+@keyframes c7-win { 0% { transform: translateY(16px) scale(0.92); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.story-opt { position: relative; overflow: visible; }
+.story-opt.pass { animation: c7-optpop 480ms cubic-bezier(0.3, 1.5, 0.4, 1) both; }
+@keyframes c7-optpop { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: none; } }
+.c7-burst { position: absolute; left: 28px; top: 50%; width: 0; height: 0; pointer-events: none; }
+.c7-burst i { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #F2A93B; transform: rotate(var(--a)) translateX(0); opacity: 0; animation: c7-fly 760ms cubic-bezier(0.1, 0.7, 0.3, 1) 60ms both; }
+.c7-burst i:nth-child(4n+1) { background: #E8604C; } .c7-burst i:nth-child(4n+2) { background: #2F3478; } .c7-burst i:nth-child(4n+3) { background: #1F6B45; width: 8px; height: 8px; }
+@keyframes c7-fly { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(0.6); } 70% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(64px) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .story-reveal.won, .story-opt.pass, .c7-burst i { animation: none; } .c7-burst { display: none; } }
+
+/* Read it to me and Auto-play side by side; the header's Auto pill stops it from any page. */
+.story-tools-left { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.story-tools-left .story-left { flex-basis: 100%; }
+.story-tools .story-auto { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px 0 14px; border-radius: 24px; font: 700 16px var(--sans); }
+.story-frame .story-tools .story-auto[aria-pressed="true"] { background: var(--fg); color: var(--mark-fg); }
+.story-autohead { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 22px; background: var(--fg); color: var(--mark-fg); font: 700 14px var(--sans); cursor: pointer; animation: auto-breathe 2.4s ease-in-out infinite; }
+@keyframes auto-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
+@media (prefers-reduced-motion: reduce) { .story-autohead { animation: none; } }
+.c9-auto { margin: 16px 0 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 22px; background: var(--paper-2); font: 600 16px/1.35 var(--sans); color: var(--voice); }
+.c9-auto .quiet { min-height: 44px; padding: 0 12px; }
+
+/* An explainer figure: the board's ink plate with grain, the drawing building itself on top. */
+.story-figure { position: relative; margin: 0 0 20px; border-radius: 22px; overflow: hidden; background: #1B1A17 url(/images/grain-light.png); background-size: 256px; animation: picin 500ms var(--ease) both; }
+.story-figure-svg svg { display: block; width: 100%; height: auto; }
+.story-frame.tone-ink .story-figure { background-color: #2A2824; box-shadow: inset 0 0 0 1px rgba(250, 247, 240, 0.12); }
+.story-idea + .story-figure { margin-top: 0; }
+/* On a laptop the page's colour fills the screen, not just the open book; the ✕ keeps its ink on its leaf circle. */
+.story:has(> .story-frame.tone-marigold) { background: #F2A93B url(/images/grain.png); background-size: 256px; }
+.story:has(> .story-frame.tone-coral) { background: #E8604C url(/images/grain.png); background-size: 256px; }
+.story:has(> .story-frame.tone-indigo) { background: #2F3478 url(/images/grain-light.png); background-size: 256px; }
+.story:has(> .story-frame.tone-ink) { background: #1B1A17 url(/images/grain-light.png); background-size: 256px; }
+.story:has(> .story-frame.tone-green) { background: #1F6B45 url(/images/grain-light.png); background-size: 256px; }
+@media (min-width: 1024px) {
+  .story-frame .story-close { color: #1B1A17; }
+  .story-body.no-pic .story-text.size-md, .story-body.no-pic .story-text.size-lg { font-size: 1.75rem; line-height: 1.4; max-width: 30ch; }
+  .story-body.no-pic .story-text.size-xl { font-size: 3rem; }
+}

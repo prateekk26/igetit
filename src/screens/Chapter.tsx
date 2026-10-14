@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery } from 'convex/react'
+import { useAction, useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { speak, stopSpeaking, useLocalVoice } from '../lib/speak'
+import { autoOn, playUrl, readMs, setAuto, stopAudio } from '../lib/pageVoice'
 import { track } from '../lib/track'
 import Rich, { inline } from '../components/Rich'
 import { AskBox, AskThread } from '../components/AskCard'
@@ -13,6 +14,7 @@ import TryItFrame, { type TryItCard } from '../components/TryItFrame'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useOnline } from '../lib/online'
 import Ooh, { GoArrow } from '../components/Ooh'
+import Figure from '../components/Figure'
 
 export type Card =
   | { type: 'picture' | 'example' | 'mistake' | 'try' | 'teach'; title?: string; body: string }
@@ -24,7 +26,7 @@ export type Card =
   | TryItCard
 
 export type AnswerResult =
-  | { correct: true; text: string; why: string | null; chapterPassed?: true }
+  | { correct: true; text: string; why: string | null; chapterPassed?: true; optionId?: string }
   | { correct: false; whyNot: string; reteach: string; reveal: { id: string; text: string } | null }
 
 type Item = { chapter: number; cardIndex: number; card: Card; recall?: boolean }
@@ -43,7 +45,7 @@ type Props = {
   startAt: number
   startPart?: number
   onPosition: (cardIndex: number, part: number) => void
-  onAnswer: (item: Item, optionId: string, attempt: number) => Promise<AnswerResult>
+  onAnswer: (item: Item, optionId: string, attempt: number, auto?: boolean) => Promise<AnswerResult>
   onFinish: (stats: { minutes: number; right: number; total: number }) => Promise<void>
   // Body skills (8 Oct): logging a set on a "do it" card; the first set passes the chapter.
   onLog?: (item: Item, count: number, feel: 'easy' | 'right' | 'hard') => Promise<{ chapterPassed: boolean }>
@@ -90,7 +92,10 @@ function paragraphs(text: string | undefined): string[] {
   return out.length ? out : [text]
 }
 
-const TEACH_TONES: Tone[] = ['marigold', 'green', 'indigo', 'cream']
+// 15 Oct (Prateek: "There were clear background colors in the last version which changed per slide… Right now it is just
+// like notes app"): every page has a colour again, in theme C's inks. A teaching page takes the next colour in the cycle,
+// never the same as the page before; a story is indigo, a mistake coral, a dare green, a question stays on paper (C7).
+const TEACH_TONES: Tone[] = ['marigold', 'ink', 'green', 'cream', 'indigo', 'marigold', 'coral', 'cream']
 const KICKER: Record<string, string> = { example: 'Story time', mistake: 'The mistake everyone makes', try: "Tonight's dare (optional)", guess: 'Quick guess', apply: 'Your call', recall: 'Lock it in' }
 
 function sizeOf(text: string) {
@@ -100,6 +105,12 @@ function sizeOf(text: string) {
 
 // The chapter as Stories: full-screen frames, one idea each, tap or swipe through.
 // D38: for an exercise with no added line yet (an old copy the backfill did not reach): a short, true line, by the card's key so it does not flicker. Copy (agent).
+// 15 Oct (Prateek: "Answering the question correctly isn't very encouraging and inspire a bit of sense of achievement"):
+// a right answer lands as a marigold card with a big line, a burst from the option, Ooh's hop, the chapter's count of
+// checks done and a streak. Copy (agent).
+const WINS_FIRST = ['Nailed it!', 'Spot on!', "That's it!", 'Exactly right!', 'Sharp!']
+const WINS_LATER = ['Got there!', "That's the one!", 'Yes, that one!']
+const pick = (xs: string[], key: string) => { let h = 7; for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return xs[h % xs.length] }
 const CHEERS = ['Got it in one.', "That one's yours now.", 'No hint needed.', 'Clean. Next.', 'You saw it straight away.']
 const cheer = (key: string) => { let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CHEERS[h % CHEERS.length] }
 export default function Chapter({ total = 7, topic, n, title, cards, recall, passed: _passed, passedExercises, startAt, startPart = 0, onPosition, onAnswer, onFinish, onLog, loggedSets = [], lastTime, recapReteach = [], pictures, credits = {}, alts = {}, caution, onExit, handbookId, deviceToken, onStars, teaser, onAfter }: Props) {
@@ -122,13 +133,14 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // For the Done screen's line: minutes since this chapter was opened, and quizzes right on the first try.
   const openedAt = useRef(Date.now())
   const firstTries = useRef<Map<string, boolean>>(new Map())
+  const streak = useRef(0)
 
   const frames: Frame[] = useMemo(() => {
     const out: Frame[] = []
     let t = 0
     for (const item of items) {
       const c = item.card
-      if (c.type === 'exercise') { out.push({ item, part: 0, parts: 1, tone: 'ink' }); continue }
+      if (c.type === 'exercise') { out.push({ item, part: 0, parts: 1, tone: 'cream' }); continue }
       if (c.type === 'watch') { out.push({ item, part: 0, parts: 1, tone: 'indigo' }); continue }
       if (c.type === 'move') { out.push({ item, part: 0, parts: 1, tone: 'cream' }); continue }
       if (c.type === 'doit') { out.push({ item, part: 0, parts: 1, tone: 'green' }); continue }
@@ -138,8 +150,11 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
       if (typeof (c as any).body !== 'string') continue
       const ps = paragraphs(c.body)
       ps.forEach((text, part) => {
-        const tone: Tone = c.type === 'picture' ? (part === 0 ? 'ink' : 'indigo') : c.type === 'example' ? 'cream' : c.type === 'mistake' ? 'coral' : c.type === 'try' ? 'green' : TEACH_TONES[t++ % TEACH_TONES.length]
-        out.push({ item, text, part, parts: ps.length, tone, cover: c.type === 'picture' && part === 0 && !item.recall })
+        const cover = c.type === 'picture' && part === 0 && !item.recall
+        let tone: Tone = cover ? 'indigo' : c.type === 'example' ? (part % 2 ? 'ink' : 'indigo') : c.type === 'mistake' ? 'coral' : c.type === 'try' ? 'green' : TEACH_TONES[t++ % TEACH_TONES.length]
+        const prev = out[out.length - 1]?.tone
+        if (tone === prev) tone = TEACH_TONES[t++ % TEACH_TONES.length] === prev ? TEACH_TONES[t++ % TEACH_TONES.length] : TEACH_TONES[(t - 1) % TEACH_TONES.length]
+        out.push({ item, text, part, parts: ps.length, tone, cover })
       })
     }
     return out
@@ -194,6 +209,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // tapped option holds an ink ring until Sure or Not sure; warm-ups and second tries go straight through.
   const [pending, setPending] = useState<string | null>(null)
   const [sure, setSure] = useState<'sure' | 'notsure' | null>(null)
+  const [autoAnswered, setAutoAnswered] = useState(false)   // auto-play filled this answer in: no praise for it
   const dialogRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
@@ -211,7 +227,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // D24 (9 Oct, Prateek: "let's not make the activities mandatory to exit the chapter"): only a quiz holds the arrow.
   // A do-it, try-it, steps or move card is an invitation; the arrow works from the moment the card shows.
   const canAdvance = item.card.type !== 'exercise' || exercisePassed
-  const reset = () => { setAttempt(1); setPicked(null); setMissed([]); setResult(null); setError(null); setUnsure(false); setAskOpen(false); setPending(null); setSure(null) }
+  const reset = () => { setAttempt(1); setPicked(null); setMissed([]); setResult(null); setError(null); setUnsure(false); setAskOpen(false); setPending(null); setSure(null); setAutoAnswered(false) }
 
   useEffect(() => { track('ch_open', { n }, `ch_open:${handbookId}:${n}`) }, [n, handbookId])
   useEffect(() => { if (!item.recall) track('card', { n, i: item.cardIndex }, `card:${handbookId}:${n}:${item.cardIndex}`) }, [n, handbookId, item.cardIndex, item.recall])
@@ -226,12 +242,15 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const asksSure = item.card.type === 'exercise' && !item.recall && attempt === 1 && (item.card as any).kind !== 'poll' && !exercisePassed
   const tap = (optionId: string) => { if (asksSure && !result) { setPending(optionId); setUnsure(false) } else choose(optionId) }
   const answerSure = (v: 'sure' | 'notsure') => { if (!pending) return; setSure(v); track('sure', { n, i: item.cardIndex, v }); const o = pending; setPending(null); choose(o) }
-  const choose = async (optionId: string) => {
+  const choose = async (optionId: string, auto = false) => {
     if (item.card.type !== 'exercise' || sending || exercisePassed) return
-    setSending(true); setPicked(optionId); setError(null)
+    setSending(true); setPicked(optionId || null); setError(null)
     try {
-      const r = await onAnswer(item, optionId, attempt)
-      if (!item.recall && !firstTries.current.has(key)) firstTries.current.set(key, attempt === 1 && r.correct)
+      const r = await onAnswer(item, optionId, attempt, auto)
+      if (auto && r.correct && r.optionId) { optionId = r.optionId; setPicked(r.optionId); setAutoAnswered(true) }
+      if (!item.recall && !firstTries.current.has(key)) firstTries.current.set(key, !auto && attempt === 1 && r.correct)
+      if (!auto && r.correct && attempt === 1) streak.current += 1; else if (!r.correct) streak.current = 0
+      if (r.correct) { try { navigator.vibrate?.(35) } catch {} }
       setResult(r)
       if (r.correct) { if (!item.recall) { setPassedHere((s) => new Set(s).add(key)); setPassedChoice((m) => ({ ...m, [key]: optionId })) } }
       else setMissed((m) => [...m, optionId])
@@ -248,7 +267,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
       await onFinish(stats)
       if (onAfter) {
         afterStats.current = stats
-        const first = wasPassed ? null : onStars && !starsOff() ? 'stars' : teaser ? 'teaser' : null
+        const first = wasPassed || auto ? null : onStars && !starsOff() ? 'stars' : teaser ? 'teaser' : null
         if (first) { track('after_view', { n, s: first }); setAfter(first) } else onAfter('done', stats)
       }
     } catch (e: any) {
@@ -306,9 +325,79 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const leave = (go: 'done' | 'next') => { track('after_go', { n, go }); onAfter?.(go, afterStats.current) }
   const toTeaser = () => { if (teaser) { track('after_view', { n, s: 'teaser' }); setAfter('teaser') } else leave('done') }
   const rate = (k: number) => { if (stars) return; setStars(k); track('stars', { n, v: k }); onStars?.(k).catch(() => {}); setTimeout(toTeaser, 600) }
+  const checksTotal = cards.filter((x) => x.type === 'exercise').length
+  const checksDone = [...passedHere].filter((k) => k.startsWith(`${n}:`)).length
+  // Explainer figures (15 Oct): Sonnet's figure for a page replaces its painting; asked for when the chapter opens.
+  const figures = (useQuery(api.figures.forChapter, { handbookId, n, deviceToken }) ?? {}) as Record<number, any>
+  const ensureFigures = useMutation(api.figures.ensure)
+  useEffect(() => { ensureFigures({ handbookId, n, deviceToken }).catch(() => {}) }, [handbookId, n]) // eslint-disable-line react-hooks/exhaustive-deps
   const kept = useQuery(api.handbooks.keptFor, { handbookId, chapter: n, deviceToken }) ?? []
   const reteach = useQuery(api.handbooks.reteachFor, unsure && item.card.type === 'exercise' ? { handbookId, chapter: item.chapter, cardIndex: item.cardIndex, recall: !!item.recall, deviceToken } : 'skip')
-  useEffect(() => { stopSpeaking(); setSpeaking(false) }, [i])
+  useEffect(() => { stopSpeaking(); stopAudio(); setSpeaking(false) }, [i])
+  useEffect(() => () => stopAudio(), [])
+
+  // 15 Oct: the page voice (Gemini speech, a warm female voice, cached per page) and auto-play. A page is read as its
+  // own words: the headline, the paragraphs; a question, its options; an answer, the right option and why.
+  const voicePage = useAction(api.voiceNode.page)
+  const iRef = useRef(i); iRef.current = i
+  const audioCache = useRef(new Map<string, Promise<string | null>>())
+  const partsOf = (f?: Frame): string[] => {
+    if (!f) return []
+    const cc = f.item.card as any
+    if (cc.type === 'exercise') return [cc.prompt, ...(cc.options ?? []).map((o: any) => o.text)]
+    if (cc.type === 'watch') return [cc.who, cc.what, cc.watchFor].filter(Boolean)
+    if (typeof cc.body !== 'string') return []
+    const head = f.cover ? [title] : f.part === 0 && cc.title && !f.item.recall ? [cc.title] : []
+    return [...head, ...(f.text ?? '').split(/\n\n+/)].map((x) => x.trim()).filter(Boolean)
+  }
+  // Each part (the headline, each paragraph, each option) is its own short file, all asked for at once, so the voice
+  // starts as soon as the first one is ready instead of after the whole page (a 36 s page took 22 s to make, 15 Oct).
+  const audioFor = (parts: string[]) => parts.map((part) => {
+    let got = audioCache.current.get(part)
+    if (!got) { got = voicePage({ handbookId, chapter: n, parts: [part], deviceToken }).then((r) => (r.ok ? r.url : null)).catch(() => null); audioCache.current.set(part, got) }
+    return got
+  })
+  // Plays a page's parts in order; false if any part had no audio (the caller falls back), or it was stopped.
+  const playParts = async (parts: string[], stopped: () => boolean) => {
+    const files = audioFor(parts)
+    for (const f of files) { const url = await f; if (stopped()) return true; if (!url || !(await playUrl(url))) return false }
+    return true
+  }
+  const [auto, setAutoState] = useState(autoOn)
+  const toggleAuto = () => { const on = !auto; setAuto(on); setAutoState(on); track('autoplay', { v: on ? 'on' : 'off' }); if (!on) { stopAudio(); setSpeaking(false) } }
+  // Auto-play (Prateek: "auto scroll (quizes auto answered) … It should span chapters"): each page is read, then turns;
+  // a question is read, waits a beat, fills in the right answer (stored as auto), reads why, and turns. The last page
+  // finishes the chapter and Done carries on into the next one.
+  useEffect(() => {
+    if (!auto || after) return
+    let off = false
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    const say = async (parts: string[]) => {
+      if (!parts.length) return
+      setSpeaking(true)
+      if (!(await playParts(parts, () => off)) && !off) await wait(readMs(parts.join(' ')))
+      if (!off) setSpeaking(false)
+    }
+    ;(async () => {
+      const cc = item.card as any
+      for (const k of [1, 2]) audioFor(partsOf(frames[i + k]))   // the next pages' audio, warming while this one plays
+      if (cc.type === 'exercise') {
+        if (result?.correct) { await say([result.text, result.why ?? ''].filter(Boolean)); if (off) return; await wait(900); if (!off) closeSheet(); return }
+        if (exercisePassed) { await wait(1500); if (!off) next(); return }
+        if (result || sending) return
+        await say(partsOf(frame)); if (off) return
+        await wait(1800); if (!off) choose('', true)
+        return
+      }
+      const parts = partsOf(frame)
+      if (parts.length) await say(parts); else await wait(5000)
+      if (off) return
+      await wait(700)
+      if (off) return
+      if (isLast) finish(); else next()
+    })()
+    return () => { off = true; stopAudio() }
+  }, [auto, i, result, after, exercisePassed]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => stopSpeaking(), [])
   if (after) {
     const t = teaser
@@ -357,7 +446,8 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
 
   const c = item.card
   // A card's picture sits on its first frame only, so the words keep the screen on the frames after it.
-  const pic = !item.recall && frame.part === 0 && !['exercise', 'watch', 'move', 'doit', 'steps', 'tryit'].includes(c.type) ? pictures[item.cardIndex] : undefined
+  const fig = !item.recall && frame.part === 0 && !['exercise', 'watch', 'move', 'doit', 'steps', 'tryit'].includes(c.type) ? figures[item.cardIndex] : undefined
+  const pic = !fig && !item.recall && frame.part === 0 && !['exercise', 'watch', 'move', 'doit', 'steps', 'tryit'].includes(c.type) ? pictures[item.cardIndex] : undefined
   const revealId = result && !result.correct && result.reveal ? result.reveal.id : null
   // C6 and C7 (14 Oct): the header says where you are in words, the page number sits by the close; the card bars stay
   // for screen readers only. The bottom says how many pages are left.
@@ -367,13 +457,16 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const nextIsWarmup = !!frames[i + 1]?.item.recall && frames[i + 1]?.item.card.type === 'exercise'
   const label = item.recall ? (c.type === 'exercise' ? `Warm-up · ${warmAt} of ${warm.length}` : `Last time · from chapter ${item.chapter}`) : c.type === 'exercise' ? `Chapter ${n} · Check` : `${runningHead(topic)} · Chapter ${n}`
   const pagesLeft = frames.length - 1 - i
-  const readAloud = () => {
-    if (!voice) return
-    if (speaking) { stopSpeaking(); setSpeaking(false); return }
+  const readAloud = async () => {
+    if (speaking) { stopSpeaking(); stopAudio(); setSpeaking(false); return }
+    setSpeaking(true)
+    const at = i
+    if (await playParts(partsOf(frame), () => at !== iRef.current)) { setSpeaking(false); return }
+    if (!voice) { setSpeaking(false); return }   // no page voice and no phone voice: nothing to read with
     const parts = [...(dialogRef.current?.querySelectorAll('.story-body .story-title, .story-body .story-kicker, .story-body .story-text, .story-body .story-q, .story-body .story-big, .story-body .story-sub, .story-body .story-opt') ?? [])]
     const text = parts.map((el) => (el.classList.contains('story-opt') ? `${el.textContent?.trim()}.` : el.textContent?.trim())).filter(Boolean).join('\n')
     if (!text) return
-    setSpeaking(true); speak(text, voice, () => setSpeaking(false))
+    speak(text, voice, () => setSpeaking(false))
   }
 
   return (
@@ -398,11 +491,12 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
               <Ooh size={30} /><span>{askOpen ? 'Close' : 'Ask'}</span>
             </button>
           )}
+          {auto && <button type="button" className="story-autohead" onClick={toggleAuto} aria-label="Stop auto-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>Auto</button>}
           <span className="story-folio" aria-hidden="true">{i + 1}</span>
           <button type="button" className="story-close" onClick={onExit} aria-label="Back to the handbook">×</button>
         </div>
 
-        <div className={`story-body turn-${dir.current}`} key={i} aria-live="polite">
+        <div className={`story-body turn-${dir.current}${(pic || fig) && !askOpen ? ' has-pic' : ' no-pic'}`} key={i} aria-live="polite">
           {c.type === 'exercise' ? (
             <>
               {/* C7 (the board, 15 Oct): the question, a quiet gap, the options at the thumb, nothing timed. A tapped option
@@ -422,6 +516,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
                   return (
                     <button key={o.id} type="button" className={cls.join(' ')} aria-pressed={pending === o.id} onClick={() => tap(o.id)} disabled={sending || exercisePassed || missed.includes(o.id)}>
                       <span className="k" aria-hidden="true" /><span className="t">{o.text}</span>{tag && <span className="story-tag">{tag}</span>}
+                      {won && picked === o.id && !autoAnswered && <span className="c7-burst" aria-hidden="true">{Array.from({ length: 12 }, (_, b) => <i key={b} style={{ ['--a' as any]: `${b * 30}deg` }} />)}</span>}
                     </button>
                   )
                 })}
@@ -445,7 +540,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
                 </div>
               )}
               {result && (
-                <div className="story-reveal no-tap" aria-live="polite" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
+                <div className={`story-reveal no-tap${result.correct && (item.card as any).kind !== 'poll' ? ' won' : ''}`} aria-live="polite" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
           {result.correct ? (
             <>
               {(item.card as any).kind === 'poll' ? (
@@ -455,9 +550,13 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
                 </>
               ) : (
                 <>
-                  <p className="verdict pass"><Ooh face="happy" size={34} /><span>{result.chapterPassed ? `That's it! Chapter ${n} passed.` : "That's it!"}</span></p>
+                  <p className="verdict pass c7-win"><Ooh face="happy" size={48} /><span>{autoAnswered ? "Here's the answer." : pick(attempt === 1 ? WINS_FIRST : WINS_LATER, key)}{result.chapterPassed && !autoAnswered ? ` Chapter ${n} passed.` : ''}</span></p>
+                  <p className="c7-tally">
+                    {!item.recall && checksTotal > 0 && <span>{checksDone} of {checksTotal} checks done</span>}
+                    {streak.current >= 2 && !autoAnswered && <span className="c7-streak">{streak.current} in a row</span>}
+                  </p>
                   {/* D38 (Prateek, 9 Oct: "Why just repeat my answer back to me?"): the option stays lit on the card; here is what it adds. */}
-                  <p className="serif">{result.why ? inline(result.why) : cheer(key)}</p>
+                  {(result.why || (attempt === 1 && !autoAnswered)) && <p className="serif">{result.why ? inline(result.why) : cheer(key)}</p>}
                   {item.recall && <p className="story-again"><span className="c9-dot" aria-hidden="true" />Got it again.</p>}
                 </>
               )}
@@ -511,9 +610,10 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
                   a mistake or a dare keeps its small label over the headline. With Ask open (C8) the picture steps aside. */}
               {!frame.cover && frame.part === 0 && KICKER[c.type] && <p className="story-kicker">{KICKER[c.type]}</p>}
               {!frame.cover && frame.part === 0 && c.title && !(item.recall && c.title === 'Last time') && <h2 className="story-idea">{inline(c.title)}</h2>}
+              {fig && !askOpen && <Figure spec={fig} />}
               {pic && !askOpen ? <div className={`story-pic${credits[item.cardIndex] ? ' real' : ''}`}><img src={pic} alt={alts[item.cardIndex] ?? ''} onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')} ref={(el) => { if (el && el.complete && el.naturalWidth > 0) el.parentElement?.classList.add('loaded') }} />{credits[item.cardIndex] && <a className="story-credit no-tap" href={credits[item.cardIndex].source || undefined} target="_blank" rel="noopener noreferrer">Photo: {credits[item.cardIndex].credit}</a>}</div>
                 : null /* no picture yet, or none: no box at all; the picture fades in when it lands */}
-              <Rich text={frame.text ?? ''} className={`story-text size-${frame.cover || pic || (!frame.cover && frame.part === 0 && c.title) ? (pic && !frame.cover && sizeOf(frame.text ?? '') === 'xl' ? 'lg' : 'md') : sizeOf(frame.text ?? '')}`} />
+              <Rich lively text={frame.text ?? ''} className={`story-text size-${frame.cover || pic || (!frame.cover && frame.part === 0 && c.title) ? (pic && !frame.cover && sizeOf(frame.text ?? '') === 'xl' ? 'lg' : 'md') : sizeOf(frame.text ?? '')}`} />
               {/* C8 "Keep it here": an answer the reader kept stays under its page's words. */}
               {!askOpen && !item.recall && frame.part === frame.parts - 1 && kept.filter((k) => k.cardIndex === item.cardIndex).map((k) => (
                 <div key={String(k._id)} className="story-kept c8">
@@ -544,9 +644,13 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
         <div className="story-tools no-tap">
           <div className="story-tools-left">
             {c.type !== 'exercise' && <span className="story-left">{pagesLeft === 0 ? 'Last page' : `${pagesLeft} ${pagesLeft === 1 ? 'page' : 'pages'} left`}</span>}
-            {voice && c.type !== 'exercise' && <button type="button" className="story-read" aria-pressed={speaking} onClick={readAloud}>
+            {c.type !== 'exercise' && !auto && <button type="button" className="story-read" aria-pressed={speaking} onClick={readAloud}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" /><path d="M16.5 8.5a5 5 0 0 1 0 7" /></svg>
               {speaking ? 'Stop reading' : 'Read it to me'}</button>}
+            {c.type !== 'exercise' && <button type="button" className="story-auto" aria-pressed={auto} onClick={toggleAuto}>
+              {auto ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" /></svg>}
+              {auto ? 'Auto-play on' : 'Auto-play'}</button>}
           </div>
           {/* A real button (UX review #17, 8 Oct): the move and do-it frames are full of things to tap, so "next" needs a target of its own; keyboard and screen readers get one too. */}
           {/* While an answer shows, its own button is the one way on (C7); a check shows no tools until it's passed. */}

@@ -113,6 +113,7 @@ export default defineSchema({
     correct: v.boolean(),
     attempt: v.number(),
     recall: v.boolean(),
+    auto: v.optional(v.boolean()),   // filled in by auto-play (15 Oct), never the reader's own pick
     at: v.number(),
   }).index("by_handbook", ["handbookId"]),
 
@@ -163,6 +164,20 @@ export default defineSchema({
     tip: v.optional(v.string()),
     at: v.number(),
   }).index("by_chapter", ["handbookId", "chapter"]),
+
+  // Explainer figures (15 Oct): Sonnet's decision for one page, by the page's words (figures.ts pageKey); spec null means
+  // the page keeps its painting.
+  cardFigures: defineTable({ key: v.string(), spec: v.any(), why: v.optional(v.string()), model: v.string(), at: v.number() }).index("by_key", ["key"]),
+
+  // A page read aloud (15 Oct, Prateek: "a female voice to read out with emotions and intonation"): Gemini's speech,
+  // stored once per exact text and voice, so every reader of a shared page plays the same file.
+  pageAudio: defineTable({
+    key: v.string(),
+    storageId: v.id("_storage"),
+    ms: v.number(),
+    chars: v.number(),
+    at: v.number(),
+  }).index("by_key", ["key"]),
 
   cardQuestions: defineTable({
     handbookId: v.id("handbooks"),

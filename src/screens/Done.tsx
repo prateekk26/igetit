@@ -4,6 +4,7 @@ import Confetti from '../components/Confetti'
 import TeachBack from '../components/TeachBack'
 import ShelfStrip from '../components/ShelfStrip'
 import { track } from '../lib/track'
+import { autoOn, setAuto } from '../lib/pageVoice'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { subscribe, canInstall, install, isIOS, isStandalone } from '../lib/push'
@@ -71,6 +72,11 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
   // with a free account. The server refuses the chapter without one (membership.ts tryOpen); this screen only says so.
   const wall = !signedIn && !last && n >= freeChapters && !quick   // a quick handbook is one sitting (D23): no wall between its chapters
   useEffect(() => { if (wall) track('wall', { n }, `wall:${handbookId ?? ''}:${n}`) }, [wall, n, handbookId])
+  // Auto-play carries on into the next chapter once it's open (15 Oct, Prateek: "It should span chapters as well"); it
+  // stops here at the free-account wall, after the last chapter, or when tapped off.
+  const [auto, setAutoState] = useState(autoOn)
+  const carries = auto && !wall && !last && !!onNext && !nextFailed
+  useEffect(() => { if (carries && nextReady) { const t = setTimeout(() => onNext?.(), 4000); return () => clearTimeout(t) } }, [carries, nextReady]) // eslint-disable-line react-hooks/exhaustive-deps
   // The last chapter of a handbook entered part-way (a post link to chapter 7) is not "seven chapters, done" (UX review 9 Oct).
   const left = Math.max(0, total - new Set([...passed, n]).size)
   // While the next chapter is still being written, its button waits here, busy, and turns live when it lands (UX review
@@ -134,6 +140,12 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
       {handbookId && deviceToken && <TeachBack handbookId={handbookId} n={n} deviceToken={deviceToken} />}
       {/* Up next (7 Oct, Prateek): the next chapter as a card worth tapping, with its own button. Behind the wall the card above says it instead. */}
       {/* Up next (7 Oct, Prateek; C9 14 Oct): one line over the main button says what's next; the button is in the bar. */}
+      {carries && (
+        <p className="c9-auto" role="status">
+          <span>{nextReady ? `Auto-play: chapter ${n + 1} starts in a moment.` : `Auto-play: chapter ${n + 1} starts as soon as it's written.`}</span>
+          <button type="button" className="quiet" onClick={() => { setAuto(false); setAutoState(false); track('autoplay', { v: 'off' }) }}>Stop</button>
+        </p>
+      )}
       {!last && nextTitle && !wall && (
         <p className="c9-next" aria-label={`Up next: chapter ${n + 1}`}>Next · chapter {n + 1}: {nextTitle}{!nextReady && !nextFailed && !quick && onNext ? ' · being written for you now, about a minute' : ''}</p>
       )}

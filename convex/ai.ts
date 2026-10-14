@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { v } from "convex/values";
 import { jsonSchema, problems } from "./schemas";
 import { traceV } from "./trace";
+import { realUrl, REDIRECT } from "./research";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
@@ -193,7 +194,7 @@ async function callGemini(kind: Kind, system: string, user: string, model: strin
         generationConfig: {
           maxOutputTokens: Math.min(maxTokens, 32000), responseMimeType: "application/json",
           ...(schema ? { responseJsonSchema: schema } : {}),
-          ...(GEMINI_THINKING[model] ? { thinkingConfig: { thinkingLevel: GEMINI_THINKING[model] } } : {}),
+          ...(GEMINI_THINKING[model] ? { thinkingConfig: { thinkingLevel: GEMINI_KIND_THINKING[kind] ?? GEMINI_THINKING[model] } } : {}),
         },
       }),
     }).catch((e: any) => ({ ok: false, status: 0, json: async () => ({ error: String(e?.message ?? e) }) }) as any);
@@ -224,11 +225,29 @@ function extractJson(text: string): any {
   return JSON.parse(m[0]);
 }
 
+// 15 Oct (Prateek: "We should use gemini flash wherever possible except for pictures where we'll use sonnet"): when the
+// caller names no model, these jobs try Gemini 3.8 Flash first and fall back to the job's Claude model above if Flash
+// fails. Not here: figures (Sonnet, his call), plan and chapter (their callers already lead with Flash), and the
+// measurement jobs (audit, score, repair, artifact, move), which stay on Claude so a model never grades its own work.
+export const FLASH = "gemini-3.8-flash";
+const GEMINI_FIRST = new Set<Kind>(["versions", "match", "library", "shelf", "whyright", "stories", "intent", "simpler", "scenes", "teach", "check", "wording"]);
+// Small, quick jobs think less on Flash, so the goal question still answers in a couple of seconds.
+const GEMINI_KIND_THINKING: Partial<Record<Kind, string>> = { intent: "low", match: "low", library: "low", teach: "low" };
+
 export const generate = internalAction({
   args: { kind: v.union(v.literal("plan"), v.literal("chapter"), v.literal("simpler"), v.literal("ask"), v.literal("check"), v.literal("scenes"), v.literal("audit"), v.literal("repair"), v.literal("teach"), v.literal("intent"), v.literal("versions"), v.literal("match"), v.literal("artifact"), v.literal("move"), v.literal("library"), v.literal("stories"), v.literal("shelf"), v.literal("whyright"), v.literal("score"), v.literal("wording"), v.literal("figures")), system: v.string(), user: v.string(), model: v.optional(v.string()), effort: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("xhigh"), v.literal("max"))), trace: traceV, logAs: v.optional(v.string()) },
   // trace (8 Oct, Tanisha): the handbook and chapter the call belongs to, for the call log. logAs: the step name in the
   // log when it differs from the job (e.g. "eval plan" for a prompt test), so tests never count as readers' handbooks.
-  handler: async (ctx, { kind, system, user, model, effort, trace, logAs }): Promise<Result> => {
+  handler: async (ctx, args): Promise<Result> => {
+    if (!args.model && GEMINI_FIRST.has(args.kind) && process.env.GEMINI_API_KEY) {
+      const g = await runGenerate(ctx, { ...args, model: FLASH, effort: undefined });
+      if (g.ok) return g;
+    }
+    return runGenerate(ctx, args);
+  },
+});
+
+async function runGenerate(ctx: any, { kind, system, user, model, effort, trace, logAs }: { kind: Kind; system: string; user: string; model?: string; effort?: Effort; trace?: any; logAs?: string }): Promise<Result> {
     const started = Date.now();
     let attempts = 1;   // a broken, cut-off or off-schema reply is asked again inside this call
     const maxOut = kind === "plan" ? PLAN_MAX_OUT : kind === "simpler" || kind === "ask" ? SIMPLER_MAX_OUT : CHAPTER_MAX_OUT;
@@ -287,8 +306,48 @@ export const generate = internalAction({
       await ctx.runMutation(internal.handbooks.logAiCall, { ...trace, attempts, kind: logAs ?? kind, model: failedModel, input: user.slice(0, 2000), output: "", ms: Date.now() - started, ok: false, error });
       return { ok: false, error, model: failedModel };
     }
-  },
-});
+}
+
+// Plain-text Gemini, with Google Search when asked; sources are the pages the answer rests on, redirects resolved.
+async function geminiText(system: string, user: string, search: boolean): Promise<{ text: string; sources: { url: string; title: string }[]; tokensIn: number; tokensOut: number; searches: number }> {
+  const keys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_BACKUP].filter(Boolean) as string[];
+  let last = "no Gemini key";
+  for (const key of keys) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${FLASH}:generateContent`, {
+      method: "POST", signal: AbortSignal.timeout(60000),
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }],
+        ...(search ? { tools: [{ google_search: {} }] } : {}),
+        generationConfig: { maxOutputTokens: 4000, thinkingConfig: { thinkingLevel: search ? "medium" : "low" } },
+      }),
+    }).catch((e: any) => ({ ok: false, status: 0, json: async () => ({ error: String(e?.message ?? e) }) }) as any);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) { last = `Gemini ${res.status}: ${JSON.stringify(body).slice(0, 200)}`; continue; }
+    const cand = body.candidates?.[0];
+    if (body.promptFeedback?.blockReason || /SAFETY|PROHIBITED|BLOCKLIST/.test(String(cand?.finishReason ?? ""))) throw new Error("declined");
+    if (cand?.finishReason === "MAX_TOKENS") throw new Error("reply cut off at the token limit");
+    const text = (cand?.content?.parts ?? []).filter((x: any) => !x.thought).map((x: any) => x.text ?? "").join("").trim();
+    if (!text) throw new Error("empty reply");
+    const chunks = (cand?.groundingMetadata?.groundingChunks ?? []).map((c: any) => c?.web).filter((w: any) => w?.uri).slice(0, 4);
+    const sources = (await Promise.all(chunks.map(async (w: any) => ({ url: await realUrl(String(w.uri)), title: String(w.title ?? "") }))))
+      .filter((x) => /^https?:\/\//.test(x.url) && !REDIRECT.test(x.url)).slice(0, 3).map((x) => ({ url: x.url, title: x.title || new URL(x.url).hostname }));
+    const u = body.usageMetadata ?? {};
+    return { text, sources, tokensIn: u.promptTokenCount ?? 0, tokensOut: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0), searches: (cand?.groundingMetadata?.webSearchQueries ?? []).length };
+  }
+  throw new Error(last);
+}
+async function askViaGemini(ctx: any, system: string, user: string, searchKey: string) {
+  const first = await geminiText(system + `\n\nIn this step you have no web access. If a proper answer needs facts the card doesn't contain, reply with exactly ${NEEDS_WEB} and nothing else.`, user, false);
+  let tokensIn = first.tokensIn, tokensOut = first.tokensOut;
+  if (!first.text.startsWith(NEEDS_WEB)) return { answer: first.text, sources: [] as { url: string; title: string }[], step: 1, searches: 0, tokensIn, tokensOut };
+  const allowed = await ctx.runMutation(internal.handbooks.takeSearchToken, { key: searchKey });
+  const second = allowed ? await geminiText(system, user, true)
+    : await geminiText(system + "\n\nYou have no web access today. Answer as well as the card allows, and say in one short clause that you couldn't check the web for this one.", user, false);
+  tokensIn += second.tokensIn; tokensOut += second.tokensOut;
+  if (second.text.startsWith(NEEDS_WEB)) throw new Error("no answer after search");
+  return { answer: second.text, sources: second.sources, step: 2, searches: second.searches, tokensIn, tokensOut };
+}
 
 // "Ask or object": Opus 5.5, guardrailed to the card's topic. Step 1 answers without web access (cheap): it answers from
 // the card, turns away off-topic questions, or says NEEDS_WEB. Only then does step 2 run with web search (cached prefix,
@@ -298,6 +357,17 @@ export const askWithSearch = internalAction({
   args: { system: v.string(), user: v.string(), searchKey: v.string(), trace: traceV },
   handler: async (ctx, { system, user, searchKey, trace }): Promise<{ ok: true; answer: string; sources: { url: string; title: string }[] } | { ok: false; error: string }> => {
     const started = Date.now();
+    // 15 Oct (Prateek: Gemini Flash wherever possible): Flash answers first, from the card, then with Google Search when the
+    // card can't answer; any failure falls through to the Claude path below, unchanged.
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const g = await askViaGemini(ctx, system, user, searchKey);
+        await ctx.runMutation(internal.handbooks.logAiCall, { ...trace, kind: "ask", model: FLASH, input: user.slice(0, 2000), output: `${g.answer}\n[step ${g.step}; searches: ${g.searches}; sources: ${g.sources.map((x) => x.url).join(" ")}]`.slice(0, 20000), tokensIn: g.tokensIn, tokensOut: g.tokensOut, ms: Date.now() - started, ok: true });
+        return { ok: true, answer: g.answer, sources: g.sources };
+      } catch (e: any) {
+        await ctx.runMutation(internal.handbooks.logAiCall, { ...trace, kind: "ask", model: FLASH, input: user.slice(0, 2000), output: "", ms: Date.now() - started, ok: false, error: String(e?.message ?? e).slice(0, 500) });
+      }
+    }
     if (!process.env.ANTHROPIC_API_KEY) return { ok: false, error: "no provider key set" };
     let tokensIn = 0, tokensOut = 0, searches = 0, step = 1;
     try {

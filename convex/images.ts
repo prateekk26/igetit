@@ -2,6 +2,7 @@
 import { v } from "convex/values";
 import { internalAction, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { decideChapter } from "./figures";
 import type { Id } from "./_generated/dataModel";
 import { PICTURE_ANCHOR, PICTURE_NEVER, SCENES_PROMPT, scenesUserMessage } from "./prompts";
 import { inkAndWash, shrink } from "./inkwash";
@@ -109,7 +110,9 @@ async function commonsPhoto(ctx: ActionCtx, query: string): Promise<{ storageId:
 // stored: scenes the fact check already wrote for this chapter (8 Oct, Tanisha: one Sonnet call fewer). With them, no
 // scenes call is made; without them (older chapters, ready topics built before), the picture editor writes them here.
 async function picturesFor(ctx: ActionCtx, topic: string, plan: any, title: string, cards: any[], capped = true, cover = false, model?: string, stored?: { card: number; scene: string; real?: string }[], trace?: { handbookId?: any; chapter?: number }): Promise<{ status: string; pictures: Picture[] }> {
-  const teaching = pictureCards(cards);
+  // 15 Oct: a page with an explainer figure gets no painting (Sonnet decides first, figures.ts).
+  const figured = new Set<number>(await decideChapter(ctx, topic, cards, trace).catch(() => [] as number[]));
+  const teaching = pictureCards(cards).filter(({ i }) => !figured.has(i));
   if (!teaching.length) return { status: "skipped", pictures: [] };
   const r: any = stored?.length ? { ok: true, json: { scenes: stored } }
     : await ctx.runAction(internal.ai.generate, { kind: "scenes", system: SCENES_PROMPT, user: scenesUserMessage(topic, title, plan?.picture?.line ?? plan?.picture?.name ?? "", teaching.map(({ c, i }) => ({ card: i, type: c.type, title: c.title, body: c.body }))), model, trace });

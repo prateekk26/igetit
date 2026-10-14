@@ -228,8 +228,8 @@ export const GEMINI_THINKING: Thinking = "medium";
 const GEMINI_RESEARCH_BUDGET = 180000;
 type Attempt = { decided: any; searches: number; grounded?: number; queries?: string[]; tokensIn: number; tokensOut: number; error?: string; model: string; ms: number };
 
-const REDIRECT = /vertexaisearch\.cloud\.google\.com\/grounding-api-redirect/;
-async function realUrl(u: string): Promise<string> {
+export const REDIRECT = /vertexaisearch\.cloud\.google\.com\/grounding-api-redirect/;
+export async function realUrl(u: string): Promise<string> {
   if (!REDIRECT.test(u)) return u;
   try { const r = await fetch(u, { redirect: "manual", signal: AbortSignal.timeout(8000) }); const loc = r.headers.get("location"); if (loc) return loc; } catch { /* next way */ }
   try { const r = await fetch(u, { method: "GET", redirect: "follow", signal: AbortSignal.timeout(8000) }); return r.url || u; } catch { return u; }
