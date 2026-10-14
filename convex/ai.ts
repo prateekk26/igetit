@@ -230,7 +230,9 @@ function extractJson(text: string): any {
 // fails. Not here: figures (Sonnet, his call), plan and chapter (their callers already lead with Flash), and the
 // measurement jobs (audit, score, repair, artifact, move), which stay on Claude so a model never grades its own work.
 export const FLASH = "gemini-3.8-flash";
-const GEMINI_FIRST = new Set<Kind>(["versions", "match", "library", "shelf", "whyright", "stories", "intent", "simpler", "scenes", "teach", "check", "wording"]);
+// check and wording stay on Sonnet (15 Oct gate, Flash checking: facts 2.63 against 3.64 on the old models, 6 topics
+// down a full point; see PROGRESS.md).
+const GEMINI_FIRST = new Set<Kind>(["versions", "match", "library", "shelf", "whyright", "stories", "intent", "simpler", "scenes", "teach"]);
 // Small, quick jobs think less on Flash, so the goal question still answers in a couple of seconds.
 const GEMINI_KIND_THINKING: Partial<Record<Kind, string>> = { intent: "low", match: "low", library: "low", teach: "low" };
 
