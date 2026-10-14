@@ -34,7 +34,7 @@ export default function Known({ deviceToken, onOpen }: { deviceToken: string; on
           )}
           {books.map(([id, topic]) => (
             <section key={id} className="known-book" aria-label={topic}>
-              <h2>{topic}</h2>
+              <h2>{d.covers?.[id] ? <img src={d.covers[id]!} alt="" /> : <span className="known-blank" aria-hidden="true">{topic.slice(0, 1)}</span>}{topic}</h2>
               <ul>
                 {shown.filter((x) => x.handbookId === id).sort((a, b) => a.n - b.n).map((x) => (
                   <li key={x.n}>

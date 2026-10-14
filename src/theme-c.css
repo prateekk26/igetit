@@ -813,3 +813,24 @@ div.c3-row { cursor: default; }
 .story-reveal .quiet { min-height: 44px; display: inline-flex; align-items: center; }
 .story-opt.story-dunno { box-shadow: none; background: transparent; margin-top: 2px; min-height: 52px; }
 .story-opt.story-dunno .k { border-style: solid; border-color: var(--ink); }
+.known-book h2 { display: flex; align-items: center; gap: 12px; }
+.known-book h2 img, .known-blank { flex: none; width: 36px; height: 36px; border-radius: 10px; object-fit: cover; background: var(--paper-2); }
+.known-blank { display: grid; place-items: center; font: 800 1rem var(--head); color: var(--ink-2); }
+
+/* C9's band header and Say it back */
+.c9-band { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 4px 12px 0 16px; }
+.c9-band-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 8px; border: 0; border-radius: 24px; background: none; color: #1B1A17; font: 700 16px var(--sans); cursor: pointer; }
+.c9-band-btn:focus-visible { outline: 3px solid #1B1A17; outline-offset: 2px; }
+.c9-close { width: 48px; justify-content: center; margin-left: auto; }
+.c9-stage .c9-ooh { top: 46px; }
+@media (min-width: 600px) { .c9-stage .c9-ooh { top: 56px; } .c9-stage .c9-stem { top: 234px; } }
+.c9-say { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; background: none; padding: 0; border: 0; }
+.c9-label { font: 700 15px var(--sans); color: var(--ink-2); }
+.c9-say-row { display: flex; gap: 8px; align-items: center; }
+.c9-say-row .input { flex: 1; min-width: 0; height: 56px; min-height: 56px; border-radius: 22px; padding: 0 20px; font-size: 18px; }
+.c9-say-row .ask-send { flex: none; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; background: var(--accent); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
+.c9-say-row .ask-send:disabled { background: var(--paper-2); color: var(--ink-2); }
+.c9-say-note, .c9-say-reply p { margin: 4px 0 0; font: 600 16px/1.45 var(--sans); color: var(--voice); }
+.c9-tomorrow { align-self: center; }
+@media (max-width: 599px) { .c9-stage { height: 288px; } .c9-stage .c9-ooh { top: 58px; } .c9-stage .c9-stem { top: 196px; } }   /* the board's band: 288 px, Ooh's face at 80 */
+.shell:not(:has(> .top)):not(:has(> .hub-top)) > main > .c9-stage:first-child, main > .c9-stage { margin-top: 0; }

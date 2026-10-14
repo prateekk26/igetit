@@ -12,6 +12,7 @@ import type { Id } from '../../convex/_generated/dataModel'
 import Ooh, { GoArrow } from '../components/Ooh'
 
 type Props = {
+  onReplay?: () => void   // C9's "Play again": read this chapter again
   total?: number
   topic: string
   n: number
@@ -79,7 +80,7 @@ function cheer(n: number, s?: { minutes: number; right: number; total: number } 
   return `You took your time, and it stuck. That's the whole point.`
 }
 
-export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture: _nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false }: Props) {
+export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture: _nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const line = cheer(n, stats)
@@ -101,8 +102,12 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
       <Confetti fire />
       {/* C9 (14 Oct, the C board "Chapter done"): Ooh lands on its "i" on a marigold band, then the topic, the line, and
           what was added to what they know. The rung bar stays under it, small. Copy (agent). */}
-      <section className="c9-stage" aria-hidden="true">
-        <span className="c1-stem c9-stem" />
+      <section className="c9-stage">
+        <div className="c9-band">
+          {onReplay && <button type="button" className="c9-band-btn" onClick={onReplay}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7" /><path d="M4 4v4h4" /></svg>Play again</button>}
+          <button type="button" className="c9-band-btn c9-close" onClick={onContinue} aria-label="Back to the handbook"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+        </div>
+        <span className="c1-stem c9-stem" aria-hidden="true" />
         <Ooh face="happy" tone="cream" size={132} className="c9-ooh" idle />
       </section>
       <p className="c9-topic">{topic}</p>
@@ -215,7 +220,7 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
           last || !onNext ? <button className="btn" onClick={onContinue}>Back to the handbook</button> : (
             <>
               {nextBtn(`Start chapter ${n + 1}`)}
-              <button type="button" className="quiet" onClick={onContinue}>Back to the handbook</button>
+              <button type="button" className="quiet c9-tomorrow" onClick={onContinue}>Tomorrow, then</button>
             </>
           )
         )}

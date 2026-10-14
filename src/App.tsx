@@ -556,7 +556,7 @@ export default function App() {
   if (resolved === 'done' && doneN) {
     const ch = hb.chapters.find((c) => c.n === doneN)
     return (
-      <Shell onSignOut={isAuthenticated ? signOut : undefined} rail={rail} back={toPlan}>
+      <Shell onSignOut={isAuthenticated ? signOut : undefined} rail={rail} back={toPlan} bare>
         <Done onShelf={goExplore}
           quick={(plan as any)?.format === 'quick'}   // 9 Oct (plan v8): a course can have fewer than 7 chapters
           total={total}
@@ -577,6 +577,7 @@ export default function App() {
           onPricing={goPricing}
           onPickTime={async (at) => { await setTomorrow({ handbookId: hb._id, at, deviceToken: token }) }}
           onContinue={() => { setDoneN(null); setView('plan') }}
+          onReplay={() => { const n = doneN; setDoneN(null); setReadingN(n); setView('chapter') }}
           stats={doneStats}
           handbookId={hb._id}
           deviceToken={token}

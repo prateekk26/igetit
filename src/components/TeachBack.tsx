@@ -7,38 +7,31 @@ import { limitMessage } from '../lib/limits'
 // Teach it back (optional): explain the chapter's idea in your own words, get a short reply.
 // Never required; the rung never waits on it. Copy is (agent) until Prateek rewrites it.
 export default function TeachBack({ handbookId, n, deviceToken }: { handbookId: Id<'handbooks'>; n: number; deviceToken: string }) {
-  const [open, setOpen] = useState(false)
+  const open = true   // C9 (14 Oct): "Say it back (optional)" is a box on the page, not a button that opens one
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const reply = useQuery(api.handbooks.teachBackFor, open ? { handbookId, chapter: n, deviceToken } : 'skip')
   const send = useMutation(api.handbooks.teachBack)
   const thinking = reply?.status === 'thinking'
 
-  if (!open) return (
-    <button type="button" className="teach-open" onClick={() => setOpen(true)}>
-      <strong>Teach it back</strong> (optional): explain today's idea in your own words. It's the fastest way to make it stick.
-    </button>
-  )
+  const check = async () => { setError(null); try { await send({ handbookId, chapter: n, text, deviceToken }) } catch (e: any) { setError(limitMessage(e) ?? (String(e?.message ?? e).includes('busy') ? 'A few too many in a row. Try again in a bit.' : "Couldn't check that just now. Try again in a minute.")) } }
   return (
-    <section className="teach" aria-label="Teach it back">
-      <label htmlFor="teach-text" className="teach-label">Explain today's idea in 2 sentences, as if to a friend.</label>
-      <textarea id="teach-text" className="input teach-input" rows={4} maxLength={600} value={text} onChange={(e) => setText(e.target.value)} disabled={thinking} placeholder="In my own words…" />
-      <div className="teach-actions">
-        <button type="button" className="btn btn-ghost" disabled={thinking || text.trim().length < 10}
-          onClick={async () => { setError(null); try { await send({ handbookId, chapter: n, text, deviceToken }) } catch (e: any) { setError(limitMessage(e) ?? (String(e?.message ?? e).includes('busy') ? 'A few too many in a row. Try again in a bit.' : "Couldn't check that just now. Try again in a minute.")) } }}>
-          {/* "Try again" read as a fail after "You nailed it!" (UX review 9 Oct). */}
-          {thinking ? 'Reading it…' : reply?.status === 'ready' ? (reply.verdict === 'nailed' ? 'Check a new version' : 'Check my new version') : 'Check my explanation'}
+    <section className="teach c9-say" aria-label="Say it back">
+      <label htmlFor="teach-text" className="c9-label">Say it back (optional)</label>
+      <form className="ask-row c9-say-row" onSubmit={(e) => { e.preventDefault(); if (!thinking && text.trim().length >= 10) check() }}>
+        <input id="teach-text" className="input" maxLength={600} value={text} onChange={(e) => setText(e.target.value)} disabled={thinking} placeholder="Tell a friend today's idea in a line" enterKeyHint="send" />
+        <button type="submit" className="ask-send" disabled={thinking || text.trim().length < 10} aria-label={thinking ? 'Reading it' : 'Check what I wrote'}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5" /><path d="m6 11 6-6 6 6" /></svg>
         </button>
-        <button type="button" className="quiet" onClick={() => setOpen(false)}>Skip</button>
-      </div>
+      </form>
+      {thinking && <p className="c9-say-note">Reading it…</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {reply?.status === 'failed' && <p className="error" role="alert">Couldn't check that just now. Try again in a minute.</p>}
       {reply?.status === 'ready' && (
-        <div role="status" className={`teach-reply v-${(reply.verdict ?? '').replace(/\s+/g, '-')}`}>
-          <p className="teach-verdict">{reply.verdict === 'nailed' ? 'You nailed it!' : reply.verdict === 'close' ? 'Almost there!' : 'Good start!'}</p>
-          {reply.got && <p>{reply.got}</p>}
-          {reply.missed && <p><strong>Missing:</strong> {reply.missed}</p>}
-          {reply.tip && <p className="note">{reply.tip}</p>}
+        <div role="status" className={`c9-say-reply v-${(reply.verdict ?? '').replace(/\s+/g, '-')}`}>
+          <p><b>{reply.verdict === 'nailed' ? 'You nailed it!' : reply.verdict === 'close' ? 'Almost there!' : 'Good start!'}</b>{reply.got ? ` ${reply.got}` : ''}</p>
+          {reply.missed && <p>Missing: {reply.missed}</p>}
+          {reply.tip && <p>{reply.tip}</p>}
         </div>
       )}
     </section>
