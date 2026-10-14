@@ -9,6 +9,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { subscribe, canInstall, install, isIOS, isStandalone } from '../lib/push'
 import type { Id } from '../../convex/_generated/dataModel'
+import Ooh from '../components/Ooh'
 
 type Props = {
   total?: number
@@ -100,6 +101,7 @@ export default function Done({ nextFailed, total = 7, topic, n, passed, outcomeL
       <Confetti fire />
       <RungBar passed={passed} filling={n} total={total} />
       <p className="sub" style={{ marginTop: 10 }}>{topic}</p>
+      <Ooh face="getit" size={72} className="done-ooh" />
       <h1>{total === 1 ? 'Done.' : `Chapter ${n} of ${total}: done.`}</h1>
       {/* The proof of the night comes first (8 Oct night, critique): what they can now do, before any question is asked of them. */}
       {outcomeLine && <p className="done-line">{outcomeLine}</p>}

@@ -2,6 +2,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { deviceToken } from '../lib/device'
 import { PolicyLinks } from '../components/PolicyLinks'
+import { Wordmark } from '../components/Ooh'
 
 // The public numbers page at /stats (counts only). Copy is (agent) until Prateek rewrites it.
 // 8 Oct: a dashboard. Each day's new visitors by channel with chapter 1 finishes, each channel since launch, and our
@@ -45,7 +46,7 @@ export default function Stats() {
   return (
     <div className="shell stats-shell">
       <header className="top">
-        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }}>I Get It<small>Twenty minutes at a time.</small></a>
+        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }} aria-label="I Get It, home"><Wordmark /><small>Twenty minutes at a time.</small></a>
         {/* /stats had no way back (UX review 9 Oct). */}
         <a className="back-link" href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>← Back to I Get It</a>
       </header>

@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 // not legal advice: worth a lawyer's read before real volume.
 
 import { PolicyLinks, TITLES, type PolicyPage } from '../components/PolicyLinks'
+import { Wordmark } from '../components/Ooh'
 
 const UPDATED = '11 October 2026'
 
@@ -24,7 +25,7 @@ export default function Policy({ page }: { page: PolicyPage }) {
   return (
     <div className="shell">
       <header className="top">
-        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }}>I Get It<small>Twenty minutes at a time.</small></a>
+        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }} aria-label="I Get It, home"><Wordmark /><small>Twenty minutes at a time.</small></a>
       </header>
       <main className="policy">
         {/* Back goes back, to the screen the reader came from, when that was this site; it used to reload the home page (UX review 9 Oct). */}

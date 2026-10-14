@@ -9,6 +9,7 @@ import StepsFrame, { type StepsCard } from '../components/StepsFrame'
 import TryItFrame, { type TryItCard } from '../components/TryItFrame'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useOnline } from '../lib/online'
+import Ooh from '../components/Ooh'
 
 export type Card =
   | { type: 'picture' | 'example' | 'mistake' | 'try' | 'teach'; title?: string; body: string }
@@ -442,7 +443,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
                 </>
               ) : (
                 <>
-                  <p className="verdict pass">{result.chapterPassed ? `That's it. Chapter ${n} passed.` : "That's it."}</p>
+                  <p className="verdict pass"><Ooh face="happy" size={44} /><span>{result.chapterPassed ? `That's it. Chapter ${n} passed.` : "That's it."}</span></p>
                   {/* D38 (Prateek, 9 Oct: "Why just repeat my answer back to me?"): the option stays lit on the card; here is what it adds. */}
                   <p className="serif">{result.why ? inline(result.why) : cheer(key)}</p>
                 </>
@@ -457,7 +458,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
             </>
           ) : (
             <>
-              <p className="verdict">{inline(result.whyNot)}</p>
+              <p className="verdict"><Ooh face="again" size={44} /><span>{inline(result.whyNot)}</span></p>
               {result.reteach && <p className="serif">{inline(result.reteach)}</p>}
               {result.reveal && <p className="serif" style={{ marginTop: 'var(--m)' }}>It's <strong>{result.reveal.text}</strong></p>}
               <button className="btn" onClick={closeSheet}>{result.reveal ? 'Got it' : 'Try again'}</button>

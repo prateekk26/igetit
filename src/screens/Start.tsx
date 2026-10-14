@@ -7,6 +7,7 @@ import { api } from '../../convex/_generated/api'
 import { isMemberLimit, limitMessage } from '../lib/limits'
 import { nameOf } from '../lib/name'
 import { typedBoxText, typedPickText, type TypedAllowance } from '../lib/free'
+import Ooh from '../components/Ooh'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
@@ -112,6 +113,7 @@ export default function Start({ initialTopic = '', status, question, intents, on
           </>
         ) : (
           <>
+            {!readyToOpen && <Ooh face="making" size={64} className="wait-ooh" />}
             <p className="plan-wait-kicker">{readyToOpen ? 'Your plan is ready' : 'Writing your handbook'}</p>
             <h1 className="plan-wait-topic">{shown}</h1>
             <ol className="plan-wait-steps">

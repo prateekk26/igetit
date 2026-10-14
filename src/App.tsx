@@ -19,6 +19,7 @@ import SignupNudge from './components/SignupNudge'
 import { ShelfButton } from './components/ShelfStrip'
 import { nameOf, isId } from './lib/name'
 import { deferred, preloadWhenIdle } from './lib/deferred'
+import { Wordmark } from './components/Ooh'
 
 // Screens outside the first screen (11 Oct): fetched in the background once the first screen is up, so they still
 // open instantly; Tune and Compare, rarely opened, load when opened.
@@ -695,7 +696,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf }: { children: React
   return (
     <div className="shell">
       <header className="top">
-        <button type="button" className="wordmark wordmark-btn" onClick={() => goHome?.()} aria-label="I Get It, home">I Get It{member && <span className="member-mark">Member</span>}<small>Twenty minutes at a time.</small></button>
+        <button type="button" className="wordmark wordmark-btn" onClick={() => goHome?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Twenty minutes at a time.</small></button>
         {/* The Shelf (8 Oct, Prateek): always one tap away, on every screen. */}
         {!hideShelf && <ShelfButton onOpen={() => goShelf?.()} />}
         <span className="top-actions">

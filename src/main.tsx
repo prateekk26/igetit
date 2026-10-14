@@ -4,6 +4,7 @@ import { ConvexReactClient } from 'convex/react'
 import { ConvexAuthProvider } from '@convex-dev/auth/react'
 import './index.css'
 import './screens.css'
+import './theme-c.css'   // theme C, Picture book (14 Oct); remove this line to go back to the print look
 import App from './App.tsx'
 import { POLICY_PAGES, type PolicyPage } from './components/PolicyLinks'
 // Pages a reader rarely opens load only when opened (11 Oct, Prateek: "only download the things for the first screen").

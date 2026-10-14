@@ -8,6 +8,7 @@ import { PolicyLinks } from '../components/PolicyLinks'
 import { limitMessage } from '../lib/limits'
 import ShelfStrip, { ShelfButton } from '../components/ShelfStrip'
 import { freeChaptersText, TYPED_RULE, typedBoxText, type TypedAllowance } from '../lib/free'
+import { Wordmark } from '../components/Ooh'
 
 // The landing page, for first-time visitors (DESIGN.md, Landing). A printed risograph poster that sells
 // before it asks: the promise and the box, the ready topics, how tonight works, a real chapter to tap, one line
@@ -216,7 +217,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
   return (
     <div className={`lp${pickedRow ? ' lifting' : ''}`}>
       <header className="lp-top">
-        <a className="lp-mark" href="/">I Get It</a>
+        <a className="lp-mark" href="/" aria-label="I Get It, home"><Wordmark /></a>
         {onExplore && <ShelfButton onOpen={onExplore} className="lp-top-shelf" />}
         <button type="button" className="lp-top-cta" onClick={toBox}>Start tonight</button>
       </header>

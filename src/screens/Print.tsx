@@ -5,6 +5,7 @@ import type { Id } from '../../convex/_generated/dataModel'
 import { deviceToken } from '../lib/device'
 import Rich from '../components/Rich'
 import { PolicyLinks } from '../components/PolicyLinks'
+import { Wordmark } from '../components/Ooh'
 
 // /print?h=<handbook>: the whole handbook on one clean page, to print or save as a PDF (members, 7 Oct).
 // The server decides who may see it (handbooks.printable). Copy is (agent) until Prateek rewrites it.
@@ -18,7 +19,7 @@ export default function Print() {
   return (
     <div className="shell print-page">
       <header className="top no-print">
-        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }}>I Get It<small>Twenty minutes at a time.</small></a>
+        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }} aria-label="I Get It, home"><Wordmark /><small>Twenty minutes at a time.</small></a>
       </header>
       <main className="policy">
         {!id ? <p className="lede">No handbook chosen. Members print from a handbook's menu: "Print or save as PDF". <a href="/">Back to your handbooks</a></p>

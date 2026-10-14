@@ -1,0 +1,341 @@
+/* Theme C, "Picture book" (14 Oct, Prateek: "let's just get the C theme running", "render the correct one as per the
+   device"). Loaded after index.css and overrides it; delete the import in main.tsx to go back to the print look.
+   The rules, from the C brand book (the design canvas, pages C1 to C6, and spec "Every size"):
+   - Round to act, flat to read. Everything you press is a round pill or dot; everything you read lies flat on paper.
+     No ink outlines, no offset print shadows, no drop shadows. Leaf blocks only for things you touch.
+   - One main button per screen, marigold. Marigold is a fill, never text. Indigo is Ooh's voice only.
+   - Right and wrong by shape and words: a filled dot is right, a ring is your pick. Never red, never green.
+   - Reading is Baloo 2 at 21 on a phone and never smaller; headlines are Bricolage. Nothing under 14 px.
+   - Sizes: under 600 the phone; 600 to 1023 one 600 px column, type a step up; 1024 and up the open book. */
+
+:root {
+  --paper: #faf7f0;
+  --paper-2: #f0ebe0;          /* leaf: the box, an answer, a card you tap. Ink on it 14.6:1 */
+  --leaf-2: #e7e0d1;           /* a pressed or chosen leaf */
+  --ink: #1b1a17;
+  --ink-2: #4d4a43;            /* 8.3:1 on paper */
+  --tint: #e4ded1;             /* lines only */
+  --rule: #e4ded1;
+  --accent: #f2a93b;
+  --accent-deep: #4d4a43;      /* was a marigold text colour; marigold is never text in C */
+  --voice: #2f3478;            /* Ooh's voice: 10.4:1 on paper, 9.4:1 on leaf */
+  --pass: #1b1a17;             /* right is said by a filled dot and words, not by green */
+  --pass-tint: #f0ebe0;
+  --error: #8a3020;            /* error text only, 7.6:1 on paper */
+
+  --body: 1.3125rem;           /* 21: reading */
+  --ui: 1.0625rem;             /* 17 */
+  --small: 0.9375rem;          /* 15 */
+  --heading: 1.5rem;           /* 24 */
+  --display: clamp(2.25rem, 1.6rem + 2.6vw, 3.5rem);
+
+  --radius: 22px;
+  --radius-card: 22px;
+  --radius-sheet: 28px;
+  --stroke: 0px;
+  --press: none;
+  --press-sm: none;
+
+  --sans: 'Baloo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --serif: 'Baloo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --head: 'Bricolage Grotesque', 'Baloo 2', system-ui, sans-serif;
+}
+
+html { font-family: var(--sans); line-height: 1.5; }
+body { font-weight: 500; }
+h1, h2, h3, .wordmark, .story-title, .story-big, .plan-wait-topic, .roadmap-hero h1, .lp h1, .lp h2 {
+  font-family: var(--head); font-weight: 800; font-variation-settings: 'wdth' 82, 'opsz' 96; letter-spacing: -0.01em; line-height: 0.98;
+}
+h1 { font-size: var(--display); }
+h2 { font-size: var(--heading); line-height: 1.1; font-variation-settings: 'wdth' 90, 'opsz' 48; }
+em, i, .picture, .card.picture-card .serif, .story-text em { font-style: normal; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 12px; }
+
+/* ---------- the wordmark: "ı get it", the i's dot is Ooh ---------- */
+.wordmark { font-size: 1.35rem; letter-spacing: -0.02em; text-transform: none; }
+.wordmark small { font-family: var(--sans); font-weight: 600; font-size: var(--small); color: var(--ink-2); font-variation-settings: normal; }
+.wm { display: inline-block; white-space: nowrap; }
+.wm-i { position: relative; display: inline-block; }
+.wm-dot { position: absolute; left: 50%; top: 0.02em; width: 0.36em; height: 0.36em; margin-left: -0.18em; border-radius: 50%; background: var(--accent); }
+.wordmark-btn .member-mark { margin-left: 8px; }
+
+/* ---------- the header ---------- */
+.top { border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+.shelf-btn, .top > .shelf-btn { background: var(--paper-2); border: 0; box-shadow: none; border-radius: 999px; min-height: 44px; font-weight: 700; }
+.shelf-btn:active { transform: none; box-shadow: none; background: var(--leaf-2); }
+.menu-btn { border-radius: 999px; }
+
+/* ---------- buttons: round to act ---------- */
+.btn { min-height: 60px; border: 0; border-radius: 999px; background: var(--accent); color: var(--ink); font-family: var(--sans); font-weight: 700; font-size: 1.125rem; box-shadow: none; padding: 0 28px; }
+.btn:active { transform: scale(0.98); box-shadow: none; background: #e89d2c; }
+.btn:disabled { background: var(--paper-2); color: var(--ink-2); border: 0; }
+.btn-ghost { background: var(--paper-2); border: 0; color: var(--ink); }
+.btn-ghost:active { background: var(--leaf-2); transform: none; }
+.btn-ghost:disabled { background: var(--paper-2); }
+.ask-send { box-shadow: none; }
+.quiet { font-weight: 600; color: var(--ink-2); }
+.back-link { font-weight: 700; }
+.busybar { background: var(--tint); height: 6px; border-radius: 3px; }
+
+/* ---------- boxes and pills ---------- */
+.input, .lp-field input { border: 0; border-radius: var(--radius); background: var(--paper-2); font-family: var(--sans); font-weight: 500; font-size: 1.1875rem; box-shadow: none; }
+.input:focus, .lp-field input:focus { outline: 3px solid var(--ink); outline-offset: 2px; background: var(--paper-2); box-shadow: none; }
+.chip { border: 0; background: var(--paper-2); font-weight: 600; min-height: 48px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.lp-seg button, .lp-pills button { border: 0; background: var(--paper-2); box-shadow: none; border-radius: 999px; }
+.lp-seg button[aria-pressed="true"], .lp-pills button[aria-pressed="true"], .lp-pills button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+
+/* ---------- flat cards: no outlines, no print shadows ---------- */
+.mistake, .illo, .watch, .nudge, .shelf-card, .stat, .sd-card, .declined, .teach, .intent-offer, .intent-goal, .whatsnext button,
+.once, .lp-once, .lp-tiers li, .upnext, .lock-card, .shelf-strip, .lp .shelf-strip, .week-tap, .stop-card, .roadmap-hero,
+.explore-cover, .lp-cover, .nextup, .why-here, .free-banner, .locked, .tiers li.open, .compare, .print-quiz, .shelf-notice,
+.spot, .spot-card, .award-card, .lp-best-card, .wait-track, .wait-arrow {
+  border: 0; box-shadow: none; border-radius: var(--radius-card);
+}
+.mistake, .illo, .watch, .nudge, .shelf-card, .stat, .sd-card, .declined, .teach, .intent-offer, .intent-goal, .whatsnext button,
+.once, .lp-once, .lp-tiers li, .upnext, .lock-card, .shelf-strip, .week-tap, .stop-card, .locked, .free-banner, .wait-arrow {
+  background-color: var(--paper-2);
+}
+.try { border: 0; background: var(--paper-2); border-radius: var(--radius-card); }
+.compare-ex { border: 0; background: var(--paper-2); }
+.shelf-card:active, .intent-goal:active, .shelf-strip:active, .spot-card:active, .lp-best-card:active { transform: scale(0.99); box-shadow: none; }
+.shelf-card.active { background: var(--leaf-2); }
+.lp-hero-art, .lp-final-art, .lp-carousel-pic, .whatsnext-pic, .upnext-pic, .spot-plate, .lp-best-pic, .roadmap-pic, .explore-cover, .lp-cover {
+  border: 0; box-shadow: none; border-radius: var(--radius-card);
+}
+.lp-carousel li.lifting .lp-carousel-pic, .lp-carousel li.lifting strong, .spot-list li.lifting .spot-card, .award-list li.lifting .award-card,
+.lp-best-track li.opening .lp-best-card { box-shadow: none; border: 0; }
+.stop.now .stop-card { background: var(--accent); }
+.stop .node { border: 0; background: var(--tint); }
+.stop.now .node { background: var(--accent); }
+.stat:first-child { background: var(--accent); }
+.member-mark { border: 0; box-shadow: none; border-radius: 999px; }
+.shelf-bar span, .award-rosette, .award-rosette::before, .award-rosette::after { border: 0; box-shadow: none; }
+.lp-best-no, .lp-best-go { border: 0; box-shadow: none; }
+.wait-dots button { border: 0; background: var(--tint); }
+.wait-dots button[aria-current="true"], .wait-dots button[aria-pressed="true"] { background: var(--accent); }
+.demo-phone { border: 0; box-shadow: none; }
+.compare thead th { border: 0; }
+.plan-wait-steps li::before { border: 0; background: var(--tint); }
+.lp-path li::before { border: 0; }
+.lp-path ol { border-left: 3px dotted var(--rule); }
+
+/* the rung bar: dots you earned, in marigold */
+.rung { gap: 6px; }
+.rung span { height: 8px; border: 0; border-radius: 4px; background: var(--tint); }
+
+/* ---------- plan, done, sheets ---------- */
+.outcome, .done-line { font-family: var(--sans); font-weight: 600; font-size: var(--body); line-height: 1.45; }
+.picture { color: var(--voice); font-weight: 600; }
+.chapters .c, .horizon, .sources { font-family: var(--sans); }
+.tag { color: var(--ink-2); }
+.question { font-family: var(--head); font-weight: 700; font-variation-settings: 'wdth' 90, 'opsz' 60; font-size: 1.75rem; line-height: 1.12; }
+.opt { border: 0; background: var(--paper-2); border-radius: var(--radius); min-height: 60px; font-weight: 600; font-size: 1.0625rem; }
+.opt .k { border: 2.5px solid var(--ink); background: transparent; }
+.opt:active { background: var(--leaf-2); }
+.opt.missed { color: var(--ink-2); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.opt.missed .k { border-style: solid; }
+.opt.pass, .opt.reveal { background: var(--leaf-2); border: 0; box-shadow: none; color: var(--ink); }
+.opt.pass .k, .opt.reveal .k { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+.sheet { border: 0; box-shadow: none; }
+.handle { background: var(--ink-2); opacity: 0.5; }
+.sheet .verdict { font-family: var(--head); font-weight: 800; font-variation-settings: 'wdth' 82, 'opsz' 48; font-size: 1.75rem; line-height: 1.05; color: var(--ink); display: flex; align-items: center; gap: 12px; }
+.sheet .verdict.pass { color: var(--ink); }
+.sheet .verdict .ooh { flex: none; }
+.actionbar { background: var(--paper); border-top: 1px solid var(--rule); padding-top: 12px; }
+
+/* Ooh's voice: a tutor line, indigo, upright, led by Ooh */
+.ooh-line { display: flex; align-items: center; gap: 10px; color: var(--voice); font-weight: 600; font-size: 1.1875rem; line-height: 1.4; }
+.done-ooh { display: block; margin: 8px 0 6px; }
+
+/* ---------- chapters: a page on paper, not a coloured frame ---------- */
+.story { background: var(--paper); }
+.story-frame, .tone-ink, .tone-indigo, .tone-green, .tone-marigold, .tone-coral, .tone-cream {
+  background-color: var(--paper); --fg: #1b1a17; --fg2: #4d4a43; --bar: #e4ded1; --mark: #f2a93b; --mark-fg: #1b1a17; --plate: none;
+}
+.story-frame::before { display: none; }
+.story-frame :focus-visible { outline-color: var(--ink); }
+.story-bars span { height: 6px; border-radius: 3px; }
+.story-bars span.on, .story-bars span.now::after { background: var(--accent); }
+.story-head { font-size: var(--small); }
+.story-label { font-weight: 700; }
+.story-kicker { background: none; color: var(--ink-2); padding: 0; border-radius: 0; transform: none; font-size: var(--small); font-weight: 700; margin-bottom: 10px; }
+.story-title { font-family: var(--head); font-size: clamp(2.5rem, 1.8rem + 3vw, 3.5rem); line-height: 0.95; font-variation-settings: 'wdth' 82, 'opsz' 96; }
+.story-text { font-family: var(--sans); font-weight: 500; letter-spacing: 0; max-width: 32ch; }
+.story-text.size-md, .story-text.size-lg { font-size: var(--body); line-height: 1.5; }
+.story-text.size-xl { font-family: var(--head); font-weight: 700; font-variation-settings: 'wdth' 90, 'opsz' 60; font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.1rem); line-height: 1.12; letter-spacing: -0.01em; }
+.story-text strong, .story-q strong { font-weight: 700; border-radius: 6px; }
+.story-q { font-family: var(--head); font-weight: 700; font-variation-settings: 'wdth' 90, 'opsz' 60; font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2rem); line-height: 1.12; letter-spacing: -0.01em; }
+.story-big { font-family: var(--head); }
+.story-sub { font-family: var(--sans); }
+.story-pic { border: 0; box-shadow: none; border-radius: var(--radius-card); margin: 0 0 20px; background: var(--paper-2); }
+.story-pic:not(.loaded) { background: var(--paper-2); }
+.story-illo .illo { box-shadow: none; }
+/* answers: leaf blocks; a ring for your pick, a filled marigold dot for right */
+.story-opt, .tone-ink .story-opt { border: 0; box-shadow: none; background: var(--paper-2); color: var(--ink); border-radius: var(--radius); min-height: 64px; font-size: 1.125rem; font-weight: 600; padding: 14px 18px; }
+.story-opt:active { transform: scale(0.99); box-shadow: none; background: var(--leaf-2); }
+.story-opt .k { background: transparent; color: var(--ink); border: 2.5px solid var(--ink); width: 30px; height: 30px; }
+.story-opt.missed { opacity: 0.6; border: 0; }
+.story-opt.pass, .story-opt.reveal { background: var(--leaf-2); border: 0; box-shadow: none; }
+.story-opt.pass .k, .story-opt.reveal .k { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+.story-watch { border: 0; box-shadow: none; background: var(--paper-2); }
+.story-finish, .tone-ink .story-finish, .tone-marigold .story-finish { border: 0; border-radius: 999px; min-height: 60px; background: var(--accent); color: var(--ink); box-shadow: none; font-family: var(--sans); font-weight: 700; font-size: 1.125rem; }
+.story-finish:active { transform: scale(0.98); box-shadow: none; }
+.story-offline, .story-error { background: var(--ink); color: var(--paper); }
+.story-tools button, .story-tools > span:not(.story-tapnote) { border: 0; background: var(--paper-2); color: var(--ink); min-height: 48px; padding: 0 18px; font-size: var(--small); }
+.story-tools button:active, .tone-ink .story-tools button:active, .tone-indigo .story-tools button:active, .tone-green .story-tools button:active { background: var(--leaf-2); color: var(--ink); }
+/* the turn: a 68 px marigold circle with an ink arrow, bottom right */
+.story-tools .story-next { margin-left: auto; width: 68px; height: 68px; min-height: 68px; padding: 0; border-radius: 50%; background: var(--accent); color: var(--ink); font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
+.story-tools .story-next span { font-size: 1.75rem; font-weight: 700; line-height: 1; }
+.story-tools .story-next:active { background: #e89d2c; transform: scale(0.96); }
+.demo-phone .story-frame { box-shadow: none; }
+.wait-story .story-pic { border: 0; box-shadow: none; }
+
+/* ---------- Ooh's motion (brand book C, page 6). Plays once, settles. ---------- */
+.ooh { overflow: visible; display: inline-block; vertical-align: middle; }
+.ooh g { transform-box: view-box; }
+.ooh-happy .ooh-body { transform-origin: 20px 40px; animation: ooh-hop 900ms ease-out both; }
+@keyframes ooh-hop { 0% { transform: none; } 25% { transform: translateY(-6px); } 45% { transform: scale(1.06, 0.94); } 65% { transform: translateY(-3px); } 85%, 100% { transform: none; } }
+.ooh-again .ooh-eyes { animation: ooh-look 1400ms ease-in-out both; }
+@keyframes ooh-look { 0%, 8% { transform: none; } 22%, 50% { transform: translateY(3.5px); } 64%, 100% { transform: none; } }
+.ooh-again .ooh-body { animation: ooh-nod 1400ms ease-in-out both; }
+@keyframes ooh-nod { 0%, 64% { transform: none; } 74% { transform: translateY(2px); } 82% { transform: none; } 90% { transform: translateY(2px); } 100% { transform: none; } }
+.ooh-getit .ooh-body { transform-origin: 20px 40px; animation: ooh-land 1000ms cubic-bezier(0.5, 0, 0.6, 1) both; }
+@keyframes ooh-land { 0% { transform: translateY(-28px); opacity: 0; } 15% { opacity: 1; } 55% { transform: translateY(0) scale(1.12, 0.82); } 78% { transform: translateY(-3px) scale(0.96, 1.05); } 100% { transform: none; } }
+.ooh-getit .ooh-la { animation: ooh-out 1000ms both; }
+.ooh-getit .ooh-lb { animation: ooh-in 1000ms both; }
+@keyframes ooh-out { 0%, 54% { opacity: 1; } 56%, 100% { opacity: 0; } }
+@keyframes ooh-in { 0%, 54% { opacity: 0; } 56%, 100% { opacity: 1; } }
+.ooh-making .ooh-eyes { transform-origin: 20px 20px; animation: ooh-orbit 1.8s linear infinite; }
+@keyframes ooh-orbit { to { transform: rotate(360deg); } }
+.ooh-curious .ooh-eyes { animation: ooh-glance 1400ms ease-in-out both; }
+@keyframes ooh-glance { 0%, 10% { transform: none; } 30%, 45% { transform: translateX(-2.6px); } 60%, 80% { transform: translateX(2.6px); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .ooh *, .ooh { animation: none !important; }
+  .ooh-getit .ooh-la { opacity: 0; }
+  .ooh-making .ooh-eyes { transform: translate(1px, 2px); }
+}
+
+/* ---------- phones: 360 to 599 ---------- */
+@media (max-width: 599px) {
+  .shell { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+  .story-frame { padding-left: 20px; padding-right: 20px; }
+}
+@media (max-width: 380px) {
+  :root { --display: 2.75rem; }
+  .story-title { font-size: 2.75rem; }
+  .story-text.size-xl, .story-q { font-size: 1.6875rem; }
+  .story-tools .story-next { width: 64px; height: 64px; min-height: 64px; }
+}
+
+/* ---------- tablet upright: 600 to 1023, one 600 px column, type one step up ---------- */
+@media (min-width: 600px) and (max-width: 1023px) {
+  :root { --measure: 37.5rem; --body: 1.4375rem; --ui: 1.125rem; --small: 1rem; --heading: 1.75rem; --display: 4.5rem; }
+  .shell { padding-left: 40px; padding-right: 40px; }
+  .actionbar > div { max-width: 26.25rem; }
+  .story-frame { width: 100%; max-width: none; padding-left: max(40px, calc((100vw - 600px) / 2)); padding-right: max(40px, calc((100vw - 600px) / 2)); }
+  .story-pic { max-width: 680px; width: calc(100% + 80px); margin-left: -40px; }
+  .story-text { max-width: 600px; }
+  .story-title { font-size: 4.5rem; }
+  .story-text.size-xl, .story-q { font-size: 2.375rem; }
+  .story-opt { min-height: 72px; font-size: 1.25rem; }
+  .story-finish { align-self: center; width: 100%; max-width: 26.25rem; }
+  .story-tools { padding-bottom: 28px; }
+  .sheet > div { max-width: 37.5rem; }
+}
+
+/* ---------- the open book: 1024 and up ---------- */
+@media (min-width: 1024px) {
+  h1 { font-size: 3.5rem; }
+  .story { align-items: stretch; }
+  .story-frame { --page: 520px; --gut: 96px; width: calc(var(--page) * 2 + var(--gut)); max-width: calc(100vw - 112px); height: 100dvh; max-height: none; border-radius: 0; box-shadow: none; padding: 20px 0 32px; animation: none; }
+  .story-frame::before { border-radius: 0; }
+  .story-bars { max-width: calc(var(--page) * 2 + var(--gut)); }
+  .story-head { font-size: 1rem; }
+  .story-close { position: fixed; left: 24px; top: 24px; margin: 0; width: 48px; height: 48px; border-radius: 50%; background: var(--paper-2); font-size: 26px; }
+  .story-body { position: relative; padding: 24px 0; }
+  /* one page by default: the words, centred, a reading line wide */
+  .story-body > * { width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .story-body > :first-child { margin-top: auto; }
+  .story-text { max-width: 600px; }
+  .story-text.size-md, .story-text.size-lg { font-size: 1.4375rem; }
+  .story-text.size-xl { font-size: 2.375rem; }
+  .story-title { font-size: 4rem; }
+  /* a page with a picture opens into a spread: the picture on the left page, the words on the right, a rule between */
+  .story-body:has(> .story-pic), .story-body:has(> .story-options) {
+    background: linear-gradient(var(--rule), var(--rule)) center / 1px calc(100% - 48px) no-repeat;
+  }
+  .story-body:has(> .story-pic) > * { max-width: none; margin-left: calc(50% + var(--gut) / 2); width: calc(50% - var(--gut) / 2); margin-right: 0; }
+  .story-body:has(> .story-pic) > .story-pic { position: absolute; left: 0; top: 50%; width: calc(50% - var(--gut) / 2); margin: 0; translate: 0 -50%; }
+  /* a question: the question big on the left page, the answers on the right */
+  .story-body:has(> .story-options) { display: grid; grid-template-columns: minmax(0, 1fr) var(--gut) minmax(0, 1fr); grid-auto-rows: min-content; align-content: center; }
+  .story-body:has(> .story-options) > * { grid-column: 3; max-width: none; width: auto; margin-left: 0; margin-right: 0; }
+  .story-body:has(> .story-options) > .story-kicker { grid-column: 1; grid-row: 1; align-self: end; }
+  .story-body:has(> .story-options) > .story-q { grid-column: 1; grid-row: 2 / span 3; margin: 0; font-size: 2.375rem; align-self: start; }
+  .story-body:has(> .story-options) > .story-options { grid-row: 1 / span 3; align-self: center; }
+  .story-body:has(> .story-options) > :first-child { margin-top: 0; }
+  .story-tools { max-width: calc(var(--page) * 2 + var(--gut)); }
+  .story-finish { max-width: 26.25rem; }
+  /* hub screens: the rail stays; its current item is a leaf pill */
+  .shell > .rail { border-right: 1px solid var(--rule); padding-right: 20px; }
+  .rail li, .rail ol { border: 0; }
+  .rail-ch { border-radius: 999px; padding: 12px 16px; }
+  .rail li.now .rail-ch { background: var(--paper-2); }
+  .rail li.now .rail-ch .n { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+  .rail li.done .rail-ch .n { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .sheet { border-radius: var(--radius-sheet); }
+  .actionbar { border-top: 0; }
+}
+@media (min-width: 1400px) {
+  .story-frame { --page: 560px; }
+}
+
+/* ---------- second pass (14 Oct): the landing, and what the first sweep missed ---------- */
+.lp-mark { font-family: var(--head); font-weight: 800; font-variation-settings: 'wdth' 82, 'opsz' 48; font-size: 1.35rem; }
+.lp-hero .wm-dot, .lp-top .wm-dot { background: var(--ink); }   /* the marigold dot vanishes on the marigold hero; ink there */
+.lp-poster { font-variation-settings: 'wdth' 82, 'opsz' 96; text-shadow: none; }
+@keyframes print { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.lp-lede, .lp-body { font-family: var(--sans); font-weight: 500; }
+.lp-for { border: 0 !important; box-shadow: none !important; }
+.lp-field input { border: 0; background: var(--paper); }
+.lp-hero .lp-field input { background: var(--paper); }
+.lp-field button { border: 0; border-radius: 999px; background: var(--ink); color: var(--paper); font-family: var(--sans); font-weight: 700; font-variation-settings: normal; box-shadow: none; min-height: 60px; }
+.lp-field button:active { transform: scale(0.98); box-shadow: none; }
+.lp-field input:focus-visible, .lp-field button:focus-visible, .lp-seg button:focus-visible, .lp-top-cta:focus-visible { outline-color: var(--ink); }
+.lp-hero-art, .lp-cover, .lp-carousel-pic, .explore-cover, .roadmap-pic, .lp-best-card, .lp-once, .lp-tiers li { border: 0; box-shadow: none; }
+.lp-top-shelf.shelf-btn { background: var(--paper); }
+.lp .shelf-strip { border: 0; box-shadow: none; background: var(--paper); }
+.lp-n { font-family: var(--head); }
+.lp-path ol { border-left: 3px dotted var(--voice); }
+.lp-best-card:active, .lp-best-track li.opening .lp-best-card { box-shadow: none; }
+.lp-carousel li.lifting .lp-carousel-pic { box-shadow: 0 24px 40px rgba(27, 26, 23, 0.2); }
+.demo-phone { background: var(--ink); }
+.teach-open { border: 0; background: var(--paper-2); border-radius: var(--radius-card); font-family: var(--sans); }
+.teach { border: 0; }
+.try { border: 0; }
+.path::before { border-left: 3px dotted var(--ink-2); opacity: 0.5; }
+.stop.now .stop-card { box-shadow: none; }
+.stop.summit .stop-card { background: transparent; box-shadow: inset 0 0 0 2px var(--tint); }
+.shelf-card.active, .stat:first-child { box-shadow: none; }
+.story-illo .illo, .roadmap-illo .illo { box-shadow: none; }
+.after-stars button.on { color: var(--accent); text-shadow: none; }
+.intent-goal { border: 0; }
+.intent-goal:active, .shelf-btn:active, .shelf-strip:active, .spot-card:active, .shelf-card:active { transform: scale(0.99); box-shadow: none; }
+.nextup, .upnext, .lock-card { border: 0; }
+.spot-list li.lifting .spot-card, .award-list li.lifting .award-card { box-shadow: 0 18px 30px rgba(27, 26, 23, 0.18); }
+.award-rosette { border: 0; }
+.opt.reveal { box-shadow: none; }
+@media (min-width: 1024px) {
+  /* the close sits at the end of the running head (the window's margin at 1180 is too thin for it outside the spread) */
+  .story-close { position: static; width: 48px; height: 48px; margin: 0; border-radius: 50%; background: var(--paper-2); }
+  /* when the picture comes first, the words still centre on the right page */
+  .story-body:has(> .story-pic) > .story-pic:first-child + * { margin-top: auto; }
+  .story-frame { animation: none; }
+}
+.lp-for { color: var(--paper); transform: none; }
+.story-tools .story-next { margin: 0 0 0 auto; }   /* the old -4px right margin clipped the circle at the frame's edge */
+.sheet .verdict { padding-right: 40px; }           /* clear of the sheet's × */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .story-frame .story-opt { min-height: 72px; font-size: 1.25rem; }
+}
+a.wordmark { display: inline-flex; flex-direction: column; justify-content: center; min-height: 44px; }   /* Baloo's shorter line made the link 36 px */
