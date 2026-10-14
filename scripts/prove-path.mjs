@@ -127,7 +127,7 @@ console.log(`     screenshot: ${await shot('post-link')}`)
 console.log(`\nScenario 3: shared-handbook link ?l=…`)
 await send('Storage.clearDataForOrigin', { origin: BASE, storageTypes: 'all' }).catch(() => {})
 await goto(`${BASE}/?l=junkjunkjunkjunkjunkjunk&utm_source=internal`)
-await step('a bad id lands on the Shelf, not the landing page or an error', `!!document.querySelector('.shelf-page .book') && !document.querySelector('.lp') && !document.querySelector('.error')`, 25000)
+await step('a bad id lands on the Shelf, not the landing page or an error', `!!document.querySelector('.c12 .c12-book, .shelf-page .book') && !document.querySelector('.lp') && !document.querySelector('.error')`, 25000)
 // 9 Oct: the prod .convex.site address is prod too (before, the script read the shared id from dev and opened it on prod).
 const CONVEX = /igetit\.now|sensible-mongoose-624/.test(BASE) ? 'https://sensible-mongoose-624.convex.cloud' : (process.env.VITE_CONVEX_URL ?? (await import('node:fs')).readFileSync('.env.local', 'utf8').match(/VITE_CONVEX_URL=(\S+)/)?.[1])
 let sharedId = null
