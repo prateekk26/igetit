@@ -31,8 +31,9 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
   const freeText = freeChaptersText(freeChapters)   // D26: chapters 1 and 2 need no account; the number is the server's
   const c = useQuery(api.landing.content, {})
   const [topic, setTopic] = useState('')
-  const [level, setLevel] = useState<Level>('new')
-  const [voice, setVoice] = useState<Voice>('friend')
+  // Level and voice start as "new to this" and "like a friend" (14 Oct: the line that changed them, "New to this, talks
+  // like a friend. Change", read as a riddle to a first-time visitor); Make it yours changes the voice later.
+  const level: Level = 'new', voice: Voice = 'friend'
   const [busy, setBusy] = useState(false)
   const [pickedRow, setPickedRow] = useState<string | null>(null)
   const [slow, setSlow] = useState(false)
@@ -99,28 +100,15 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
       <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
         placeholder="Public speaking, the stock market…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
-      {where === 'hero' && chips.length > 0 && (
-        <div className="c1-chips" role="group" aria-label="Or open a ready one">
+      {where === 'hero' && chips.length > 0 && (<>
+        <p className="c1-chips-label" id="c1-chips-label">Or tap one that's ready to read now:</p>
+        <div className="c1-chips" role="group" aria-labelledby="c1-chips-label">
           {chips.map((t) => <button key={t} type="button" className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'chip')}>{pickedRow === t ? 'Opening…' : t}</button>)}
         </div>
-      )}
-      <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>
+      </>)}
+      <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Making your book…' : 'Make my book'}</span><GoArrow /></button>
       {error && <p className="lp-error" role="alert">{error}</p>}
       {where === 'hero' && slow && pickedRow && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
-      {where === 'hero' && (
-        <details className="lp-options">
-          <summary>{level === 'new' ? 'New to this' : 'Know some'}, {voice === 'friend' ? 'talks like a friend' : voice === 'straight' ? 'straight to the point' : 'in stories'}. Change</summary>
-          <div className="lp-seg" role="group" aria-label="Level">
-            <button type="button" aria-pressed={level === 'new'} onClick={() => setLevel('new')}>New to this</button>
-            <button type="button" aria-pressed={level === 'some'} onClick={() => setLevel('some')}>Know some</button>
-          </div>
-          <div className="lp-seg" role="group" aria-label="Voice">
-            <button type="button" aria-pressed={voice === 'friend'} onClick={() => setVoice('friend')}>Like a friend</button>
-            <button type="button" aria-pressed={voice === 'straight'} onClick={() => setVoice('straight')}>Straight</button>
-            <button type="button" aria-pressed={voice === 'stories'} onClick={() => setVoice('stories')}>Stories</button>
-          </div>
-        </details>
-      )}
     </form>
   )
 
@@ -132,7 +120,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       {/* The bar stays on screen (14 Oct, Prateek: "we are showing the shelf on the top (probably we need to make it sticky)"). */}
       <header className={`home-bar${scrolled ? ' is-scrolled' : ''}`}>
         <a className="lp-mark" href="/" aria-label="I Get It, home"><Wordmark /></a>
-        {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>The Shelf</button>}
+        {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>Browse books</button>}
       </header>
 
       {/* 1. The ask (C1). Ooh is the dot of a tall "i" on the marigold stage; from 1024 the stage is the left half. */}
@@ -147,7 +135,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
             {box('hero')}
           </div>
           <p className="c1-says"><Ooh face="curious" size={28} /><span>Tell me in a line. I'll make you a little book, five minutes a chapter.</span></p>
-          <p className="lp-fine c1-fine">{freeText} free, no sign-up. {typedLine}</p>
+          <p className="lp-fine c1-fine">{freeText} of any book are free, no sign-up. {typedLine}</p>
         </div>
       </section>
 
@@ -171,17 +159,17 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       <section className="lp-steps c-steps">
         <h2>Tonight, in five minutes.</h2>
         <ol>
-          <li><span className="c-n">1</span><div><h3>Say what you're wondering about.</h3><p>In your own words. Your little book's plan and chapter 1 are ready in about two minutes.</p></div></li>
-          <li><span className="c-n">2</span><div><h3>Read chapter 1.</h3><p>One idea a page, with pictures. Stuck? Ask Ooh about the page.</p></div></li>
-          <li><span className="c-n">3</span><div><h3>Come back for chapter 2.</h3><p>It opens with two quick questions on what stuck, so it stays stuck.</p></div></li>
+          <li><span className="c-n">1</span><div><h3>Say what you're wondering about.</h3><p>In your own words. In about two minutes you get a short book on it, written for you, and chapter 1 is ready.</p></div></li>
+          <li><span className="c-n">2</span><div><h3>Read chapter 1.</h3><p>One idea a page, with pictures. Stuck? Ask a question right on the page.</p></div></li>
+          <li><span className="c-n">3</span><div><h3>Come back for chapter 2.</h3><p>It starts with two quick questions on chapter 1, so what you read stays with you.</p></div></li>
         </ol>
       </section>
 
       {/* 4. The ask again. */}
       <section className="lp-final c-final">
-        <h2>So, what have you been meaning to learn?</h2>
+        <h2>So, what have you been wondering about?</h2>
         {box('final')}
-        {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or open one from the Shelf →</button>}
+        {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or browse books that are ready now →</button>}
       </section>
 
       <footer className="lp-foot c-foot">
@@ -208,15 +196,14 @@ function Demo({ book, onOpen, busy, freeText }: { book: DemoBook; onOpen: () => 
     const r = e.currentTarget.getBoundingClientRect()
     step(e.clientX - r.left < r.width * 0.3 ? -1 : 1)
   }
-  const left = frames.length - i
   return (
     <div className="c-demo-page">
       <div className="demo-frame" onClick={onTap} role="group" aria-label={`A real chapter 1: ${topic}. Page ${Math.min(i + 1, frames.length)} of ${frames.length}`}>
-        <div className="demo-head"><span className="story-label">{topic} · Chapter 1</span><span className="story-folio">{end ? '' : i + 1}</span></div>
+        <div className="demo-head"><span className="story-label">{topic} · Chapter 1</span></div>
         <div className="demo-body" key={i}>
           {end ? (
             <>
-              <p className="story-big">That was {frames.length} of its {book.total} pages.</p>
+              <p className="story-big">That was {frames.length} of chapter 1's {book.total} pages.</p>
               <p className="story-text size-md">{freeText} of this one are free, no sign-up. Yours can be about anything you type, in this style, with its own pictures.</p>
               <button type="button" className="btn c-go" onClick={onOpen} disabled={busy}><span>Read the rest of this one</span><GoArrow /></button>
             </>
@@ -244,7 +231,7 @@ function Demo({ book, onOpen, busy, freeText }: { book: DemoBook; onOpen: () => 
           )}
         </div>
         <div className="demo-tools">
-          <div className="story-tools-left"><span className="story-left">{end ? '' : left === 1 ? 'Last page here' : `${left} pages here`}</span></div>
+          <div className="story-tools-left"><span className="story-left">{end ? '' : `Page ${i + 1} of ${frames.length}`}</span></div>
           <div className="story-turns">
             {i > 0 && <button type="button" className="story-back" onClick={() => step(-1)} aria-label="Back a page"><span aria-hidden="true">←</span></button>}
             {!end && <button type="button" className="story-next" onClick={() => step(1)}>Next <span aria-hidden="true">→</span></button>}

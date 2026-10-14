@@ -262,7 +262,7 @@ export default function Start({ initialTopic = '', status, question, intents, on
         {status === 'failed' && onRetry && topic.trim() === initialTopic.trim() ? (
           <button className="btn" onClick={() => onRetry().catch((e) => setLocalError(friendly(e)))}>Try again</button>
         ) : (
-          <button className="btn" onClick={submit} disabled={writing || sending}>{writing || sending ? 'Finding your way…' : 'Show me the way'}</button>
+          <button className="btn" onClick={submit} disabled={writing || sending}>{writing || sending ? 'Finding your way…' : 'Make my book'}</button>
         )}
       </ActionBar>
     </>

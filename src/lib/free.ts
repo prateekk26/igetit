@@ -6,7 +6,7 @@ export const freeChaptersText = (n: number) => (n <= 1 ? 'Chapter 1' : n === 2 ?
 // their one typed topic without knowing it was limited). Numbers are the server's (membership.ts LIMITS, typedAllowance).
 // A line that matches a ready handbook opens it and never counts. Copy (agent).
 export type TypedAllowance = { member: boolean; used: number; limit: number; superAdmin?: boolean }
-export const TYPED_RULE = "Free: one handbook written just for what you type. Ready handbooks on the Shelf are free too, and don't use it."
+export const TYPED_RULE = "Your first book made from what you type is free. Ready-made books don't count toward it."   // 14 Oct: "don't use it" read as a riddle
 export function typedBoxText(a: TypedAllowance | null | undefined, replacing?: string | null): string | null {
   if (replacing) return `This replaces “${replacing}”, which you haven't read yet, so it doesn't use another typed topic.`
   if (!a) return TYPED_RULE
