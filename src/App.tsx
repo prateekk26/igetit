@@ -324,8 +324,8 @@ export default function App() {
   // Explore: ready topics and the ones other readers started (6 Oct).
   if (view === 'explore' || (hold === 'explore' && (data === undefined || holdable))) {
     return (
-      <Shell hideShelf tab={tabs ? 'shelf' : undefined}>
-        <Shelf onBack={() => { setShelfNotice(null); setView(exploreFrom) }} notice={shelfNotice} have={haveMap}
+      <Shell hideShelf bare tab={tabs ? 'shelf' : undefined}>
+        <Shelf onBack={() => { setShelfNotice(null); setView(exploreFrom) }} backLabel={hb ? 'Your book' : 'Back'} notice={shelfNotice} have={haveMap}
           onReady={async (topic) => { setHold('explore'); const r = await create({ topic, level: 'new', voice: 'friend', deviceToken: token }); pin(String(r.handbookId)); setView('auto') }}
           onShared={async (id) => { setHold('explore'); const r = await startFromLibrary({ libraryId: id, deviceToken: token }); pin(String(r.handbookId)); setView('auto') }} />
       </Shell>
@@ -712,14 +712,15 @@ function LinkOpening({ book }: { book: { key: string; topic: string; cover: stri
   )
 }
 
-function Shell({ children, onSignOut, rail, back, hideShelf, tab }: { children: React.ReactNode; onSignOut?: () => Promise<void> | void; rail?: React.ReactNode; back?: { label: string; onClick: () => void }; hideShelf?: boolean; tab?: 'tonight' | 'known' | 'shelf' }) {
+// bare: the screen draws its own top bar, as its C board does (the Shelf, C12).
+function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { children: React.ReactNode; onSignOut?: () => Promise<void> | void; rail?: React.ReactNode; back?: { label: string; onClick: () => void }; hideShelf?: boolean; tab?: 'tonight' | 'known' | 'shelf'; bare?: boolean }) {
   // The member mark (7 Oct): paying should show, on every screen.
   const member = useQuery(api.membership.status, { deviceToken: deviceToken() })?.member
   // On a phone the side menu is hidden, so ☰ opens the same menu as a sheet (7 Oct, Prateek).
   const [menu, setMenu] = useState(false)
   return (
     <div className={`shell${tab ? ' has-tabs' : ''}`}>
-      <header className="top">
+      {!bare && <header className="top">
         <button type="button" className="wordmark wordmark-btn" onClick={() => goHome?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Five minutes at a time.</small></button>
         {/* The Shelf (8 Oct, Prateek): always one tap away, on every screen. */}
         {!hideShelf && <ShelfButton onOpen={() => goShelf?.()} />}
@@ -728,7 +729,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab }: { children: 
           {onSignOut && <button type="button" className="quiet hide-phone" onClick={() => onSignOut()}>Sign out</button>}
           {rail && <button type="button" className="menu-btn" aria-label="Menu" aria-expanded={menu} onClick={() => setMenu(true)}>☰</button>}
         </span>
-      </header>
+      </header>}
       {menu && rail && (
         <Sheet onClose={() => setMenu(false)} label="Menu">
           <nav className="menu-sheet" onClick={(e) => { if ((e.target as HTMLElement).closest('button, a')) setMenu(false) }}>

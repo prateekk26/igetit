@@ -379,6 +379,9 @@ export default defineSchema({
     order: v.optional(v.number()),
     free: v.optional(v.boolean()),   // D99: the owner made this ready handbook free (true) or took it off free (false); unset: freeTen.ts decides
     readWeek: v.optional(v.number()),   // D98: readers' copies opened in the last 7 days, recounted hourly (shelf.countReadWeek)   // 13 Oct: the book's place on its shelf, set by the owner on /admin; unset books follow
+    // C12 (14 Oct): "5 chapters · 35 min" under each book: the plan's chapter count and its minutes (the plan's own per
+    // chapter, else 5 a chapter, the average). Set by syncReady and syncShared; old rows by shelf.fillLengths.
+    chapters: v.optional(v.number()), minutes: v.optional(v.number()),
     starts: v.number(), passes: v.number(),
   }).index("by_topic_kind", ["topic", "kind"]).index("by_library", ["libraryId"]).index("by_kind", ["kind"]),
 

@@ -54,6 +54,13 @@ function coverOf(pictures: any[] | undefined) {
   return (drawn.find((p: any) => p.card === 0) ?? drawn[0] ?? ps[0])?.storageId;
 }
 
+// C12's "N chapters · M min": the plan's chapters, and their minutes (the plan's own, else 5 each, the average chapter).
+function lengthOf(plan: any): { chapters?: number; minutes?: number } {
+  const chs: any[] = Array.isArray(plan?.chapters) ? plan.chapters : [];
+  if (!chs.length) return {};
+  return { chapters: chs.length, minutes: chs.reduce((n, c) => n + (typeof c?.minutes === "number" && c.minutes > 0 ? c.minutes : 5), 0) };
+}
+
 // A ready topic: refreshed from its stored copy (any one spelling; they share content).
 export async function syncReady(ctx: MutationCtx, topic: string) {
   const rows = await ctx.db.query("cache").withIndex("by_topic", (q) => q.eq("topic", topic)).collect();
@@ -72,6 +79,7 @@ export async function syncReady(ctx: MutationCtx, topic: string) {
     kind: "ready" as const, topic, key: r.topicKey, title: typedName(r.topic), level: r.level, mode: (r.plan as any)?.mode ?? undefined,
     outcome: firstSentence((r.plan as any)?.outcome7), cover: coverOf(ch1?.pictures),
     trendingWeek: (r as any).trendingWeek, addedAt: (r as any).addedAt ?? r._creationTime, improvedAt: (r as any).improvedAt, stories, published: true,
+    ...lengthOf(r.plan),
   };
   if (existing) await ctx.db.patch(existing._id, row);
   else await ctx.db.insert("shelf", { ...row, starts: 0, passes: 0 });
@@ -84,6 +92,7 @@ export async function syncShared(ctx: MutationCtx, l: Doc<"library">) {
     kind: "shared" as const, topic: l.topic, key: l.topicKey, title: l.topic, level: l.level, mode: l.mode, goal: l.goal,
     outcome: firstSentence((l.plan as any)?.outcome7), cover: coverOf(l.chapter1?.pictures),
     addedAt: l.createdAt, libraryId: l._id, pick: !!l.pick, published: l.published, starts: l.starts, passes: l.passes,
+    ...lengthOf(l.plan),
   };
   if (existing) await ctx.db.patch(existing._id, row);
   else await ctx.db.insert("shelf", row);
@@ -400,5 +409,22 @@ export const recountReadWeek = mutation({
   handler: async (ctx) => {
     if (!(await isOwner(ctx)).ok) throw new Error("Owner only");
     await ctx.scheduler.runAfter(0, internal.shelf.countReadWeek, {});
+  },
+});
+
+// One-off (14 Oct, C12): the chapters and minutes on shelf rows made before syncReady and syncShared wrote them.
+//   npx convex run shelf:fillLengths   (then with --prod at the next deploy)
+export const fillLengths = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let n = 0;
+    for (const s of await ctx.db.query("shelf").collect()) {
+      if (s.chapters) continue;
+      const plan = s.kind === "shared" && s.libraryId ? (await ctx.db.get(s.libraryId))?.plan
+        : (await ctx.db.query("cache").withIndex("by_topic", (q) => q.eq("topic", s.topic)).collect()).find((x) => x.level === "new")?.plan;
+      const len = lengthOf(plan);
+      if (len.chapters) { await ctx.db.patch(s._id, len); n++; }
+    }
+    return n;
   },
 });

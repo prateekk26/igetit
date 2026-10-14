@@ -208,13 +208,13 @@ export const explore = query({
       if (seen.has(r.topic)) continue; seen.add(r.topic);
       const mine = recent.filter((h) => h.source === "cache" && h.topic === r.topic);
       items.push({ kind: "ready", key: r.key, topic: r.title, outcome: r.outcome, mode: r.mode ?? null, cover: await url(r.cover), week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, free: isFreeRow(r),
-        finishedWeek: mine.filter((h) => finished.has(h._id)).length, trending: r.trendingWeek === thisWeek, addedAt: r.addedAt });
+        finishedWeek: mine.filter((h) => finished.has(h._id)).length, trending: r.trendingWeek === thisWeek, addedAt: r.addedAt, chapters: r.chapters ?? null, minutes: r.minutes ?? null });
     }
     for (const r of shelf.filter((x) => x.kind === "shared" && onShelf(x))) {
       if (seen.has(r.topic)) continue; seen.add(r.topic);
       const mine = recent.filter((h) => (h as any).fromLibrary === r.libraryId);
       items.push({ kind: "shared", id: r.libraryId, key: r.key, topic: r.title, goal: r.goal ?? null, outcome: r.outcome, mode: r.mode ?? null, cover: await url(r.cover),
-        week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, finishedWeek: mine.filter((h) => finished.has(h._id)).length, trending: false, addedAt: r.addedAt });
+        week: mine.length, starts: r.starts, passes: r.passes, pick: !!r.pick, award: r.award ?? null, section: r.section ?? null, order: r.order ?? null, finishedWeek: mine.filter((h) => finished.has(h._id)).length, trending: false, addedAt: r.addedAt, chapters: r.chapters ?? null, minutes: r.minutes ?? null });
     }
     const hot = new Set(items.filter((i) => i.week >= 2).sort((a, b) => b.week - a.week).slice(0, 3).map((i) => i.key));
     const loved = new Set(items.filter((i) => i.starts !== null && i.starts >= 3 && i.passes / i.starts >= 0.5).sort((a, b) => b.passes / b.starts - a.passes / a.starts).slice(0, 3).map((i) => i.key));
