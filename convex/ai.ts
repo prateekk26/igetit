@@ -46,7 +46,7 @@ const HAIKU = "claude-haiku-4-5-20251001";
 const OPUS = "claude-opus-5-5";
 const SONNET = "claude-sonnet-5-5";
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
-type Kind = "plan" | "chapter" | "simpler" | "ask" | "check" | "scenes" | "audit" | "repair" | "teach" | "intent" | "versions" | "match" | "artifact" | "move" | "library" | "stories" | "shelf" | "whyright" | "score" | "wording";
+type Kind = "plan" | "chapter" | "simpler" | "ask" | "check" | "scenes" | "audit" | "repair" | "teach" | "intent" | "versions" | "match" | "artifact" | "move" | "library" | "stories" | "shelf" | "whyright" | "score" | "wording" | "figures";
 // Per-job table, set by Prateek 6 Oct: quality first, cost and latency to be handled with prices or limits later.
 // Thinking counts against max_tokens, so max-effort jobs get large caps (and stream; see callAnthropic).
 const JOB: Record<Kind, { model: string; effort?: Effort; maxTokens: number }> = {
@@ -69,7 +69,8 @@ const JOB: Record<Kind, { model: string; effort?: Effort; maxTokens: number }> =
   score: { model: SONNET, effort: "low", maxTokens: 4000 },
   wording: { model: SONNET, effort: "low", maxTokens: 8000 },   // D87 (11 Oct): rewrites only sentences using "wrong"/"incorrect"   // D72 (11 Oct): one rubric lever of one chapter (convex/rubric.ts)
   artifact: { model: SONNET, effort: "medium", maxTokens: 16000 },
-  move: { model: SONNET, effort: "medium", maxTokens: 16000 },   // 8 Oct: the moving figure for a body-skill chapter's "move" card   // 8 Oct test: one interactive HTML explainer per chapter (evalArtifact.ts)   // Prateek, 6 Oct, from evals/model-choice.md: 10 of 10 planted mistakes, no stray changes, ~14 s (Opus high: 10 of 10, 38 s, ~3.5x the cost). Watch: on 4 Oct Sonnet once wrote new mistakes while fixing
+  move: { model: SONNET, effort: "medium", maxTokens: 16000 },
+  figures: { model: SONNET, effort: "low", maxTokens: 8000 },   // 14 Oct: explainer figure specs for a chapter's pages (src/lib/figure.ts); model under test (evalFigures.ts), not on the reader's path   // 8 Oct: the moving figure for a body-skill chapter's "move" card   // 8 Oct test: one interactive HTML explainer per chapter (evalArtifact.ts)   // Prateek, 6 Oct, from evals/model-choice.md: 10 of 10 planted mistakes, no stray changes, ~14 s (Opus high: 10 of 10, 38 s, ~3.5x the cost). Watch: on 4 Oct Sonnet once wrote new mistakes while fixing
 };
 
 let anthropic: Anthropic | null = null;
@@ -221,7 +222,7 @@ function extractJson(text: string): any {
 }
 
 export const generate = internalAction({
-  args: { kind: v.union(v.literal("plan"), v.literal("chapter"), v.literal("simpler"), v.literal("ask"), v.literal("check"), v.literal("scenes"), v.literal("audit"), v.literal("repair"), v.literal("teach"), v.literal("intent"), v.literal("versions"), v.literal("match"), v.literal("artifact"), v.literal("move"), v.literal("library"), v.literal("stories"), v.literal("shelf"), v.literal("whyright"), v.literal("score"), v.literal("wording")), system: v.string(), user: v.string(), model: v.optional(v.string()), effort: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("xhigh"), v.literal("max"))), trace: traceV, logAs: v.optional(v.string()) },
+  args: { kind: v.union(v.literal("plan"), v.literal("chapter"), v.literal("simpler"), v.literal("ask"), v.literal("check"), v.literal("scenes"), v.literal("audit"), v.literal("repair"), v.literal("teach"), v.literal("intent"), v.literal("versions"), v.literal("match"), v.literal("artifact"), v.literal("move"), v.literal("library"), v.literal("stories"), v.literal("shelf"), v.literal("whyright"), v.literal("score"), v.literal("wording"), v.literal("figures")), system: v.string(), user: v.string(), model: v.optional(v.string()), effort: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("xhigh"), v.literal("max"))), trace: traceV, logAs: v.optional(v.string()) },
   // trace (8 Oct, Tanisha): the handbook and chapter the call belongs to, for the call log. logAs: the step name in the
   // log when it differs from the job (e.g. "eval plan" for a prompt test), so tests never count as readers' handbooks.
   handler: async (ctx, { kind, system, user, model, effort, trace, logAs }): Promise<Result> => {

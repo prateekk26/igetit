@@ -38,8 +38,9 @@ function wrap(s: string, px: number, size: number): string[] {
   if (line) out.push(line)
   return out
 }
-function text(x: number, y: number, s: string, o: { size?: number; weight?: number; fill?: string; anchor?: 'start' | 'middle' | 'end'; width?: number; op?: number; lh?: number } = {}) {
-  const size = o.size ?? 13, lines = o.width ? wrap(s, o.width, size) : [s], lh = o.lh ?? size * 1.2
+// fit: shrink the size until one line fits that width (labels inside boxes and circles; 14 Oct bake-off: long words ran out).
+function text(x: number, y: number, s: string, o: { size?: number; weight?: number; fill?: string; anchor?: 'start' | 'middle' | 'end'; width?: number; op?: number; lh?: number; fit?: number } = {}) {
+  const size = o.fit ? Math.min(o.size ?? 13, o.fit / Math.max(1, s.length * 0.56)) : o.size ?? 13, lines = o.width ? wrap(s, o.width, size) : [s], lh = o.lh ?? size * 1.2
   const y0 = y - ((lines.length - 1) * lh) / 2
   return `<text x="${x}" y="${y0}" font-family="'Baloo 2', system-ui, sans-serif" font-size="${size}" font-weight="${o.weight ?? 700}" fill="${o.fill ?? PAPER}" text-anchor="${o.anchor ?? 'start'}" dominant-baseline="middle" opacity="${(o.op ?? 1).toFixed(3)}">${lines.map((l, i) => `<tspan x="${x}" dy="${i ? lh : 0}">${esc(l)}</tspan>`).join('')}</text>`
 }
@@ -91,7 +92,7 @@ export function duration(spec: FigureSpec): number {
 export function figureSvg(spec: FigureSpec, t: number): string {
   const parts: string[] = []
   const top = spec.title ? 34 : 14, bottom = spec.caption ? H - 40 : H - 14
-  if (spec.title) parts.push(text(18, 22, spec.title.toUpperCase(), { size: 11, fill: DIM, weight: 700, op: clamp(t * 5) }))
+  if (spec.title) parts.push(text(18, 22, spec.title.toUpperCase(), { size: 11, fill: DIM, weight: 700, op: clamp(t * 5), fit: W - 36 - (spec.kind === 'lots' && spec.legend ? 96 : 0) }))
   const capAt = duration(spec) - 0.6
   if (spec.caption) parts.push(`<g opacity="${clamp((t - capAt) * 4).toFixed(3)}">${text(W / 2, H - 22, spec.caption, { size: 13, weight: 600, anchor: 'middle', width: W - 40, fill: PAPER, lh: 15 })}</g>`)
 
@@ -110,11 +111,11 @@ export function figureSvg(spec: FigureSpec, t: number): string {
     const n = spec.items.length, cx = W - 78, cy = (top + bottom) / 2, rowH = (bottom - top) / n
     spec.items.forEach((s, i) => {
       const at = 0.3 + i * 0.25, y = top + rowH * (i + 0.5), w = 150
-      parts.push(pop(t, at, 18 + w / 2, y, `<rect x="18" y="${y - 14}" width="${w}" height="28" rx="14" fill="rgba(250,247,240,0.1)"/>${text(30, y, s, { size: 12, weight: 600 })}`))
+      parts.push(pop(t, at, 18 + w / 2, y, `<rect x="18" y="${y - 14}" width="${w}" height="28" rx="14" fill="rgba(250,247,240,0.1)"/>${text(30, y, s, { size: 12, weight: 600, fit: w - 22 })}`))
       parts.push(draw(t, at + 0.55, `M${18 + w + 6} ${y} C${18 + w + 40} ${y}, ${cx - 70} ${cy}, ${cx - 46} ${cy}`, { stroke: LINE, width: 2, len: 160 }))
     })
     const nodeAt = 0.4 + n * 0.25 + 0.6
-    parts.push(pop(t, nodeAt, cx, cy, `<circle cx="${cx}" cy="${cy}" r="44" fill="${MARI}"/>${text(cx, cy - (spec.into.sub ? 6 : 0), spec.into.label, { size: 15, weight: 800, fill: INK, anchor: 'middle', width: 80, lh: 15 })}${spec.into.sub ? text(cx, cy + 14, spec.into.sub, { size: 10.5, weight: 700, fill: INK, anchor: 'middle', width: 80 }) : ''}`))
+    parts.push(pop(t, nodeAt, cx, cy, `<circle cx="${cx}" cy="${cy}" r="44" fill="${MARI}"/>${text(cx, cy - (spec.into.sub ? 9 : 0), spec.into.label, { size: 15, weight: 800, fill: INK, anchor: 'middle', fit: 76 })}${spec.into.sub ? text(cx, cy + 12, spec.into.sub, { size: 10.5, weight: 700, fill: INK, anchor: 'middle', width: 74, lh: 11 }) : ''}`))
   }
 
   if (spec.kind === 'lots' || spec.kind === 'loop') {
@@ -124,7 +125,7 @@ export function figureSvg(spec: FigureSpec, t: number): string {
     parts.push(pop(t, 0.2, lx + lw / 2, (y0 + y1) / 2, `<rect x="${lx}" y="${y0}" width="${lw}" height="${y1 - y0}" rx="14" fill="rgba(250,247,240,0.07)" stroke="${LINE}" stroke-width="1.5"/>`))
     parts.push(pop(t, 0.35, rx + lw / 2, (y0 + y1) / 2, `<rect x="${rx}" y="${y0}" width="${lw}" height="${y1 - y0}" rx="14" fill="rgba(250,247,240,0.07)" stroke="${LINE}" stroke-width="1.5"/>`))
     parts.push(draw(t, 0.5, `M${fenceX} ${y0 - 4} V${y1 + 4}`, { stroke: MARI, width: 3, dash: '4 6', len: y1 - y0 + 8 }))
-    parts.push(`<g opacity="${clamp((t - 0.5) * 5).toFixed(3)}">${text(lx + lw / 2, y1 + 12, spec.left, { size: 12, weight: 700, anchor: 'middle', fill: DIM })}${text(rx + lw / 2, y1 + 12, spec.right, { size: 12, weight: 700, anchor: 'middle', fill: DIM })}</g>`)
+    parts.push(`<g opacity="${clamp((t - 0.5) * 5).toFixed(3)}">${text(lx + lw / 2, y1 + 12, spec.left, { size: 12, weight: 700, anchor: 'middle', fill: DIM, fit: lw })}${text(rx + lw / 2, y1 + 12, spec.right, { size: 12, weight: 700, anchor: 'middle', fill: DIM, fit: lw })}</g>`)
     const n = spec.kind === 'lots' ? (spec.dots ?? 12) : 9
     const fromLeft = spec.kind === 'lots' ? spec.from === 'left' : !spec.charge
     const cols = 3, cellX = (lw - 30) / (cols - 1), rows = Math.ceil(n / cols), cellY = Math.min(20, (y1 - y0 - 24) / Math.max(1, rows - 1))
@@ -141,7 +142,7 @@ export function figureSvg(spec: FigureSpec, t: number): string {
       const road = fromLeft ? `M${ax} ${y0 - 2} C${ax} ${peak}, ${bx} ${peak}, ${bx} ${y0 - 2}` : `M${bx} ${y0 - 2} C${bx} ${peak}, ${ax} ${peak}, ${ax} ${y0 - 2}`
       parts.push(draw(t, 0.7, road, { stroke: PAPER, width: 2.5, len: 320, arrow: true }))
       const vx = W / 2, vy = top + 22
-      parts.push(pop(t, 1.0, vx, vy + 6, `<rect x="${vx - 40}" y="${vy - 8}" width="80" height="30" rx="15" fill="${INK}" stroke="${PAPER}" stroke-width="2"/>${text(vx, vy + 7, spec.via, { size: 11.5, weight: 800, anchor: 'middle' })}`))
+      parts.push(pop(t, 1.0, vx, vy + 6, `<rect x="${vx - 40}" y="${vy - 8}" width="80" height="30" rx="15" fill="${INK}" stroke="${PAPER}" stroke-width="2"/>${text(vx, vy + 7, spec.via, { size: 11.5, weight: 800, anchor: 'middle', fit: 72 })}`))
       // electrons riding the outside road
       for (let k = 0; k < 4; k++) {
         // the one thing that keeps moving once the figure is built: electrons riding the road, for as long as it's on screen
@@ -162,7 +163,7 @@ export function figureSvg(spec: FigureSpec, t: number): string {
     const n = spec.terms.length, slot = (W - 36) / (n * 2 - 1), cy = (top + bottom) / 2 - 6
     spec.terms.forEach((term, i) => {
       const cx = 18 + slot * (i * 2) + slot / 2, at = 0.35 + i * 0.45, last = i === n - 1
-      parts.push(pop(t, at, cx, cy, `<rect x="${cx - slot / 2 - 8}" y="${cy - 26}" width="${slot + 16}" height="52" rx="16" fill="${last ? MARI : 'rgba(250,247,240,0.1)'}"/>${text(cx, cy, term.show, { size: 18, weight: 800, anchor: 'middle', fill: last ? INK : PAPER })}`))
+      parts.push(pop(t, at, cx, cy, `<rect x="${cx - slot / 2 - 8}" y="${cy - 26}" width="${slot + 16}" height="52" rx="16" fill="${last ? MARI : 'rgba(250,247,240,0.1)'}"/>${text(cx, cy, term.show, { size: 18, weight: 800, anchor: 'middle', fill: last ? INK : PAPER, fit: slot + 4 })}`))
       parts.push(`<g opacity="${clamp((t - at - 0.2) * 5).toFixed(3)}">${text(cx, cy + 44, term.label, { size: 11, weight: 700, anchor: 'middle', fill: DIM, width: slot + 20, lh: 12.5 })}</g>`)
       if (i < n - 1) {
         const ox = cx + slot, op = spec.ops[i] ?? '', a = clamp((t - at - 0.15) * 5).toFixed(3)
@@ -181,7 +182,7 @@ export function figureSvg(spec: FigureSpec, t: number): string {
       const at = 0.3 + i * 0.7, ok = k === 'right'
       parts.push(pop(t, at, x + colW / 2, cy, `<rect x="${x}" y="${top + 4}" width="${colW}" height="${bottom - top - 8}" rx="16" fill="${ok ? 'rgba(242,169,59,0.16)' : 'rgba(250,247,240,0.06)'}"/>`
         + (ok ? `<circle cx="${x + 22}" cy="${top + 28}" r="8" fill="${MARI}"/>` : `<circle cx="${x + 22}" cy="${top + 28}" r="7" fill="none" stroke="${DIM}" stroke-width="2.5"/>`)
-        + text(x + 38, top + 28, c.head, { size: 13.5, weight: 800, fill: ok ? MARI : DIM })
+        + text(x + 38, top + 28, c.head, { size: 13.5, weight: 800, fill: ok ? MARI : DIM, fit: colW - 46 })
         + text(x + 16, top + 50 + 34, c.line, { size: 12.5, weight: 600, width: colW - 28, fill: ok ? PAPER : DIM, lh: 15 })))
     })
   }
