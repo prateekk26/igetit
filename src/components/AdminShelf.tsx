@@ -17,7 +17,7 @@ const ago = (t: number) => { const m = Math.round((Date.now() - t) / 60000); ret
 export default function AdminShelf() {
   const rows = useQuery(api.shelf.adminList, {})
   const layout = useQuery(api.shelf.layout, {})
-  const home = useQuery(api.landing.content, {})
+  const chipStats = useQuery(api.admin.chipStats, { days: 30 })
   const setBookOrder = useMutation(api.shelf.setBookOrder)
   const setShelfOrder = useMutation(api.shelf.setShelfOrder)
   const recount = useMutation(api.shelf.recountReadWeek)
@@ -31,8 +31,8 @@ export default function AdminShelf() {
   const fail = (e: unknown) => setErr(String((e as Error)?.message ?? e).replace(/^.*Error: /, '').slice(0, 200))
   const order = sectionOrder(layout.shelves)
   const live = rows.filter((r) => r.on), off = rows.filter((r) => !r.on)
-  const homeNo = new Map((home?.top ?? []).map((t, i) => [t.topic, i + 1]))
   const byTitle = new Map(rows.map((r) => [r.title, r]))
+  const pinnedReady = live.filter((r) => r.pick && r.kind === 'ready').sort((a, b) => b.passes * 10 + b.starts - (a.passes * 10 + a.starts))
 
   // The Shelf as readers see it (ArrangeCard's rule): the free shelf first, the subject shelves in their order, then
   // "More"; books in the Spotlight or the Awards sit on neither, as on the real Shelf.
@@ -67,7 +67,7 @@ export default function AdminShelf() {
         ]} />
       </div>
       <How>
-        <p><b>Pin to top</b> puts a book first in the Shelf's Spotlight, and, if it's a ready handbook, first in "Top of the Shelf" on the homepage. The homepage shows up to 6: pins first, then books readers finished chapter 1 of (10 points each) or opened (1 each). It never fills a spot with a book nobody has read or pinned.</p>
+        <p><b>Pin to top</b> puts a book first in the Shelf's Spotlight, and, if it's a ready handbook, always under the box on the homepage (4 spots; the rest rotate at random so the tap rates show which topics pull).</p>
         <p><b>Free</b> puts a ready handbook on the free shelf with no daily chapter limit (the sign-up after chapter 2 stays).</p>
         <p><b>On the Shelf</b> off hides a book from the Shelf, the homepage, the wait stories and What's next. Readers who have it keep it, and you can put it back. A readers' handbook taken off is also unpublished (its ?l= link stops).</p>
         <p><b>↑ ↓</b> move a shelf, or a book along its shelf (left to right on the Shelf). The shelf menu sends a book to another shelf. Books you never moved follow the ones you did, the most finished first.</p>
@@ -80,31 +80,44 @@ export default function AdminShelf() {
       {searching ? (
         <div className="adm-group-block">
           <h3>{found.length} {found.length === 1 ? 'book' : 'books'}</h3>
-          {found.length === 0 ? <p className="note">Nothing matches.</p> : <ol className="adm-bookcards">{found.map((r) => <Book key={r.id} r={r} order={order} home={homeNo.get(r.title)} onErr={fail} />)}</ol>}
+          {found.length === 0 ? <p className="note">Nothing matches.</p> : <ol className="adm-bookcards">{found.map((r) => <Book key={r.id} r={r} order={order} onErr={fail} />)}</ol>}
         </div>
       ) : (
         <>
+          {/* The homepage's 4 topic chips (14 Oct): the pinned ready handbooks first, the other spots drawn at random per
+              visit; the table says which topics get tapped, so the winners can be pinned. */}
           <div className="adm-group-block adm-home">
-            <h3>On the homepage now <small>Top of the Shelf · {home?.top.length ?? '…'} of 6</small></h3>
-            {!home ? <p className="note">Loading…</p> : home.top.length === 0 ? <p className="note">Empty: pin a ready handbook to put one here.</p> : (
-              <ol className="adm-homelist">{home.top.map((t, i) => {
-                const r = byTitle.get(t.topic)
-                return (
-                  <li key={t.topic}>
-                    <span className="adm-no">No. {i + 1}</span>
-                    <span className="adm-home-t"><strong>{t.topic}</strong><small>{r?.pick ? 'Pinned by you' : `By readers · ${t.passes} finished chapter 1 · ${t.starts} opened`}</small></span>
-                    {r && <Switch on={!!r.pick} onClick={() => { setErr(null); setPick({ id: r.id, pick: !r.pick }).catch(fail) }}>{r.pick ? 'Pinned' : 'Pin'}</Switch>}
-                  </li>
-                )
-              })}</ol>
+            <h3>On the homepage <small>4 topics under the box · {pinnedReady.length} pinned, {Math.max(0, 4 - pinnedReady.length)} rotating</small></h3>
+            {pinnedReady.length > 0 && (
+              <ol className="adm-homelist">{pinnedReady.slice(0, 4).map((r, i) => (
+                <li key={r.id}>
+                  <span className="adm-no">No. {i + 1}</span>
+                  <span className="adm-home-t"><strong>{r.title}</strong><small>Always shown</small></span>
+                  <Switch on onClick={() => { setErr(null); setPick({ id: r.id, pick: false }).catch(fail) }}>Pinned</Switch>
+                </li>
+              ))}</ol>
             )}
-            {home && home.top.length < 6 && home.top.length > 0 && <p className="note">{6 - home.top.length} {6 - home.top.length === 1 ? 'spot' : 'spots'} empty. Pin a ready handbook below to fill one.</p>}
+            {pinnedReady.length > 4 && <p className="note">Only 4 show: the {pinnedReady.length - 4} pinned below them wait their turn (the ones readers finish most go first).</p>}
+            <h3>Which topics get tapped <small>last 30 days, our phones left out</small></h3>
+            {!chipStats ? <p className="note">Loading…</p> : chipStats.length === 0 ? <p className="note">No visits with the new chips yet.</p> : (
+              <div className="adm-scroll"><table className="adm-table">
+                <thead><tr><th>Topic</th><th>Shown</th><th>Tapped</th><th>Tap rate</th><th></th></tr></thead>
+                <tbody>{chipStats.map((x) => {
+                  const r = byTitle.get(x.topic)
+                  return (
+                    <tr key={x.topic}><td>{x.topic}</td><td>{x.shown}</td><td>{x.tapped}</td><td><b>{x.shown ? `${Math.round((x.tapped / x.shown) * 100)}%` : '—'}</b></td>
+                      <td>{r && r.kind === 'ready' && <Switch on={r.pick} onClick={() => { setErr(null); setPick({ id: r.id, pick: !r.pick }).catch(fail) }}>{r.pick ? 'Pinned' : 'Pin'}</Switch>}</td></tr>
+                  )
+                })}</tbody>
+              </table></div>
+            )}
+            <p className="note">A topic needs about 50 views before its rate means much.</p>
           </div>
 
           {aside.length > 0 && (
             <div className="adm-group-block">
               <h3>Spotlight and Awards <small>{aside.length} · shown above the shelves, not on one</small></h3>
-              <ol className="adm-bookcards">{aside.map((r) => <Book key={r.id} r={r} order={order} home={homeNo.get(r.title)} onErr={fail} />)}</ol>
+              <ol className="adm-bookcards">{aside.map((r) => <Book key={r.id} r={r} order={order} onErr={fail} />)}</ol>
             </div>
           )}
 
@@ -119,7 +132,7 @@ export default function AdminShelf() {
               </div>
               {sh.books.length === 0 ? <p className="note">No books on this shelf.</p> : (
                 <ol className="adm-bookcards">{sh.books.map((b, i) => (
-                  <Book key={b.id} r={b} n={i + 1} order={order} home={homeNo.get(b.title)} onErr={fail} hideShelf={sh.key === 'free'}
+                  <Book key={b.id} r={b} n={i + 1} order={order} onErr={fail} hideShelf={sh.key === 'free'}
                     move={{ up: i > 0 ? () => moveBook(sh.books, i, -1) : null, down: i < sh.books.length - 1 ? () => moveBook(sh.books, i, 1) : null }} />
                 ))}</ol>
               )}
@@ -140,7 +153,7 @@ export default function AdminShelf() {
 
 type BookRow = NonNullable<FunctionReturnType<typeof api.shelf.adminList>>[number]
 
-function Book({ r, n, order, home, onErr, move, hideShelf }: { r: BookRow; n?: number; order: string[]; home?: number; onErr: (e: unknown) => void; move?: { up: (() => void) | null; down: (() => void) | null }; hideShelf?: boolean }) {
+function Book({ r, n, order, onErr, move, hideShelf }: { r: BookRow; n?: number; order: string[]; onErr: (e: unknown) => void; move?: { up: (() => void) | null; down: (() => void) | null }; hideShelf?: boolean }) {
   const setOn = useMutation(api.shelf.setOnShelf)
   const setPick = useMutation(api.shelf.setPick)
   const setFree = useMutation(api.shelf.setFree)
@@ -159,7 +172,7 @@ function Book({ r, n, order, home, onErr, move, hideShelf }: { r: BookRow; n?: n
         <div className="adm-bookcard-t">
           <strong>{r.title}</strong>
           <span className="adm-tags">
-            {home && <span className="adm-tag adm-tag-strong">Homepage No. {home}</span>}
+            {r.pick && r.kind === 'ready' && r.on && <span className="adm-tag adm-tag-strong">On the homepage</span>}
             {r.spot && <span className="adm-tag">Spotlight No. {r.spot}</span>}
             {r.award && <span className="adm-tag">Award: {r.award.title}</span>}
             {r.kind === 'shared' && <span className="adm-tag">Readers'</span>}

@@ -49,10 +49,11 @@ const goto = async (url) => { await send('Page.navigate', { url }); await sleep(
 // ── Scenario 1: a stranger from a link, fresh phone ──────────────────────────────────────────────────────────
 console.log(`\nScenario 1: fresh phone at ${BASE}`)
 await goto(`${BASE}/?utm_source=internal`)
-await step('landing shows the topic box and the ready topics', `!!document.querySelector('.lp-field input') && document.querySelectorAll('.lp-carousel button').length > 0`, 20000)
-const topic = await ev(`document.querySelector('.lp-carousel button strong')?.textContent ?? ''`)
+// The ready topics are the chips under the box since 14 Oct (D105); the carousel before that.
+await step('landing shows the topic box and the ready topics', `!!document.querySelector('.c1-input, .lp-field input') && document.querySelectorAll('.c1-chips button, .lp-carousel button').length > 0`, 20000)
+const topic = await ev(`(document.querySelector('.c1-chips button') ?? document.querySelector('.lp-carousel button strong'))?.textContent ?? ''`)
 console.log(`     first ready topic: ${topic}`)
-await ev(`document.querySelector('.lp-carousel button').click()`)
+await ev(`(document.querySelector('.c1-chips button') ?? document.querySelector('.lp-carousel button')).click()`)
 if (await step('chapter 1 opens as full-screen frames', `!!document.querySelector('.story') && /Chapter 1\\b/.test(document.querySelector('.story-label')?.textContent ?? '')`, 20000)) {
   await step('the first frame has words', `(document.querySelector('.story-text, .story-q')?.textContent ?? '').length > 20`, 10000)
   await step('a picture is on the first frame', `!!document.querySelector('.story-pic img')`, 15000)

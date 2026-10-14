@@ -6,7 +6,15 @@ import { isFreeRow } from "./freeTen";
 
 // Public content for the landing page, all from the ready topics: a tappable demo of
 // Public speaking chapter 1, its seven-night path, and a shelf of ready topics with cover pictures.
-const DEMO_TOPIC = "hold a room for 10 minutes";   // D65: Public speaking, as the 28-day handbook
+// The homepage demo (14 Oct, Prateek: "Give an option to see 2-3 handbooks right here. If we don't impress here, we are
+// done for"): three ready handbooks whose chapter 1 opens on something most people haven't heard, one each from tech,
+// money and travel. The label is the switch's name. Placeholder picks (agent) until Prateek chooses.
+const DEMOS = [
+  { title: "Smartphone batteries and fast charging", label: "Your phone battery" },
+  { title: "Make your credit card pay you back", label: "Credit card points" },
+  { title: "Know before you go: Japan", label: "A trip to Japan" },
+];
+const keyOf = (t: string) => t.normalize("NFKC").toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ").slice(0, 80);   // handbooks.topicKeyOf
 // The order of the "start one tonight" row under the box (Prateek, 6 Oct): timely and pop-culture topics first.
 // Matched against each ready topic's name; anything not listed follows.
 const FEATURED = ["odyssey", "iliad", "homer", "avengers", "marvel", "k-pop", "us stock", "abroad", "philosophy", "hold a room", "public speaking", "indian stock", "vibe coding", "swimming"];
@@ -41,18 +49,19 @@ export const content = query({
         improved: !!r.improvedAt && Date.now() - r.improvedAt < 14 * 24 * 3600000 });
     }
 
-    // The top handbooks (13 Oct, Prateek: "a carousel (auto rotating) of the top handbooks"): the Spotlight's rule on the
-    // ready ones (shelf.ts spotlight): the owner's pins first, then readers finishing chapter 1 (10 points each) and
-    // starts (1 each); only books someone has read or the owner pinned, at most six, never padded.
-    const score = (r: (typeof rows)[number]) => r.passes * 10 + r.starts;
-    const top = [];
-    for (const r of rows.filter((r) => r.pick || r.passes >= 1 || r.starts >= 3).sort((a, b) => Number(!!b.pick) - Number(!!a.pick) || score(b) - score(a)).slice(0, 6))
-      top.push({ topic: r.title, outcome: r.outcome, cover: await url(r.cover), starts: r.starts, passes: r.passes, free: isFreeRow(r), mode: r.mode ?? null });
+    // The pinned ready handbooks (the owner's Pin on /admin) always sit under the homepage box, up to 4; the page fills the
+    // other spots at random from the shelf to learn which topics get tapped (14 Oct).
+    const pinned = rows.filter((r) => r.pick).sort((a, b) => b.passes * 10 + b.starts - (a.passes * 10 + a.starts)).slice(0, 4).map((r) => r.title);
 
-    const demoRow = await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", DEMO_TOPIC).eq("level", "new")).unique();
-    const ch = demoRow?.chapters.find((c: any) => c.n === 1);
-    const frames: any[] = [];
-    if (ch) {
+    const demos = [];
+    // If a pick is missing (taken off, or a deployment without it), ready free handbooks fill in, so the proof never vanishes.
+    const fill = rows.filter((r) => isFreeRow(r) && !DEMOS.some((d) => keyOf(d.title) === keyOf(r.title))).sort((a, b) => b.passes - a.passes).map((r) => ({ title: r.title, label: r.title }));
+    for (const d of [...DEMOS, ...fill]) {
+      if (demos.length >= 3) break;
+      const row = await ctx.db.query("cache").withIndex("by_key", (q) => q.eq("topicKey", keyOf(d.title)).eq("level", "new")).first();
+      const ch = row?.chapters.find((c: any) => c.n === 1);
+      if (!row || !ch) continue;
+      const frames: any[] = [];
       for (const [i, c] of (ch.cards ?? []).entries()) {
         if (frames.length >= 6) break;
         if (c.type === "exercise") {
@@ -62,11 +71,11 @@ export const content = query({
           frames.push({ kind: c.type, title: c.title, text: firstPara(c.body), picture: await pictureFor(ch, i) });
         }
       }
+      demos.push({ topic: row.topic, label: d.label, title: ch.title, frames, total: (ch.cards ?? []).length, of: (row.plan?.chapters ?? []).length || 7 });
     }
     return {
-      demo: ch ? { topic: demoRow!.topic, title: ch.title, frames, total: (ch.cards ?? []).length, of: (demoRow!.plan?.chapters ?? []).length || 7 } : null,
-      path: demoRow?.plan ? { topic: demoRow.plan.topic, outcome: demoRow.plan.outcome7, chapters: (demoRow.plan.chapters ?? []).map((c: any) => ({ n: c.n, title: c.title, hook: c.hook })) } : null,
-      top,
+      demos,
+      pinned,
       shelf: shelf.sort((x, y) => rank(x.topic) - rank(y.topic) || Number(!x.cover) - Number(!y.cover)),
     };
   },

@@ -10,7 +10,7 @@ export default function WhatsNext({ topic, deviceToken, onReady, onShared }: { t
   return (
     <section className="whatsnext">
       <h2>What's next</h2>
-      <p className="note">Opens instantly. Same twenty minutes a night.</p>
+      <p className="note">Opens instantly. Same five minutes a night.</p>
       <ul>
         {items.map((it) => (
           <li key={it.topic}>

@@ -221,7 +221,7 @@ export default function Start({ initialTopic = '', status, question, intents, on
       )}
       <p className="for-line">For everything you saved and never got back to.</p>
       <h1>Seven nights from “I keep meaning to” to “I get it”.</h1>
-      <p className="lede">Twenty minutes a day: a small step. 7 days: a small jump.</p>
+      <p className="lede">Five minutes a day: a small step. 7 days: a small jump.</p>
 
       <div className="field">
         <label htmlFor="topic">What do you keep meaning to learn?</label>

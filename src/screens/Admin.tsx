@@ -104,7 +104,7 @@ export default function Admin() {
             <section className="adm-card">
               <h2>How handbooks get started</h2>
               {d.via.length === 0 ? <p className="note">None yet in this window.</p> : (
-                <ul className="adm-list">{d.via.map((v) => <li key={v.via}><span>{v.via === 'box' ? 'Typed in the box' : v.via === 'row' ? 'Tapped the row under the box' : v.via === 'top' ? 'Tapped the top handbooks carousel' : v.via === 'shelf' ? 'Tapped the shelf lower down' : v.via}</span><b>{v.n}</b></li>)}</ul>
+                <ul className="adm-list">{d.via.map((v) => <li key={v.via}><span>{v.via === 'box' ? 'Typed in the box' : v.via === 'chip' ? 'Tapped a topic under the box' : v.via === 'demo' ? 'Read the rest of a demo chapter' : v.via === 'row' ? 'Tapped the row under the box' : v.via === 'top' ? 'Tapped the top handbooks carousel' : v.via === 'shelf' ? 'Tapped the shelf lower down' : v.via}</span><b>{v.n}</b></li>)}</ul>
               )}
               {d.tapped.length > 0 && <><h3>Ready topics tapped</h3><ul className="adm-list">{d.tapped.map((t) => <li key={t.topic}><span>{t.topic}</span><b>{t.n}</b></li>)}</ul></>}
             </section>

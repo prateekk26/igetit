@@ -19,7 +19,7 @@ export default function Print() {
   return (
     <div className="shell print-page">
       <header className="top no-print">
-        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }} aria-label="I Get It, home"><Wordmark /><small>Twenty minutes at a time.</small></a>
+        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }} aria-label="I Get It, home"><Wordmark /><small>Five minutes at a time.</small></a>
       </header>
       <main className="policy">
         {!id ? <p className="lede">No handbook chosen. Members print from a handbook's menu: "Print or save as PDF". <a href="/">Back to your handbooks</a></p>

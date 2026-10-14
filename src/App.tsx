@@ -710,7 +710,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab }: { children: 
   return (
     <div className={`shell${tab ? ' has-tabs' : ''}`}>
       <header className="top">
-        <button type="button" className="wordmark wordmark-btn" onClick={() => goHome?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Twenty minutes at a time.</small></button>
+        <button type="button" className="wordmark wordmark-btn" onClick={() => goHome?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Five minutes at a time.</small></button>
         {/* The Shelf (8 Oct, Prateek): always one tap away, on every screen. */}
         {!hideShelf && <ShelfButton onOpen={() => goShelf?.()} />}
         <span className="top-actions">

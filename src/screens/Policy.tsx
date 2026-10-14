@@ -25,7 +25,7 @@ export default function Policy({ page }: { page: PolicyPage }) {
   return (
     <div className="shell">
       <header className="top">
-        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }} aria-label="I Get It, home"><Wordmark /><small>Twenty minutes at a time.</small></a>
+        <a className="wordmark" href="/" style={{ color: 'inherit', textDecoration: 'none' }} aria-label="I Get It, home"><Wordmark /><small>Five minutes at a time.</small></a>
       </header>
       <main className="policy">
         {/* Back goes back, to the screen the reader came from, when that was this site; it used to reload the home page (UX review 9 Oct). */}

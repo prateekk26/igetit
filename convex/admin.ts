@@ -61,16 +61,44 @@ export const verifyOwner = internalMutation({
 // The same numbers from a terminal (npx convex run --prod admin:numbers '{"days":1}'), for checking without signing in.
 export const numbers = internalQuery({ args: { days: v.number() }, handler: async (ctx, { days }) => build(ctx, days) });
 
+// Our own phones and accounts (statsExcluded) and abuse tokens, left out of every number.
+async function oursAndAbuse(ctx: QueryCtx) {
+  const excluded = await ctx.db.query("statsExcluded").collect();
+  const xTokens = new Set(excluded.map((e) => e.deviceToken).filter(Boolean) as string[]);
+  const xUsers = new Set(excluded.map((e) => e.userId).filter(Boolean).map(String));
+  const allBooks = await ctx.db.query("handbooks").collect();
+  for (const h of allBooks) if (h.userId && xUsers.has(String(h.userId)) && h.ownerToken) xTokens.add(h.ownerToken);
+  return { skip: (t?: string) => !t || xTokens.has(t) || t.startsWith("abuse-"), allBooks, xUsers };
+}
+
+// The homepage's topic chips (14 Oct, Prateek: "keep rotating them to discover the click rates on various topics until
+// we find the 3/4 best ones"): each visit shows the owner's pins, then ready topics at random, 4 in all. Shown counts
+// visitors who saw a topic, tapped counts visitors who tapped it there.
+function chipStatsOf(events: Doc<"events">[]) {
+  const shown: Record<string, Set<string>> = {}, tapped: Record<string, Set<string>> = {};
+  for (const e of events) {
+    if (e.name === "chips") for (const k of ["t1", "t2", "t3", "t4"]) { const t = e.props?.[k]; if (t) (shown[String(t)] ??= new Set()).add(e.visitor); }
+    if (e.name === "submit" && e.props?.via === "chip" && e.props?.topic) (tapped[String(e.props.topic)] ??= new Set()).add(e.visitor);
+  }
+  return Object.keys({ ...shown, ...tapped }).map((topic) => ({ topic, shown: shown[topic]?.size ?? 0, tapped: tapped[topic]?.size ?? 0 }))
+    .sort((a, b) => (b.shown ? b.tapped / b.shown : 0) - (a.shown ? a.tapped / a.shown : 0) || b.shown - a.shown);
+}
+export const chipStats = query({
+  args: { days: v.number() },
+  handler: async (ctx, { days }) => {
+    if (!(await isOwner(ctx)).ok) return null;
+    const { skip } = await oursAndAbuse(ctx);
+    const since = days > 0 ? dayOf(Date.now() - (days - 1) * 24 * HOUR) : "0000";
+    const events = (await ctx.db.query("events").withIndex("by_day", (q) => q.gte("day", since)).collect()).filter((e) => !skip(e.visitor) && (e.name === "chips" || e.name === "submit"));
+    return chipStatsOf(events);
+  },
+});
+
 async function build(ctx: QueryCtx, days: number) {
   {
 
     const since = days > 0 ? dayOf(Date.now() - (days - 1) * 24 * HOUR) : "0000";
-    const excluded = await ctx.db.query("statsExcluded").collect();
-    const xTokens = new Set(excluded.map((e) => e.deviceToken).filter(Boolean) as string[]);
-    const xUsers = new Set(excluded.map((e) => e.userId).filter(Boolean).map(String));
-    const allBooks = await ctx.db.query("handbooks").collect();
-    for (const h of allBooks) if (h.userId && xUsers.has(String(h.userId)) && h.ownerToken) xTokens.add(h.ownerToken);
-    const skip = (t?: string) => !t || xTokens.has(t) || t.startsWith("abuse-");
+    const { skip, allBooks, xUsers } = await oursAndAbuse(ctx);
 
     // visitors in the window, with the source of their first visit
     const visits = (await ctx.db.query("visits").collect()).filter((x) => x.day >= since && !skip(x.visitor)).sort((a, b) => a.at - b.at);
@@ -156,6 +184,8 @@ async function build(ctx: QueryCtx, days: number) {
     const tapped: Record<string, number> = {};
     for (const e of events) if (e.name === "submit") { const k = String(e.props?.via ?? "box"); via[k] = (via[k] ?? 0) + 1; if (k !== "box" && e.props?.topic) { const t = String(e.props.topic); tapped[t] = (tapped[t] ?? 0) + 1; } }
 
+    const chips = chipStatsOf(events);
+
     const sources: Record<string, { visitors: number; started: number; opened: number; passed: number; signedUp: number }> = {};
     for (const r of rows) {
       const s = (sources[r.source] ??= { visitors: 0, started: 0, opened: 0, passed: 0, signedUp: 0 });
@@ -196,6 +226,7 @@ async function build(ctx: QueryCtx, days: number) {
       sections,
       via: Object.entries(via).map(([k, n]) => ({ via: k, n })).sort((a, b) => b.n - a.n),
       tapped: Object.entries(tapped).map(([topic, n]) => ({ topic, n })).sort((a, b) => b.n - a.n),
+      chips,
       sources: Object.entries(sources).map(([source, s]) => ({ source, ...s })).sort((a, b) => b.visitors - a.visitors),
       topics: Object.entries(topics).map(([topic, t]) => ({ topic, ...t })).sort((a, b) => b.started - a.started),
       stuck,
@@ -230,7 +261,7 @@ async function journey(ctx: QueryCtx, first: number, es: Doc<"events">[], hb: Do
       e.name === "section" ? (pr.section === "hero" ? null : `scrolled to ${SECTION_LABEL[String(pr.section)] ?? pr.section}`) :
       e.name === "box_focus" ? "tapped the topic box" :
       e.name === "box_type" ? "started typing" :
-      e.name === "submit" ? (pr.via === "box" ? `typed a topic (${pr.len ?? "?"} letters) and tapped Show me the way` : `tapped the ready topic "${pr.topic}" (${pr.via === "row" ? "row under the box" : pr.via === "top" ? "top handbooks carousel" : "shelf"})`) :
+      e.name === "submit" ? (pr.via === "box" ? `typed a topic (${pr.len ?? "?"} letters) and tapped Show me the way` : `tapped the ready topic "${pr.topic}" (${pr.via === "chip" ? "a topic under the box" : pr.via === "demo" ? "the demo chapter" : pr.via === "row" ? "row under the box" : pr.via === "top" ? "top handbooks carousel" : "shelf"})`) :
       e.name === "demo_tap" ? "tapped the demo chapter" :
       e.name === "wait_view" ? "waited while the plan was written" :
       e.name === "plan_view" ? "saw the plan" :

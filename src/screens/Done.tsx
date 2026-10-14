@@ -261,7 +261,7 @@ function Reminder({ n, tomorrowAt, onPickTime, handbookId, deviceToken }: { n: n
   }
   return (
     <section className="remind">
-      <h2 style={{ marginTop: 'var(--xl)' }}>{tomorrowAt ? (willRemind ? `Deal. See you ${momentOf(tomorrowAt) ?? `at ${pretty(tomorrowAt)}`}.` : `Saved: ${momentOf(tomorrowAt) ?? pretty(tomorrowAt)}.`) : `When do you have twenty minutes for chapter ${n + 1}?`}</h2>
+      <h2 style={{ marginTop: 'var(--xl)' }}>{tomorrowAt ? (willRemind ? `Deal. See you ${momentOf(tomorrowAt) ?? `at ${pretty(tomorrowAt)}`}.` : `Saved: ${momentOf(tomorrowAt) ?? pretty(tomorrowAt)}.`) : `When do you have five minutes for chapter ${n + 1}?`}</h2>
       {!tomorrowAt && <p className="note" style={{ marginTop: 0 }}>Pick one. One nudge a day at that time, and none on days you've already read.</p>}
       <div className="moments">
         {TIMES.map((t) => (

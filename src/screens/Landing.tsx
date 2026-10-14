@@ -1,21 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from 'convex/react'
-import { FREE_TEN } from '../../convex/freeTen'
 import { api } from '../../convex/_generated/api'
 import Rich, { inline } from '../components/Rich'
 import { track } from '../lib/track'
 import { PolicyLinks } from '../components/PolicyLinks'
 import { limitMessage } from '../lib/limits'
-import ShelfStrip from '../components/ShelfStrip'
 import { freeChaptersText, TYPED_RULE, typedBoxText, type TypedAllowance } from '../lib/free'
-import Ooh, { Wordmark } from '../components/Ooh'
+import Ooh, { GoArrow, Wordmark } from '../components/Ooh'
 
-// The landing page, for first-time visitors (DESIGN.md, Landing). A printed risograph poster that sells
-// before it asks: the promise and the box, the ready topics, how tonight works, a real chapter to tap, one line
-// on price, and the box again. D64 (10 Oct, the cut): it was 10.3 screens tall with 62 tap targets at 390 px and the
-// funnel showed almost nobody past the top; the "saved the reel" block, the seven-night path, the second shelf and the
-// tier table went (each repeated something above it). Headline and the line under it are Prateek's words; everything
-// else is (agent) until he rewrites it.
+// The landing page, for first-time visitors (DESIGN.md, "The homepage, one story"). 14 Oct (Prateek: "people enter the
+// landing page and end up quitting early. Too lazy, can't think of a topic straight away"; "If we don't impress here,
+// we are done for"): one story in four parts, all on paper in theme C. (1) The ask: the question, the box and four
+// ready topics to tap, pinned ones first and the rest at random, so /admin learns which topics get tapped. (2) The
+// proof: three real chapter 1s to switch between and tap through. (3) How tonight goes, in three steps. (4) The ask
+// again. The Shelf is in the sticky bar. Gone (they repeated the chips or said the free rule again): Top of the Shelf,
+// the Shelf strip with the free row, the price band. Copy (agent) until Prateek rewrites it.
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
@@ -24,130 +23,40 @@ type Props = { onCreate: (topic: string, level: Level, voice: Voice) => Promise<
 type Frame =
   | { kind: 'picture' | 'teach' | 'example' | 'mistake' | 'try'; title?: string; text: string; picture: string | null }
   | { kind: 'exercise'; prompt: string; options: { id: string; text: string }[]; answer: string; whyNot: Record<string, string> }
+type DemoBook = { topic: string; label: string; title: string; frames: Frame[]; total: number; of: number }
 
-type Shelf = { topic: string; outcome: string; cover: string | null; week: number; starts: number; passRate: number | null; trending: boolean; addedAt: number; mode: string | null; improved?: boolean; free?: boolean }
-// "Or start one tonight" as a carousel (6 Oct). D64 (10 Oct, the landing cut): the four sort pills went. 13 Oct (Prateek:
-// "we need more space on the landing page to display a carousel (auto rotating) of the top handbooks"): the "start one
-// tonight" row and its "Surprise me" went; the top handbooks have their own section under the hero (TopCarousel), and
-// this keeps the free eleven and the way to the Shelf.
-function Carousel({ items, busy, picked, onPick, onExplore }: { items: Shelf[]; busy: boolean; picked: string | null; onPick: (topic: string) => void; onExplore?: () => void }) {
-  // The free handbooks get their own row (Prateek, 11 Oct: highlighted on the homepage): the eleven in FREE_TEN's order,
-  // the 28-day "Hold a room" first, then any the owner made free on /admin (D99). Copy (agent).
-  const rank = (t: string) => { const i = [...FREE_TEN].indexOf(t); return i < 0 ? FREE_TEN.size : i }
-  const free = items.filter((it) => it.free).sort((a, b) => rank(a.topic) - rank(b.topic) || a.topic.localeCompare(b.topic))
-  return (
-    <div className="lp-quick">
-      {free.length > 0 && <>
-        <p className="lp-free-head"><b>Free, every chapter.</b> {free.length === 11 ? 'Eleven' : free.length} complete courses, nothing to pay.</p>
-        <ul className="lp-carousel">
-          {free.map((it) => (
-            <li key={it.topic} className={picked === it.topic ? 'lifting' : picked ? 'resting' : undefined}>
-              <button type="button" onClick={() => onPick(it.topic)} disabled={busy} aria-busy={picked === it.topic || undefined}>
-                {picked === it.topic && <span className="lp-visually-hidden" role="status">Opening…</span>}
-                <span className="lp-carousel-pic">{it.cover && <img src={it.cover} alt="" loading="lazy" />}<em>{FREE_TEN.has(it.topic) ? `Free · ${it.topic === 'Hold a room for 10 minutes' ? 28 : 7} days` : 'Free · every chapter'}</em></span>
-                <strong>{it.topic}</strong>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </>}
-      {onExplore && <button type="button" className="lp-explore" onClick={() => { track('submit', { via: 'explore_open' }); onExplore() }}>See the whole Shelf →</button>}
-    </div>
-  )
-}
-
-type Top = { topic: string; outcome: string; cover: string | null; starts: number; passes: number; free: boolean; mode: string | null }
-// The one honest line under each top handbook: real counts, never a claim the numbers can't back (the Spotlight's rule).
-const topStat = (it: Top) => it.passes >= 2 ? `${it.passes} readers finished chapter 1` : it.starts >= 3 ? `${it.starts} readers have opened it` : it.passes === 1 ? 'A reader finished chapter 1' : 'Picked for the Shelf'
-// The top handbooks (13 Oct, Prateek: "a carousel (auto rotating) of the top handbooks"), its own section under the
-// hero: one big card at a time on a phone with the next one peeking, up to six (landing.content top: the owner's pins,
-// then readers finishing chapter 1). It turns every 5 s while on screen; a swipe, a tap, a key or Pause stops it for
-// good, and it never turns for a phone set to reduce motion. Copy (agent).
-function TopCarousel({ items, busy, picked, onPick }: { items: Top[]; busy: boolean; picked: string | null; onPick: (topic: string) => void }) {
-  const track_ = useRef<HTMLUListElement>(null)
-  const [at, setAt] = useState(0)
-  const [stopped, setStopped] = useState(() => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
-  const [seen, setSeen] = useState(false)
-  useEffect(() => {
-    const el = track_.current
-    if (!el || !('IntersectionObserver' in window)) return
-    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting), { threshold: 0.5 })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
-  const go = (i: number, smooth = true) => {
-    const el = track_.current, li = el?.children[i] as HTMLElement | undefined, first = el?.children[0] as HTMLElement | undefined
-    if (!el || !li || !first) return
-    el.scrollTo({ left: li.offsetLeft - first.offsetLeft, behavior: smooth && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' })
-  }
-  useEffect(() => {
-    if (stopped || !seen || picked || items.length < 2) return
-    const t = setTimeout(() => { if (!document.hidden) go((at + 1) % items.length) }, 5000)
-    return () => clearTimeout(t)
-  }, [at, stopped, seen, picked, items.length])
-  // Which card is in front, from the scroll position (a swipe, or the turn above).
-  const onScroll = () => {
-    const el = track_.current
-    if (!el) return
-    const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth ?? 1
-    setAt(Math.max(0, Math.min(items.length - 1, Math.round(el.scrollLeft / (w + 14)))))
-  }
-  const stop = () => setStopped(true)
-  return (
-    <section className="lp-best" aria-roledescription="carousel" aria-label="Top handbooks">
-      <div className="lp-best-head">
-        <h2>Top of the Shelf.</h2>
-        <p className="lp-body">The handbooks readers open and finish most. Each one opens tonight, already written.</p>
-      </div>
-      <ul className="lp-best-track" ref={track_} onScroll={onScroll} onPointerDown={stop} onTouchStart={stop} onWheel={stop} onKeyDown={stop} onFocus={stop}>
-        {items.map((it, i) => (
-          <li key={it.topic} className={picked === it.topic ? 'opening' : picked ? 'resting' : undefined} aria-roledescription="slide" aria-label={`${i + 1} of ${items.length}`}>
-            <button type="button" className="lp-best-card" onClick={() => onPick(it.topic)} disabled={busy} aria-busy={picked === it.topic || undefined}>
-              {picked === it.topic && <span className="lp-visually-hidden" role="status">Opening…</span>}
-              <span className="lp-best-pic">
-                {it.cover ? <img src={it.cover} alt="" loading={i === 0 ? 'eager' : 'lazy'} /> : <span className="lp-best-blank">{it.topic.slice(0, 1)}</span>}
-                <span className="lp-best-no" aria-hidden="true">No. {i + 1}</span>
-                {it.free && <em>Free · every chapter</em>}
-              </span>
-              <strong className="lp-best-title">{it.topic}</strong>
-              {it.outcome && <span className="lp-best-outcome">{it.outcome}</span>}
-              <span className="lp-best-stat">{topStat(it)}</span>
-              <span className="lp-best-go">{picked === it.topic ? 'Opening…' : 'Open it →'}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      {items.length > 1 && (
-        <div className="lp-best-nav">
-          <span className="lp-best-dots">
-            {items.map((it, i) => <button key={it.topic} type="button" aria-label={`Show ${i + 1} of ${items.length}: ${it.topic}`} aria-current={i === at || undefined} onClick={() => { stop(); go(i) }}><span /></button>)}
-          </span>
-          {!stopped && <button type="button" className="lp-best-pause" onClick={stop}>Pause</button>}
-        </div>
-      )}
-    </section>
-  )
-}
-
-const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`
+const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
 export default function Landing({ onCreate, onExplore, freeChapters = 2, allowance }: Props) {
   const freeText = freeChaptersText(freeChapters)   // D26: chapters 1 and 2 need no account; the number is the server's
   const c = useQuery(api.landing.content, {})
-  const plans = useQuery(api.pricing.plans, {})
   const [topic, setTopic] = useState('')
   const [level, setLevel] = useState<Level>('new')
   const [voice, setVoice] = useState<Voice>('friend')
   const [busy, setBusy] = useState(false)
   const [pickedRow, setPickedRow] = useState<string | null>(null)
   const [slow, setSlow] = useState(false)
-  useEffect(() => { if (!pickedRow) { setSlow(false); return } const t = setTimeout(() => setSlow(true), 12000); return () => clearTimeout(t) }, [pickedRow])   // the carousel card that flies up while its handbook opens (8 Oct night)
+  useEffect(() => { if (!pickedRow) { setSlow(false); return } const t = setTimeout(() => setSlow(true), 12000); return () => clearTimeout(t) }, [pickedRow])
   const [error, setError] = useState<string | null>(null)
+  const [demoAt, setDemoAt] = useState(0)
+  const [scrolled, setScrolled] = useState(false)
   const heroInput = useRef<HTMLInputElement>(null)
-  // C1's three topic chips: ready handbooks that open at once, the top ones first, else the free ones.
-  const chips = [...new Set([...(c?.top ?? []).map((t) => t.topic), ...(c?.shelf ?? []).filter((t) => t.free).map((t) => t.topic)])].slice(0, 3)
 
-  // For the owner's /admin funnel: the page was seen, and how far down each visitor got.
+  // The four chips: the owner's pins (up to 4), then free ready topics at random, drawn once per visit (14 Oct, Prateek: "keep
+  // rotating them to discover the click rates on various topics until we find the 3/4 best ones").
+  const [chips, setChips] = useState<string[]>([])
+  useEffect(() => {
+    if (!c || chips.length) return
+    const pinned = c.pinned.slice(0, 4)
+    // Free handbooks first (14 Oct, Prateek: "start with the handbooks that are free and without sign up in the chips
+    // first"): no daily limit, so a tap never meets a wall before chapter 3; the rest of the Shelf only tops it up.
+    const left = c.shelf.filter((s) => !pinned.includes(s.topic))
+    setChips([...pinned, ...shuffle(left.filter((s) => s.free).map((s) => s.topic)), ...shuffle(left.filter((s) => !s.free).map((s) => s.topic))].slice(0, 4))
+  }, [c, chips.length])
+  useEffect(() => { if (chips.length) track('chips', Object.fromEntries(chips.map((t, i) => [`t${i + 1}`, t])), 'chips') }, [chips])
+
+  // For the owner's /admin funnel: the page was seen, and how far down each visitor got. The bar turns solid once the
+  // page leaves the top.
   useEffect(() => {
     track('land', undefined, 'land')
     // A section counts as reached once its top passes two thirds down the screen (sections that load later included).
@@ -157,7 +66,7 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
       track('section', { section: name }, 'section:' + name)
     })
     let t = 0
-    const onScroll = () => { if (!t) t = window.setTimeout(() => { t = 0; check() }, 250) }
+    const onScroll = () => { setScrolled(window.scrollY > 24); if (!t) t = window.setTimeout(() => { t = 0; check() }, 250) }
     check()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => { window.removeEventListener('scroll', onScroll); window.clearTimeout(t) }
@@ -168,9 +77,9 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
     setTimeout(() => heroInput.current?.focus({ preventScroll: true }), 400)
   }
   // A ready topic starts straight away: no typing, and it opens instantly (it's already written).
-  const pick = async (t: string, via: 'row' | 'shelf' | 'top') => {
+  const pick = async (t: string, via: 'chip' | 'demo') => {
     track('submit', { via, topic: t })
-    setTopic(t); setError(null); setBusy(true); if (via !== 'shelf') setPickedRow(t)
+    setTopic(t); setError(null); setBusy(true); setPickedRow(t)
     try { await onCreate(t, 'new', voice) }
     catch { setError("Couldn't start it just now. Try once more in a minute."); setBusy(false); setPickedRow(null); toBox() }
   }
@@ -182,179 +91,134 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
     try { await onCreate(topic.trim(), level, voice) }
     catch (e: any) { setError(limitMessage(e) ?? (String(e?.message ?? e).includes('busy') ? 'Busy right now. Try again in a few minutes.' : "Couldn't start it just now. Your line is still here; try once more in a minute.")); setBusy(false) }
   }
+  const openShelf = () => { if (!onExplore) return; track('submit', { via: 'explore_open' }); onExplore() }
+  const typedLine = allowance && !allowance.member && allowance.used >= allowance.limit ? typedBoxText(allowance) : TYPED_RULE
 
-  // The bottom box (the top one is C1's, in the hero below).
-  const form = (where: 'final') => (
-    <form className={`lp-form lp-form-${where}`} onSubmit={(e) => { e.preventDefault(); go() }}>
-      <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What do you keep meaning to learn?</label>
-      <div className="lp-field">
-        <input id={`lp-topic-${where}`} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
-          placeholder="Public speaking, the stock market, sourdough…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
-        <button type="submit" disabled={busy}>{busy ? 'Finding your way…' : 'Show me the way'}</button>
-      </div>
-      {/* A phone whose typed handbook was removed still lands here with its one free typed topic used (removed ones count). */}
-      <p className="lp-allow">{allowance && !allowance.member && allowance.used >= allowance.limit ? typedBoxText(allowance) : TYPED_RULE}</p>
+  const box = (where: 'hero' | 'final') => (
+    <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
+      <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
+      <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
+        placeholder="Public speaking, the stock market…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
+      {where === 'hero' && chips.length > 0 && (
+        <div className="c1-chips" role="group" aria-label="Or open a ready one">
+          {chips.map((t) => <button key={t} type="button" className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'chip')}>{pickedRow === t ? 'Opening…' : t}</button>)}
+        </div>
+      )}
+      <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>
       {error && <p className="lp-error" role="alert">{error}</p>}
+      {where === 'hero' && slow && pickedRow && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
+      {where === 'hero' && (
+        <details className="lp-options">
+          <summary>{level === 'new' ? 'New to this' : 'Know some'}, {voice === 'friend' ? 'talks like a friend' : voice === 'straight' ? 'straight to the point' : 'in stories'}. Change</summary>
+          <div className="lp-seg" role="group" aria-label="Level">
+            <button type="button" aria-pressed={level === 'new'} onClick={() => setLevel('new')}>New to this</button>
+            <button type="button" aria-pressed={level === 'some'} onClick={() => setLevel('some')}>Know some</button>
+          </div>
+          <div className="lp-seg" role="group" aria-label="Voice">
+            <button type="button" aria-pressed={voice === 'friend'} onClick={() => setVoice('friend')}>Like a friend</button>
+            <button type="button" aria-pressed={voice === 'straight'} onClick={() => setVoice('straight')}>Straight</button>
+            <button type="button" aria-pressed={voice === 'stories'} onClick={() => setVoice('stories')}>Stories</button>
+          </div>
+        </details>
+      )}
     </form>
   )
 
+  const demos = (c?.demos ?? []) as DemoBook[]
+  const demo = demos[Math.min(demoAt, demos.length - 1)]
+
   return (
-    <div className={`lp${pickedRow ? ' lifting' : ''}`}>
-      {/* C1 (14 Oct, Prateek: "do all six layout screens"; the C board "First page"): the marigold stage with Ooh as the
-          dot of a tall "i", then one question, the box, three ready topics to tap, the one button. Under 1024 the stage
-          is the top of the screen; from 1024 it is the left half. The headline was Prateek's "Seven nights…" until
-          14 Oct; the board's line replaces it (agent). The free row and the Shelf strip moved below the top handbooks. */}
+    <div className={`lp home${pickedRow ? ' lifting' : ''}`}>
+      {/* The bar stays on screen (14 Oct, Prateek: "we are showing the shelf on the top (probably we need to make it sticky)"). */}
+      <header className={`home-bar${scrolled ? ' is-scrolled' : ''}`}>
+        <a className="lp-mark" href="/" aria-label="I Get It, home"><Wordmark /></a>
+        {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>The Shelf</button>}
+      </header>
+
+      {/* 1. The ask (C1). Ooh is the dot of a tall "i" on the marigold stage; from 1024 the stage is the left half. */}
       <section className="lp-hero c1">
         <div className="c1-stage" aria-hidden="true">
           <span className="c1-stem" />
           <Ooh face="curious" tone="cream" className="c1-ooh" size={132} />
         </div>
-        <header className="c1-top">
-          <a className="lp-mark" href="/" aria-label="I Get It, home"><Wordmark /></a>
-          {onExplore && <button type="button" className="c1-shelf" onClick={() => { track('submit', { via: 'explore_open' }); onExplore() }}>The Shelf</button>}
-        </header>
         <div className="c1-copy">
           <div className="c1-main">
             <h1>What have you been wondering about?</h1>
-            <form className="lp-form lp-form-hero c1-form" onSubmit={(e) => { e.preventDefault(); go() }}>
-              <label htmlFor="lp-topic-hero" className="lp-visually-hidden">What have you been wondering about?</label>
-              <input id="lp-topic-hero" className="c1-input" ref={heroInput} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
-                placeholder="Public speaking, the stock market…" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
-              {chips.length > 0 && (
-                <div className="c1-chips" role="group" aria-label="Or open a ready one">
-                  {chips.map((t) => <button key={t} type="button" className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'row')}>{pickedRow === t ? 'Opening…' : t}</button>)}
-                </div>
-              )}
-              <button type="submit" className="c1-go" disabled={busy}>
-                <span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span>
-                <span className="c1-go-arrow" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg></span>
-              </button>
-              {error && <p className="lp-error" role="alert">{error}</p>}
-              {slow && pickedRow && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
-              <details className="lp-options">
-                <summary>{level === 'new' ? 'New to this' : 'Know some'}, {voice === 'friend' ? 'talks like a friend' : voice === 'straight' ? 'straight to the point' : 'in stories'}. Change</summary>
-                <div className="lp-seg" role="group" aria-label="Level">
-                  <button type="button" aria-pressed={level === 'new'} onClick={() => setLevel('new')}>New to this</button>
-                  <button type="button" aria-pressed={level === 'some'} onClick={() => setLevel('some')}>Know some</button>
-                </div>
-                <div className="lp-seg" role="group" aria-label="Voice">
-                  <button type="button" aria-pressed={voice === 'friend'} onClick={() => setVoice('friend')}>Like a friend</button>
-                  <button type="button" aria-pressed={voice === 'straight'} onClick={() => setVoice('straight')}>Straight</button>
-                  <button type="button" aria-pressed={voice === 'stories'} onClick={() => setVoice('stories')}>Stories</button>
-                </div>
-              </details>
-            </form>
+            {box('hero')}
           </div>
-          <p className="c1-says"><Ooh face="curious" size={28} /><span>Tell me in a line. I'll make you a little book, one short chapter a night.</span></p>
-          <p className="lp-fine c1-fine">{allowance && !allowance.member && allowance.used >= allowance.limit ? typedBoxText(allowance) : TYPED_RULE} {freeText} free, no sign-up. Topics you start can appear on the Shelf, never with your name.</p>
+          <p className="c1-says"><Ooh face="curious" size={28} /><span>Tell me in a line. I'll make you a little book, five minutes a chapter.</span></p>
+          <p className="lp-fine c1-fine">{freeText} free, no sign-up. {typedLine}</p>
         </div>
       </section>
 
-      {c && c.top.length > 0 && <TopCarousel items={c.top as Top[]} busy={busy} picked={pickedRow} onPick={(t) => pick(t, 'top')} />}
-
-      {c && (c.shelf.length > 0 || onExplore) && (
-        <section className="lp-shelf c1-more">
-          {onExplore && <ShelfStrip where="landing" onOpen={onExplore} />}
-          {c.shelf.length > 0 && <Carousel items={c.shelf as Shelf[]} busy={busy} picked={pickedRow} onPick={(t) => pick(t, 'row')} onExplore={onExplore} />}
+      {/* 2. The proof: real chapter 1s, the way readers get them. */}
+      {demo && (
+        <section className="lp-demo c-demo">
+          <div className="c-demo-copy">
+            <h2>Don't take our word for it. Take a page.</h2>
+            <p className="c-lede">These are real first chapters, exactly as readers get them. Pick one and tap through. In five minutes you'll know something most people don't.</p>
+            {demos.length > 1 && (
+              <div className="c-demo-pick" role="group" aria-label="Pick a chapter">
+                {demos.map((d, k) => <button key={d.topic} type="button" aria-pressed={k === demoAt} onClick={() => { setDemoAt(k); track('demo_tap', { topic: d.topic }) }}>{d.label}</button>)}
+              </div>
+            )}
+          </div>
+          <Demo key={demo.topic} book={demo} onOpen={() => pick(demo.topic, 'demo')} busy={busy} freeText={freeText} />
         </section>
       )}
 
-
-      <section className="lp-steps">
-        <h2>Tonight, in twenty minutes.</h2>
+      {/* 3. How tonight goes. */}
+      <section className="lp-steps c-steps">
+        <h2>Tonight, in five minutes.</h2>
         <ol>
-          {/* D64: the three step pictures went (1,500 px of a 390 px screen for three sentences); the demo below shows the real thing. */}
-          <li><span className="lp-n">1</span><h3>Type it.</h3><p>Whatever you keep meaning to learn, in your own words. Your plan and chapter 1 in about two minutes.</p></li>
-          <li><span className="lp-n">2</span><h3>Tap through chapter 1.</h3><p>Full-screen frames, one idea each, with pictures. Stuck? Ask it.</p></li>
-          <li><span className="lp-n">3</span><h3>Light the first rung.</h3><p>Read to the end and the first rung lights up. Chapter 2 opens with two quick questions on what stuck.</p></li>
+          <li><span className="c-n">1</span><div><h3>Say what you're wondering about.</h3><p>In your own words. Your little book's plan and chapter 1 are ready in about two minutes.</p></div></li>
+          <li><span className="c-n">2</span><div><h3>Read chapter 1.</h3><p>One idea a page, with pictures. Stuck? Ask Ooh about the page.</p></div></li>
+          <li><span className="c-n">3</span><div><h3>Come back for chapter 2.</h3><p>It opens with two quick questions on what stuck, so it stays stuck.</p></div></li>
         </ol>
       </section>
 
-      {c?.demo && (
-        <section className="lp-demo">
-          <div className="lp-demo-copy">
-            <h2>Don't take our word for it.</h2>
-            <p className="lp-body">This is the real chapter 1 of {c.demo.topic}. Tap the right side to go on, the left to go back.</p>
-          </div>
-          <Demo topic={c.demo.topic} title={c.demo.title ?? ''} frames={c.demo.frames as Frame[]} total={c.demo.total} of={(c.demo as any).of} onTry={toBox} />
-        </section>
-      )}
-
-
-
-      {/* D64 (10 Oct, the landing cut, pulled forward by Prateek): one line on price; the tiers and the ladder live on /pricing. Copy (agent). */}
-      {plans && (() => {
-        const open = plans.tiers.find((t: any) => t.open) ?? plans.tiers[plans.tiers.length - 1]
-        return (
-          <section className="lp-offer lp-offer-line">
-            <p className="lp-body"><b>Free to read.</b> {freeText} of anything with no sign-up; a free account opens every ready handbook and one of your own. More of your own from {inr(open.month)} a month early-bird, paid once, no auto-renew. <a href="/pricing">See pricing</a></p>
-          </section>
-        )
-      })()}
-
-      <section className="lp-final">
-        <img className="lp-final-art" src="/images/landing/summit.jpg" alt="" loading="lazy" />
-        <h2>What have you been meaning to learn?</h2>
-        {form('final')}
+      {/* 4. The ask again. */}
+      <section className="lp-final c-final">
+        <h2>So, what have you been meaning to learn?</h2>
+        {box('final')}
+        {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or open one from the Shelf →</button>}
       </section>
 
-      <footer className="lp-foot">
-        <p>I Get It is built in public for the GrowthX Build Sprint, October 2026. <a href="/stats">See the live numbers</a>.</p>
+      <footer className="lp-foot c-foot">
+        <p>I Get It is built in public for the GrowthX Build Sprint, October 2026. <a href="/stats">See the live numbers</a> · <a href="/pricing">Pricing</a></p>
         <p><PolicyLinks /></p>
       </footer>
     </div>
   )
 }
 
-const TONE: Record<string, string> = { picture: 'ink', teach: 'marigold', example: 'cream', mistake: 'coral', try: 'green', exercise: 'ink' }
+// One real chapter 1, its first six pages, as the chapter screen draws them (C6, C7). Its frame, body, picture and
+// tools have their own names: the chapter's full-screen rules (the 600 px column, the open book) must not reach it.: the topic and chapter up top with
+// the page number, a page you tap or turn with the round buttons, and at the end a way into that handbook.
 const KICKER: Record<string, string> = { example: 'Story time', mistake: 'The mistake everyone makes', exercise: 'Quick guess' }
-
-function Demo({ topic, title, frames, total, of, onTry }: { topic: string; title: string; frames: Frame[]; total: number; of?: number; onTry: () => void }) {
+function Demo({ book, onOpen, busy, freeText }: { book: DemoBook; onOpen: () => void; busy: boolean; freeText: string }) {
+  const { topic, title, frames } = book
   const [i, setI] = useState(0)
   const [picked, setPicked] = useState<string | null>(null)
-  const [touched, setTouched] = useState(false)
-  const [visible, setVisible] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
   const end = i >= frames.length
   const f = frames[i]
-
-  // The demo plays itself once it's on screen, until the quiz or the first tap.
-  useEffect(() => {
-    const el = ref.current
-    if (!el || !('IntersectionObserver' in window)) return
-    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.6 })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
-  useEffect(() => {
-    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    if (calm || touched || !visible || end || f?.kind === 'exercise') return
-    const t = setTimeout(() => setI((x) => x + 1), 4200)
-    return () => clearTimeout(t)
-  }, [i, touched, visible, end, f])
-
-  const step = (d: number) => { setTouched(true); setPicked(null); setI((x) => Math.max(0, Math.min(frames.length, x + d))) }
+  const step = (d: number) => { setPicked(null); setI((x) => Math.max(0, Math.min(frames.length, x + d))); track('demo_tap', undefined, 'demo_tap') }
   const onTap = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest('button')) return
-    track('demo_tap', undefined, 'demo_tap')
+    if ((e.target as HTMLElement).closest('button, a')) return
     const r = e.currentTarget.getBoundingClientRect()
     step(e.clientX - r.left < r.width * 0.3 ? -1 : 1)
   }
-  const tone = end ? 'green' : TONE[f.kind] ?? 'ink'
-
+  const left = frames.length - i
   return (
-    <div className="demo-phone" ref={ref}>
-      <div className={`story-frame tone-${tone}`} onClick={onTap} role="group" aria-label={`Demo: ${topic}, chapter 1`}>
-        <div className="story-bars" aria-hidden="true">
-          {frames.map((_, k) => <span key={k} className={k < i ? 'on' : k === i ? 'now' : ''} />)}
-        </div>
-        <div className="story-head"><span className="story-label">Chapter 1 of {of ?? 7}</span><span className="story-topic">{topic}</span></div>
-        <div className="story-body" key={i}>
+    <div className="c-demo-page">
+      <div className="demo-frame" onClick={onTap} role="group" aria-label={`A real chapter 1: ${topic}. Page ${Math.min(i + 1, frames.length)} of ${frames.length}`}>
+        <div className="demo-head"><span className="story-label">{topic} · Chapter 1</span><span className="story-folio">{end ? '' : i + 1}</span></div>
+        <div className="demo-body" key={i}>
           {end ? (
             <>
-              <p className="story-big">That was 6 of its {total} cards.</p>
-              <p className="story-text size-md" style={{ marginTop: 12 }}>Yours gets written for whatever you type, in this style, with its own pictures.</p>
-              <button type="button" className="story-finish" onClick={onTry}>Show me the way</button>
+              <p className="story-big">That was {frames.length} of its {book.total} pages.</p>
+              <p className="story-text size-md">{freeText} of this one are free, no sign-up. Yours can be about anything you type, in this style, with its own pictures.</p>
+              <button type="button" className="btn c-go" onClick={onOpen} disabled={busy}><span>Read the rest of this one</span><GoArrow /></button>
             </>
           ) : f.kind === 'exercise' ? (
             <>
@@ -363,23 +227,29 @@ function Demo({ topic, title, frames, total, of, onTry }: { topic: string; title
               <div className="story-options">
                 {f.options.map((o, k) => (
                   <button key={o.id} type="button" className={`story-opt${picked === o.id ? (o.id === f.answer ? ' pass' : ' missed') : ''}`}
-                    onClick={() => { setTouched(true); setPicked(o.id) }} disabled={picked === f.answer}>
-                    <span className="k">{k + 1}</span><span>{o.text}</span>
+                    onClick={() => setPicked(o.id)} disabled={picked === f.answer}>
+                    <span className="k" aria-hidden="true">{k + 1}</span><span>{o.text}</span>
                   </button>
                 ))}
               </div>
-              {picked && <p className="story-hint">{picked === f.answer ? "That's it. Tap to keep going." : inline(f.whyNot[picked] ?? 'Not quite. Try another.')}</p>}
+              {picked && <p className="story-unsure"><Ooh size={26} /><span>{picked === f.answer ? "That's it. Turn the page." : inline(f.whyNot[picked] ?? 'Not quite. Try another.')}</span></p>}
             </>
           ) : (
             <>
               {i === 0 && <h3 className="story-title">{title}</h3>}
-              {f.picture && <div className="story-pic"><img src={f.picture} alt="" loading="lazy" onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')} ref={(el) => { if (el && el.complete && el.naturalWidth > 0) el.parentElement?.classList.add('loaded') }} /></div>}
+              {f.picture && <div className="demo-pic"><img src={f.picture} alt="" loading="lazy" onLoad={(e) => e.currentTarget.parentElement?.classList.add('loaded')} ref={(el) => { if (el && el.complete && el.naturalWidth > 0) el.parentElement?.classList.add('loaded') }} /></div>}
               {i > 0 && KICKER[f.kind] && <p className="story-kicker">{KICKER[f.kind]}</p>}
               <Rich text={f.text} className="story-text size-md" />
             </>
           )}
         </div>
-        {!end && <div className="story-tools"><span className="story-tapnote">{f.kind === 'exercise' && picked !== f.answer ? 'Pick one' : 'Tap'}</span></div>}
+        <div className="demo-tools">
+          <div className="story-tools-left"><span className="story-left">{end ? '' : left === 1 ? 'Last page here' : `${left} pages here`}</span></div>
+          <div className="story-turns">
+            {i > 0 && <button type="button" className="story-back" onClick={() => step(-1)} aria-label="Back a page"><span aria-hidden="true">←</span></button>}
+            {!end && <button type="button" className="story-next" onClick={() => step(1)}>Next <span aria-hidden="true">→</span></button>}
+          </div>
+        </div>
       </div>
     </div>
   )
