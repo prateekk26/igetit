@@ -78,18 +78,18 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
     await step('and "Make a free account" is not a main button here', `![...document.querySelectorAll('.btn')].some((b) => b.textContent.trim().startsWith('Make a free account'))`, 2000)
     console.log(`     Done after chapter 1: ${await shot('done-1')}`)
     await tap('Start chapter 2')
-    if (await step('chapter 2 opens for a fresh phone (free chapter 2)', `!!document.querySelector('.story') && /Chapter 2\\b|Remember this\\?/.test(document.querySelector('.story-label')?.textContent ?? '')`, 30000)) {
+    if (await step('chapter 2 opens for a fresh phone (free chapter 2)', `!!document.querySelector('.story') && /Chapter 2\\b|Remember this\\?|Last time|Warm-up/.test(document.querySelector('.story-label')?.textContent ?? '')`, 30000)) {
       // read chapter 2 to the end: tap through, and answer any quiz (first option, then the next until one is right)
       let frames2 = 0
       for (; frames2 < 60; frames2++) {
-        if (await ev(`!!document.querySelector('.story-finish') && !document.querySelector('.sheet')`)) break
-        if (await ev(`!!document.querySelector('.sheet')`)) { await ev(`(() => { const b = [...document.querySelectorAll('.sheet .btn')].find((b) => /Keep going|Try again|Got it|Finish|See your rung/.test(b.textContent)); if (b) b.click(); return !!b })()`); await sleep(700); continue }
+        if (await ev(`!!document.querySelector('.story-finish') && !document.querySelector('.sheet, .story-reveal')`)) break
+        if (await ev(`!!document.querySelector('.sheet, .story-reveal')`)) { await ev(`(() => { const b = [...document.querySelectorAll('.sheet .btn, .story-reveal .btn')].find((b) => /Keep going|Try again|Got it|Finish|See your rung|Turn the page|Next question/.test(b.textContent)); if (b) b.click(); return !!b })()`); await sleep(700); continue }
         if (await ev(`!!document.querySelector('.story-opt') && !document.querySelector('.story-next')`)) { await ev(`(() => { const o = [...document.querySelectorAll('.story-opt:not(.story-dunno)')].find((b) => !b.disabled && !b.classList.contains('missed') && !b.classList.contains('miss')); if (o) o.click(); return !!o })()`); await sleep(1500); continue }
         if (!(await tapNext())) { if (await ev(`!!document.querySelector('.story-finish')`)) break; await sleep(500); continue }
         await sleep(450)
       }
       console.log(`     chapter 2 steps: ${frames2}`)
-      if (await ev(`!!document.querySelector('.sheet')`)) await ev(`(() => { const b = [...document.querySelectorAll('.sheet .btn')].find((b) => /See your rung|Finish|Keep going/.test(b.textContent)); b?.click() })()`)
+      if (await ev(`!!document.querySelector('.sheet, .story-reveal')`)) await ev(`(() => { const b = [...document.querySelectorAll('.sheet .btn, .story-reveal .btn')].find((b) => /See your rung|Finish|Keep going|Turn the page/.test(b.textContent)); b?.click() })()`)
       else await tap('Finish chapter')
       // D100: after chapter 2, a fresh phone's teaser button leads to the wall on Done.
       if (await step('the star slide asks "How was chapter 2?"', `/How was chapter 2\\?/.test(document.querySelector('.story-q')?.textContent ?? '')`, 20000)) {
@@ -117,7 +117,7 @@ console.log(`\nScenario 2: post link ?t=public-speaking&ch=2`)
 await send('Storage.clearDataForOrigin', { origin: BASE, storageTypes: 'all' }).catch(() => {})
 await goto(`${BASE}/?t=public-speaking&ch=2&utm_source=internal`)
 await step('the link opens the topic, not the landing page', `!document.querySelector('.lp') && (!!document.querySelector('.story') || !!document.querySelector('.roadmap-hero') || !!document.querySelector('#email'))`, 25000)
-await step('a fresh phone reads chapter 2 straight away (free chapter 2, D26)', `!!document.querySelector('.story') && /Chapter 2\\b|Remember this\\?/.test(document.querySelector('.story-label')?.textContent ?? '')`, 20000)
+await step('a fresh phone reads chapter 2 straight away (free chapter 2, D26)', `!!document.querySelector('.story') && /Chapter 2\\b|Remember this\\?|Last time|Warm-up/.test(document.querySelector('.story-label')?.textContent ?? '')`, 20000)
 await step('no sign-in screen in the way', `!document.querySelector('#email')`, 1000)
 console.log(`     screenshot: ${await shot('post-link')}`)
 

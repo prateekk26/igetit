@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Sheet from '../components/Sheet'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { speak, stopSpeaking, useLocalVoice } from '../lib/speak'
@@ -12,7 +11,7 @@ import StepsFrame, { type StepsCard } from '../components/StepsFrame'
 import TryItFrame, { type TryItCard } from '../components/TryItFrame'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useOnline } from '../lib/online'
-import Ooh from '../components/Ooh'
+import Ooh, { GoArrow } from '../components/Ooh'
 
 export type Card =
   | { type: 'picture' | 'example' | 'mistake' | 'try' | 'teach'; title?: string; body: string }
@@ -353,7 +352,11 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const revealId = result && !result.correct && result.reveal ? result.reveal.id : null
   // C6 and C7 (14 Oct): the header says where you are in words, the page number sits by the close; the card bars stay
   // for screen readers only. The bottom says how many pages are left.
-  const label = item.recall ? `Remember this? · from chapter ${item.chapter}` : c.type === 'exercise' ? `Chapter ${n} · Check` : `${topic} · Chapter ${n}`
+  // C5: the warm-up questions at a chapter's start count themselves ("Warm-up · 1 of 2"); the recap before them stays "Last time".
+  const warm = frames.filter((f) => f.item.recall && f.item.card.type === 'exercise')
+  const warmAt = warm.findIndex((f) => f === frame) + 1
+  const nextIsWarmup = !!frames[i + 1]?.item.recall && frames[i + 1]?.item.card.type === 'exercise'
+  const label = item.recall ? (c.type === 'exercise' ? `Warm-up · ${warmAt} of ${warm.length}` : `Last time · from chapter ${item.chapter}`) : c.type === 'exercise' ? `Chapter ${n} · Check` : `${topic} · Chapter ${n}`
   const pagesLeft = frames.length - 1 - i
   const readAloud = () => {
     if (!voice) return
@@ -411,7 +414,42 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
               {!exercisePassed && (c as any).kind !== 'poll' && (unsure
                 ? <p className="story-unsure no-tap" aria-live="polite"><Ooh size={26} /><span>{reteach === undefined ? 'One moment…' : reteach ? inline(reteach) : "Read the last page again, then pick the one that fits best."}</span></p>
                 : <button type="button" className="story-opt story-dunno no-tap" onClick={() => { setUnsure(true); track('unsure', { n, i: item.cardIndex }) }} disabled={sending}><span className="k" aria-hidden="true" /><span>I don't know yet</span></button>)}
-              {exercisePassed && <p className="story-hint">{passedChoice[key] || item.recall ? 'Tap to keep going' : "You answered this one before. Tap to keep going."}</p>}
+              {/* C7 and C5 (14 Oct): the answer lands on the page, under the options, as the boards draw it; it was a sheet. */}
+              {result && (
+                <div className="story-reveal no-tap" aria-live="polite" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
+          {result.correct ? (
+            <>
+              {(item.card as any).kind === 'poll' ? (
+                <>
+                  <p className="verdict pass">{result.chapterPassed ? `Here's what happened. Chapter ${n} done.` : "Here's what happened."}</p>
+                  {result.why && <p className="serif">{inline(result.why)}</p>}
+                </>
+              ) : (
+                <>
+                  <p className="verdict pass"><Ooh face="happy" size={44} /><span>{result.chapterPassed ? `That's it. Chapter ${n} passed.` : "That's it."}</span></p>
+                  {/* D38 (Prateek, 9 Oct: "Why just repeat my answer back to me?"): the option stays lit on the card; here is what it adds. */}
+                  <p className="serif">{result.why ? inline(result.why) : cheer(key)}</p>
+                </>
+              )}
+              {result.chapterPassed && !isLast ? (
+                <>
+                  <p className="serif" style={{ marginTop: 'var(--s)' }}>Your rung is lit. What's left is a bonus.</p>
+                  <button className="btn c-go" onClick={() => { setResult(null); finish() }} disabled={finishing}><span>See your rung</span><GoArrow /></button>
+                  <button type="button" className="quiet" onClick={closeSheet}>Read the bonus first</button>
+                </>
+              ) : <button className="btn c-go" onClick={closeSheet}><span>{isLast ? 'Finish' : nextIsWarmup ? 'Next question' : 'Turn the page'}</span><GoArrow /></button>}
+            </>
+          ) : (
+            <>
+              <p className="verdict"><Ooh face="again" size={44} /><span>{inline(result.whyNot)}</span></p>
+              {result.reteach && <p className="serif">{inline(result.reteach)}</p>}
+              {result.reveal && <p className="serif" style={{ marginTop: 'var(--m)' }}>It's <strong>{result.reveal.text}</strong></p>}
+              <button className="btn c-go" onClick={closeSheet}><span>{result.reveal ? 'Got it' : 'Try again'}</span><GoArrow /></button>
+            </>
+          )}
+                </div>
+              )}
+              {exercisePassed && !result && <p className="story-hint">{passedChoice[key] || item.recall ? 'Tap to keep going' : "You answered this one before. Tap to keep going."}</p>}
             </>
           ) : c.type === 'move' ? (
             <MoveFrame card={c} />
@@ -465,7 +503,8 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
               {speaking ? 'Stop reading' : 'Read it to me'}</button>}
           </div>
           {/* A real button (UX review #17, 8 Oct): the move and do-it frames are full of things to tap, so "next" needs a target of its own; keyboard and screen readers get one too. */}
-          {canAdvance
+          {/* While the answer shows, its own button is the one way on (C7). */}
+          {result ? null : canAdvance
             ? (isLast ? null : <div className="story-turns">
                 {i > 0 && <button type="button" className="story-back" onClick={back} aria-label="Back a page"><span aria-hidden="true">←</span></button>}
                 <button type="button" className="story-next" onClick={next}>Next <span aria-hidden="true">→</span></button>
@@ -474,40 +513,6 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
         </div>
       </div>
 
-      {result && (
-        <Sheet onClose={closeSheet} label="Your answer">
-          {result.correct ? (
-            <>
-              {(item.card as any).kind === 'poll' ? (
-                <>
-                  <p className="verdict pass">{result.chapterPassed ? `Here's what happened. Chapter ${n} done.` : "Here's what happened."}</p>
-                  {result.why && <p className="serif">{inline(result.why)}</p>}
-                </>
-              ) : (
-                <>
-                  <p className="verdict pass"><Ooh face="happy" size={44} /><span>{result.chapterPassed ? `That's it. Chapter ${n} passed.` : "That's it."}</span></p>
-                  {/* D38 (Prateek, 9 Oct: "Why just repeat my answer back to me?"): the option stays lit on the card; here is what it adds. */}
-                  <p className="serif">{result.why ? inline(result.why) : cheer(key)}</p>
-                </>
-              )}
-              {result.chapterPassed && !isLast ? (
-                <>
-                  <p className="serif" style={{ marginTop: 'var(--s)' }}>Your rung is lit. What's left is a bonus.</p>
-                  <button className="btn" onClick={() => { setResult(null); finish() }} disabled={finishing}>See your rung</button>
-                  <button type="button" className="quiet" onClick={closeSheet}>Read the bonus first</button>
-                </>
-              ) : <button className="btn" onClick={closeSheet}>{isLast ? 'Finish' : 'Keep going'}</button>}
-            </>
-          ) : (
-            <>
-              <p className="verdict"><Ooh face="again" size={44} /><span>{inline(result.whyNot)}</span></p>
-              {result.reteach && <p className="serif">{inline(result.reteach)}</p>}
-              {result.reveal && <p className="serif" style={{ marginTop: 'var(--m)' }}>It's <strong>{result.reveal.text}</strong></p>}
-              <button className="btn" onClick={closeSheet}>{result.reveal ? 'Got it' : 'Try again'}</button>
-            </>
-          )}
-        </Sheet>
-      )}
     </div>
   )
 }
