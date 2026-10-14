@@ -5,7 +5,7 @@ import Rich, { inline } from '../components/Rich'
 import { track } from '../lib/track'
 import { PolicyLinks } from '../components/PolicyLinks'
 import { limitMessage } from '../lib/limits'
-import { freeChaptersText, TYPED_RULE, typedBoxText, type TypedAllowance } from '../lib/free'
+import { freeChaptersText, typedBoxText, type TypedAllowance } from '../lib/free'
 import Ooh, { GoArrow, Wordmark } from '../components/Ooh'
 
 // The landing page, for first-time visitors (DESIGN.md, "The homepage, one story"). 14 Oct (Prateek: "people enter the
@@ -93,7 +93,8 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
     catch (e: any) { setError(limitMessage(e) ?? (String(e?.message ?? e).includes('busy') ? 'Busy right now. Try again in a few minutes.' : "Couldn't start it just now. Your line is still here; try once more in a minute.")); setBusy(false) }
   }
   const openShelf = () => { if (!onExplore) return; track('submit', { via: 'explore_open' }); onExplore() }
-  const typedLine = allowance && !allowance.member && allowance.used >= allowance.limit ? typedBoxText(allowance) : TYPED_RULE
+  const typedUsed = !!allowance && !allowance.member && allowance.used >= allowance.limit
+  const typedLine = typedBoxText(allowance)
 
   const box = (where: 'hero' | 'final') => (
     <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
@@ -135,7 +136,10 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
             {box('hero')}
           </div>
           <p className="c1-says"><Ooh face="curious" size={28} /><span>Tell me in a line. I'll make you a little book, five minutes a chapter.</span></p>
-          <p className="lp-fine c1-fine">{freeText} of any book are free, no sign-up. {typedLine}</p>
+          {/* The rules are told when they matter (14 Oct, Prateek: "We can just let people know when the time comes"): the wall
+              after chapter 2, and the typed-topic rule on Start another topic. Only a phone that has used its free typed
+              topic hears it here, before it types again. */}
+          {typedUsed && <p className="lp-fine c1-fine">{typedLine}</p>}
         </div>
       </section>
 
