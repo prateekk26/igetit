@@ -32,7 +32,7 @@ const Pricing = deferred(() => import('./screens/Pricing'))
 const Shelf = deferred(() => import('./screens/Shelf'))
 const Compare = deferred(() => import('./screens/Compare'))
 
-type View = 'auto' | 'plan' | 'chapter' | 'done' | 'signin' | 'start-again' | 'tune' | 'compare' | 'library' | 'pricing' | 'explore' | 'known' | 'manage' | 'memory'
+type View = 'home' | 'auto' | 'plan' | 'chapter' | 'done' | 'signin' | 'start-again' | 'tune' | 'compare' | 'library' | 'pricing' | 'explore' | 'known' | 'manage' | 'memory'
 
 export default function App() {
   useEffect(() => preloadWhenIdle([Done, SignIn, Shelf, Pricing]), [])   // the reader's next screens, once this one is up
@@ -245,7 +245,9 @@ export default function App() {
     // frame); the shelf is for coming back after a real break (9 Oct, 55's phone review).
     const pinnedRow = (lib.handbooks ?? []).find((h: any) => String(h._id) === pinned)
     const recent = !!pinnedRow && Date.now() - (pinnedRow as any).lastAt < 30 * 60 * 1000
-    if (!freshDevice && !recent && (lib.handbooks?.length ?? 0) > 0 && view === 'auto') { autoEntered.current = hb?._id ?? null; setView('library') }
+    // 15 Oct (Prateek: "open up a homepage for logged in members rather than taking them to their last chapters"): after
+    // a break they land on the front page, with "Your books" one tap away; the 30-minute reload above still reopens the page.
+    if (!freshDevice && !recent && (lib.handbooks?.length ?? 0) > 0 && view === 'auto') { autoEntered.current = hb?._id ?? null; setView('home') }
   }, [lib]) // eslint-disable-line react-hooks/exhaustive-deps
   const linkStarted = useRef(false)
   useEffect(() => {
@@ -311,6 +313,7 @@ export default function App() {
   }
   goTonight = () => { setDoneN(null); setView((lib?.handbooks?.length ?? 0) > 0 ? 'library' : hb ? 'plan' : 'auto'); window.scrollTo({ top: 0 }) }
   goKnown = () => { setDoneN(null); setView('known'); window.scrollTo({ top: 0 }) }
+  goFront = () => { setDoneN(null); setView('home'); window.scrollTo({ top: 0 }) }
   const tabs = (lib?.handbooks?.length ?? 0) > 0 || !!hb   // C4's bar shows once there is a handbook to come back to
   // The landing page's starts: the box, a chip, or the demo, which has already shown chapter 1 and opens at chapter 2
   // the way a post link does (?t=…&ch=2), so the reader never reads chapter 1 twice (14 Oct).
@@ -335,6 +338,8 @@ export default function App() {
 
   // A first-time visitor's pick stays on the landing page, with the card lifted, until its handbook is ready (8 Oct night).
   if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+  // The front page for a reader who already has books (15 Oct): the same page as a first visit, plus "Your books".
+  if (view === 'home') return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
   const libRows = lib?.handbooks ?? []
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   // C4 Tonight is the home of a reader with books (14 Oct); the old list, with remove and the sign-in nudge, is Manage.
@@ -717,6 +722,8 @@ let goShelf: (() => void) | null = null
 // C4's tab bar (14 Oct): Tonight (the handbook you're on), What you know, the Shelf.
 let goTonight: (() => void) | null = null
 let goKnown: (() => void) | null = null
+// The wordmark on every app screen opens the front page (15 Oct, Prateek: the logo on Tonight did nothing).
+let goFront: (() => void) | null = null
 // The account circle's menu on hub screens (C4): manage the books, plans, sign in.
 let acct: { manage: () => void; plans: () => void; signIn: (() => void) | null; memory: () => void } | null = null
 
@@ -754,7 +761,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
     <div className={`shell${tab ? ' has-tabs' : ''}`}>
       {tab && !bare && (
         <header className="hub-top">
-          <button type="button" className="wordmark wordmark-btn" onClick={() => goTonight?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}</button>
+          <button type="button" className="wordmark wordmark-btn" onClick={() => goFront?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}</button>
           <button type="button" className="hub-acct" aria-label="Your account" aria-expanded={menu} onClick={() => setMenu(true)}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6" /><path d="M5 19.5c1.4-3.3 4-5 7-5s5.6 1.7 7 5" /></svg>
             <span className="hub-acct-label">Your account</span>
@@ -774,7 +781,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
         </Sheet>
       )}
       {!bare && !tab && <header className="top">
-        <button type="button" className="wordmark wordmark-btn" onClick={() => goHome?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Five minutes at a time.</small></button>
+        <button type="button" className="wordmark wordmark-btn" onClick={() => goFront?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Five minutes at a time.</small></button>
         {/* The Shelf (8 Oct, Prateek): always one tap away, on every screen. */}
         {!hideShelf && <ShelfButton onOpen={() => goShelf?.()} />}
         <span className="top-actions">

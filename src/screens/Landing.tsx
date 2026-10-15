@@ -18,7 +18,7 @@ import Ooh, { GoArrow, Wordmark } from '../components/Ooh'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
-type Props = { onCreate: (topic: string, level: Level, voice: Voice, chapter?: number) => Promise<void>; onExplore?: () => void; freeChapters?: number; allowance?: TypedAllowance | null }
+type Props = { onCreate: (topic: string, level: Level, voice: Voice, chapter?: number) => Promise<void>; onExplore?: () => void; onBooks?: () => void; freeChapters?: number; allowance?: TypedAllowance | null }
 
 type Frame =
   | { kind: 'picture' | 'teach' | 'example' | 'mistake' | 'try'; title?: string; text: string; picture: string | null }
@@ -27,7 +27,7 @@ type DemoBook = { topic: string; label: string; title: string; frames: Frame[]; 
 
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
-export default function Landing({ onCreate, onExplore, freeChapters = 2, allowance }: Props) {
+export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance }: Props) {
   const freeText = freeChaptersText(freeChapters)   // D26: chapters 1 and 2 need no account; the number is the server's
   const c = useQuery(api.landing.content, {})
   const [topic, setTopic] = useState('')
@@ -128,8 +128,13 @@ export default function Landing({ onCreate, onExplore, freeChapters = 2, allowan
     <div className={`lp home${pickedRow ? ' lifting' : ''}`}>
       {/* The bar stays on screen (14 Oct, Prateek: "we are showing the shelf on the top (probably we need to make it sticky)"). */}
       <header className={`home-bar${scrolled ? ' is-scrolled' : ''}`}>
-        <a className="lp-mark" href="/" aria-label="I Get It, home"><Wordmark /></a>
-        {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>The Shelf</button>}
+        {/* Already home: the logo goes to the top rather than reloading (a reload within 30 minutes reopens the last page). */}
+        <a className="lp-mark" href="/" aria-label="I Get It, home" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><Wordmark /></a>
+        <span className="home-bar-links">
+          {/* 15 Oct: a reader with books lands here after a break; their books are one tap away. Copy (agent). */}
+          {onBooks && <button type="button" className="c1-shelf" onClick={onBooks}>Your books</button>}
+          {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>The Shelf</button>}
+        </span>
       </header>
 
       {/* 1. The ask (C1). Ooh is the dot of a tall "i" on the marigold stage; from 1024 the stage is the left half. */}
