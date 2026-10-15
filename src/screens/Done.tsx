@@ -7,7 +7,8 @@ import { track } from '../lib/track'
 import { autoOn, setAuto } from '../lib/pageVoice'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
-import { subscribe, canInstall, install, isIOS, isStandalone } from '../lib/push'
+import { subscribe } from '../lib/push'
+import HomeScreen from '../components/HomeScreen'
 import type { Id } from '../../convex/_generated/dataModel'
 import Ooh, { GoArrow } from '../components/Ooh'
 
@@ -162,6 +163,7 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
       )}
 
       {!last && !wall && !quick && <Reminder n={n} tomorrowAt={tomorrowAt} onPickTime={onPickTime} handbookId={handbookId} deviceToken={deviceToken} />}
+      {!wall && <HomeScreen />}
 
       {/* 8 Oct night: after the free chapters a visitor's one main action is the free account (the wall above); before
           them (UX review #15) it is the next chapter, with sign-in as a quiet line. Copy (agent). */}
@@ -209,7 +211,6 @@ function Reminder({ n, tomorrowAt, onPickTime, handbookId, deviceToken }: { n: n
   const save = useMutation(api.push.saveReminder)
   const [saving, setSaving] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
-  const [installable, setInstallable] = useState(canInstall())
   // "Deal. See you after dinner" only when a reminder will really come (UX review 9 Oct): granted notifications, or a
   // subscription made just now. Otherwise the time is only saved, and the heading says that.
   const [willRemind, setWillRemind] = useState(() => { try { return typeof Notification !== 'undefined' && Notification.permission === 'granted' } catch { return false } })
@@ -249,10 +250,6 @@ function Reminder({ n, tomorrowAt, onPickTime, handbookId, deviceToken }: { n: n
         ))}
       </div>
       {note && <p className="note" role="status">{note}</p>}
-      {installable && !isStandalone() && (
-        <button type="button" className="quiet" onClick={async () => { await install(); setInstallable(false) }}>Add I Get It to your home screen</button>
-      )}
-      {!installable && isIOS() && !isStandalone() && !note && <p className="note">Tip: on iPhone, tap Share, then Add to Home Screen, to keep I Get It next to your apps.</p>}
     </section>
   )
 }

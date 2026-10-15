@@ -4,6 +4,7 @@ export function registerServiceWorker() {
 }
 
 export const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent)
+export const isAndroid = () => /Android/i.test(navigator.userAgent)
 export const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || (navigator as any).standalone === true
 export const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 
@@ -31,4 +32,5 @@ export async function subscribe(publicKey: string): Promise<{ ok: true; subscrip
 let deferred: any = null
 export function captureInstallPrompt() { window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e }) }
 export const canInstall = () => !!deferred
-export async function install() { if (!deferred) return false; deferred.prompt(); const r = await deferred.userChoice; deferred = null; return r?.outcome === 'accepted' }
+// A prompt that can't open rejects (it must come from a real tap); awaiting it lets the caller fall back to the steps.
+export async function install() { if (!deferred) return false; await deferred.prompt(); const r = await deferred.userChoice; deferred = null; return r?.outcome === 'accepted' }
