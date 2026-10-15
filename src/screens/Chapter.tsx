@@ -340,7 +340,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // own words: the headline, the paragraphs; a question, its options; an answer, the right option and why.
   const voicePage = useAction(api.voiceNode.page)
   const iRef = useRef(i); iRef.current = i
-  const audioCache = useRef(new Map<string, Promise<string | null>>())
+  const audioCache = useRef(new Map<string, { p: Promise<string | null>; preload: boolean }>())
   const partsOf = (f?: Frame): string[] => {
     if (!f) return []
     const cc = f.item.card as any
@@ -352,11 +352,22 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   }
   // Each part (the headline, each paragraph, each option) is its own short file, all asked for at once, so the voice
   // starts as soon as the first one is ready instead of after the whole page (a 36 s page took 22 s to make, 15 Oct).
-  const audioFor = (parts: string[]) => parts.map((part) => {
-    let got = audioCache.current.get(part)
-    if (!got) { got = voicePage({ handbookId, chapter: n, parts: [part], deviceToken }).then((r) => (r.ok ? r.url : null)).catch(() => null); audioCache.current.set(part, got) }
-    return got
+  // A preload the server turns away (its 50 a day are used) is forgotten, and a play asks again for real.
+  const ask = (part: string, preload: boolean) => voicePage({ handbookId, chapter: n, parts: [part], deviceToken, preload }).then((r) => (r.ok ? r.url : null)).catch(() => null)
+  const audioFor = (parts: string[], preload = false) => parts.map((part) => {
+    const hit = audioCache.current.get(part)
+    if (hit && (preload || !hit.preload)) return hit.p
+    if (hit) { const p = hit.p.then((u) => u ?? ask(part, false)); audioCache.current.set(part, { p, preload: false }); return p }
+    const entry = { p: ask(part, preload), preload }
+    audioCache.current.set(part, entry)
+    if (preload) entry.p.then((u) => { if (!u && audioCache.current.get(part) === entry) audioCache.current.delete(part) })
+    return entry.p
   })
+  // Preload (15 Oct, Prateek: "chapter 1 pre loaded for at least the first 5 slides … start loading the voice once a
+  // chapter is starting"): this page and the next four are always being voiced, played or not, so play starts at once.
+  // About ₹3 a chapter opened; a page voiced once is a cached file for every later reader. Capped on the server at 50 new
+  // clips a day and 5 a minute across the app (convex/voice.ts), so plays keep the other half of Gemini's 100 a day.
+  useEffect(() => { if (!after) for (let k = 0; k < 5; k++) audioFor(partsOf(frames[i + k]), true) }, [i, frames, after]) // eslint-disable-line react-hooks/exhaustive-deps
   // Plays a page's parts in order; false if any part had no audio (the caller falls back), or it was stopped.
   const playParts = async (parts: string[], stopped: () => boolean) => {
     const files = audioFor(parts)
@@ -380,7 +391,6 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
     }
     ;(async () => {
       const cc = item.card as any
-      for (const k of [1, 2]) audioFor(partsOf(frames[i + k]))   // the next pages' audio, warming while this one plays
       if (cc.type === 'exercise') {
         if (result?.correct) { await say([result.text, result.why ?? ''].filter(Boolean)); if (off) return; await wait(900); if (!off) closeSheet(); return }
         if (exercisePassed) { await wait(1500); if (!off) next(); return }

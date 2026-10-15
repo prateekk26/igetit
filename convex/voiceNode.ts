@@ -35,15 +35,15 @@ function speech(buf: Buffer, mime: string): { pcm: Buffer; rate: number } {
 // One page read aloud: the cached file if this exact text was spoken before, else Gemini speech, encoded to a small MP3
 // (48 kbps mono) and stored. Returns its URL and length.
 export const page = action({
-  args: { handbookId: v.id("handbooks"), chapter: v.number(), parts: v.array(v.string()), deviceToken: v.optional(v.string()) },
-  handler: async (ctx, { handbookId, chapter, parts, deviceToken }): Promise<{ ok: true; url: string; ms: number } | { ok: false; code: string }> => {
+  args: { handbookId: v.id("handbooks"), chapter: v.number(), parts: v.array(v.string()), deviceToken: v.optional(v.string()), preload: v.optional(v.boolean()) },
+  handler: async (ctx, { handbookId, chapter, parts, deviceToken, preload }): Promise<{ ok: true; url: string; ms: number } | { ok: false; code: string }> => {
     const clean = parts.map((p) => p.replace(/\*\*|\*/g, "").trim()).filter(Boolean).slice(0, 8);
     const text = clean.join("\n\n").slice(0, 2400);
     if (!text) return { ok: false, code: "empty" };
     const key = createHash("sha256").update(`${VOICE_VERSION}|${VOICE}|${text}`).digest("hex");
     const hit = await ctx.runQuery(internal.voice.cached, { key });
     if (hit?.url) return { ok: true, url: hit.url, ms: hit.ms };
-    const g = await ctx.runMutation(internal.voice.gate, { handbookId, chapter, parts: clean, deviceToken });
+    const g = await ctx.runMutation(internal.voice.gate, { handbookId, chapter, parts: clean, deviceToken, preload });
     if (!g.ok) return g;
     const started = Date.now();
     const keys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_BACKUP].filter(Boolean) as string[];
