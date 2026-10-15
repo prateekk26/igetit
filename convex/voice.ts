@@ -10,7 +10,7 @@ import { COST_INR, ownerIsMember, spendFits } from "./membership";
 // words from the reader's own chapter (or the one before, for "Last time") can be read: anything else is refused, so the
 // voice can't be used to read arbitrary text on our bill.
 export const VOICE = "Sulafat";   // a warm female voice (agent's pick)
-export const VOICE_VERSION = "v2";   // v2 (15 Oct): bracket tags instead of a spoken direction
+export const VOICE_VERSION = "v3";   // v2 (15 Oct): bracket tags instead of a spoken direction; v3: WAV header and label no longer played
 
 const limiter = new RateLimiter(components.rateLimiter, {
   voiceOwner: { kind: "fixed window", rate: 240, period: HOUR },

@@ -17,6 +17,21 @@ function tagged(text: string) {
   return `[${tag}] ${t}`;
 }
 
+// Gemini now sends a whole WAV file (mimeType audio/wav), not bare samples: a 44-byte header, the speech, then about
+// 6 KB of Google's signed "made by AI" label (C2PA). Fed in whole, the header played as a tick at the start and the
+// label as static at the end (15 Oct). Keep only the "data" chunk; bare samples (audio/L16) pass through as before.
+function speech(buf: Buffer, mime: string): { pcm: Buffer; rate: number } {
+  let rate = Number(/rate=(\d+)/.exec(mime)?.[1] ?? 24000);
+  if (buf.toString("ascii", 0, 4) !== "RIFF" || buf.toString("ascii", 8, 12) !== "WAVE") return { pcm: buf, rate };
+  for (let at = 12; at + 8 <= buf.length; ) {
+    const id = buf.toString("ascii", at, at + 4), size = buf.readUInt32LE(at + 4), body = at + 8;
+    if (id === "fmt ") rate = buf.readUInt32LE(body + 4);
+    if (id === "data") { const d = buf.subarray(body, Math.min(body + size, buf.length)); return { pcm: d.byteOffset % 2 ? Buffer.from(d) : d, rate }; }
+    at = body + size + (size % 2);
+  }
+  return { pcm: Buffer.alloc(0), rate };
+}
+
 // One page read aloud: the cached file if this exact text was spoken before, else Gemini speech, encoded to a small MP3
 // (48 kbps mono) and stored. Returns its URL and length.
 export const page = action({
@@ -47,8 +62,7 @@ export const page = action({
       await ctx.runMutation(internal.handbooks.logAiCall, { kind: "voice", model: TTS, input: text.slice(0, 2000), output: "", ms: Date.now() - started, ok: false, error: err.slice(0, 500) });
       return { ok: false, code: "failed" };
     }
-    const rate = Number(/rate=(\d+)/.exec(part.inlineData.mimeType ?? "")?.[1] ?? 24000);
-    const pcm = Buffer.from(part.inlineData.data, "base64");
+    const { pcm, rate } = speech(Buffer.from(part.inlineData.data, "base64"), part.inlineData.mimeType ?? "");
     const samples = new Int16Array(pcm.buffer, pcm.byteOffset, Math.floor(pcm.byteLength / 2));
     const enc = new Mp3Encoder(1, rate, 48);
     const chunks: Uint8Array[] = [];
