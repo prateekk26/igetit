@@ -441,6 +441,7 @@ a.wordmark { display: inline-flex; flex-direction: column; justify-content: cent
 .c3 { margin: 0; }
 .c3-pic { display: block; width: 100%; height: 150px; object-fit: cover; object-position: 55% 60%; border-radius: 22px; background: var(--paper-2); animation: picin 700ms var(--ease) both; }
 .c3 h1 { margin: 16px 0 0; font-size: 36px; line-height: 0.96; letter-spacing: -0.012em; font-variation-settings: 'wdth' 82, 'opsz' 96; text-wrap: balance; color: var(--ink); }
+.c3-for { margin: 10px 0 0; font: 600 15px/1.4 var(--sans); color: var(--ink-2); }
 .c3-says { margin: 14px 0 0; display: flex; gap: 12px; align-items: flex-start; font: 600 17px/1.42 var(--sans); color: var(--voice); }
 .c3-says .ooh { flex: none; margin-top: -1px; }
 .c3-caution { color: var(--ink); border-color: var(--ink); }
@@ -735,6 +736,17 @@ div.c3-row { cursor: default; }
 .c2-yn { margin-top: 10px; display: flex; gap: 8px; }
 .c2-yn button { height: 48px; padding: 0 22px; border: 0; border-radius: 24px; background: var(--paper); color: var(--ink); font: 600 16px var(--sans); cursor: pointer; }
 .c2-yn button[aria-pressed="true"] { background: var(--ink); color: var(--paper); font-weight: 700; }
+/* Level check (16 Oct): what the book assumes, said plainly, and the optional 3 questions inside the picked leaf. */
+.c2-more p.c2-level { margin-top: 12px; font: 500 15px/1.4 var(--sans); color: var(--ink-2); }
+.c2-check { margin-top: 10px; min-height: 48px; padding: 0 18px; border: 2px solid var(--ink); border-radius: 24px; background: none; color: var(--ink); font: 700 15px var(--sans); cursor: pointer; text-align: left; }
+.c2-check:disabled { opacity: 0.6; cursor: default; }
+.c2-quiz { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.c2-more p.c2-quiz-count { font: 700 14px var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+.c2-more p.c2-quiz-q { margin-bottom: 4px; font: 700 17px/1.35 var(--sans); color: var(--ink); }
+.c2-quiz-opt { min-height: 48px; padding: 10px 16px; border: 0; border-radius: 16px; background: var(--paper); color: var(--ink); font: 600 15px/1.35 var(--sans); text-align: left; cursor: pointer; }
+.c2-quiz-opt:active { background: var(--paper-2); }
+.c2-quiz-unsure { background: none; border: 2px dashed var(--ink-2); color: var(--ink-2); }
+.c2-quiz-skip { align-self: flex-start; min-height: 44px; padding: 0; }
 .c2-fill { flex: 1; min-height: 20px; }
 .c2-note { margin: 0 0 14px; font: 600 15px/1.4 var(--sans); color: var(--ink-2); text-align: center; }
 .c2-go { width: 100%; }

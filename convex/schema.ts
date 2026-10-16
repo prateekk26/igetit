@@ -39,6 +39,10 @@ export default defineSchema({
     brief: v.optional(v.any()),
     researchStartedAt: v.optional(v.number()),   // research runs while the reader picks a goal (7 Oct)   // research before writing (research.ts, 7 Oct): format, chapter count, facts, sources, plot, recap, NISM
     goalChosenAt: v.optional(v.number()),       // when they picked, typed or skipped a goal (8 Oct, Tanisha): research starts after it
+    // Level check (16 Oct, Prateek): an optional 3-question quiz on the goal screen, typed handbooks only (levelCheck.ts).
+    levelQuiz: v.optional(v.any()),             // { questions: [{ idea, q, options[3], answer }] }; answers never leave the server
+    levelQuizTries: v.optional(v.number()),     // model calls made for it (at most 2 per handbook)
+    levelCheck: v.optional(v.any()),            // { right, of, knows: string[], gaps: string[] }, scored in chooseIntent
     source: v.union(v.literal("live"), v.literal("cache")),
     error: v.optional(v.string()),
     hiddenAt: v.optional(v.number()),   // a duplicate topic found when two devices merged at sign-in; kept, not deleted

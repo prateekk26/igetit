@@ -6,7 +6,7 @@ import { internal } from "./_generated/api";
 import type { Trace } from "./trace";
 import { nismBrief } from "./nism";
 import { jsonSchema, problems } from "./schemas";
-import { edited, buildsOnLine } from "./prompts";
+import { edited, buildsOnLine, levelCheckLine } from "./prompts";
 
 // Research before writing (Prateek, 7 Oct: "be more agentic"; a film recap needs no quizzes and no weeks; stock topics
 // should draw on the NISM syllabus). For a typed topic, before the plan:
@@ -348,8 +348,8 @@ export async function researchFor(ctx: any, ask: string, opts: { claudeOnly?: bo
   return { used, attempts };
 }
 
-export function askFor(h: { topic: string; goal?: string; mode?: string; level: string; buildsOn?: { topic: string; taught: string; advanced: boolean } }) {
-  return `Typed: "${h.topic}"${h.goal ? `\nGoal: "${h.goal}"` : ""}${h.mode ? `\nMode: ${h.mode}` : ""}\nLevel: ${h.level}${buildsOnLine(h.buildsOn)}\nToday: ${new Date().toISOString().slice(0, 10)}`;
+export function askFor(h: { topic: string; goal?: string; mode?: string; level: string; buildsOn?: { topic: string; taught: string; advanced: boolean }; levelCheck?: any }) {
+  return `Typed: "${h.topic}"${h.goal ? `\nGoal: "${h.goal}"` : ""}${h.mode ? `\nMode: ${h.mode}` : ""}\nLevel: ${h.level}${levelCheckLine(h.levelCheck)}${buildsOnLine(h.buildsOn)}\nToday: ${new Date().toISOString().slice(0, 10)}`;
 }
 
 export const run = internalAction({

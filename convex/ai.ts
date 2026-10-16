@@ -47,7 +47,7 @@ const HAIKU = "claude-haiku-4-5-20251001";
 const OPUS = "claude-opus-5-5";
 const SONNET = "claude-sonnet-5-5";
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
-type Kind = "plan" | "chapter" | "simpler" | "ask" | "check" | "scenes" | "audit" | "repair" | "teach" | "intent" | "versions" | "match" | "artifact" | "move" | "library" | "stories" | "shelf" | "whyright" | "score" | "wording" | "figures";
+type Kind = "plan" | "chapter" | "simpler" | "ask" | "check" | "scenes" | "audit" | "repair" | "teach" | "intent" | "levelcheck" | "versions" | "match" | "artifact" | "move" | "library" | "stories" | "shelf" | "whyright" | "score" | "wording" | "figures";
 // Per-job table, set by Prateek 6 Oct: quality first, cost and latency to be handled with prices or limits later.
 // Thinking counts against max_tokens, so max-effort jobs get large caps (and stream; see callAnthropic).
 const JOB: Record<Kind, { model: string; effort?: Effort; maxTokens: number }> = {
@@ -58,6 +58,7 @@ const JOB: Record<Kind, { model: string; effort?: Effort; maxTokens: number }> =
   shelf: { model: SONNET, effort: "low", maxTokens: 3000 },
   whyright: { model: SONNET, effort: "low", maxTokens: 4000 },   // D38: the line after a right answer, backfilled per chapter   // D35: sort the Shelf's rows onto subject shelves, one call for all
   stories: { model: OPUS, effort: "medium", maxTokens: 20000 },   // D29c (9 Oct): up to four stories of up to nine frames; thinking counts, so 8,000 cut half of them off   // 8 Oct (Tanisha): the shared-library privacy check, with its own schema (it ran under "intent" and failed every time)   // 7 Oct: does a typed topic match a handbook we already have (by meaning)?
+  levelcheck: { model: HAIKU, maxTokens: 1200 },   // 16 Oct: the optional 3-question level check on the goal screen (Flash first, below)
   intent: { model: HAIKU, maxTokens: 600 },   // "What's it for?": three goals in about a second, before the plan   // 6 Oct: "max" thought >5 min, hit 32k and was cut off (2 of 2)
   ask: { model: OPUS, effort: "low", maxTokens: 2000 },
   simpler: { model: SONNET, effort: "medium", maxTokens: 8000 },   // 6 Oct: "max" thought 49 s and was cut off at 8,000 with no answer
@@ -232,12 +233,12 @@ function extractJson(text: string): any {
 export const FLASH = "gemini-3.8-flash";
 // check and wording stay on Sonnet (15 Oct gate, Flash checking: facts 2.63 against 3.64 on the old models, 6 topics
 // down a full point; see PROGRESS.md).
-const GEMINI_FIRST = new Set<Kind>(["versions", "match", "library", "shelf", "whyright", "stories", "intent", "simpler", "scenes", "teach"]);
+const GEMINI_FIRST = new Set<Kind>(["versions", "match", "library", "shelf", "whyright", "stories", "intent", "levelcheck", "simpler", "scenes", "teach"]);
 // Small, quick jobs think less on Flash, so the goal question still answers in a couple of seconds.
-const GEMINI_KIND_THINKING: Partial<Record<Kind, string>> = { intent: "low", match: "low", library: "low", teach: "low" };
+const GEMINI_KIND_THINKING: Partial<Record<Kind, string>> = { intent: "low", levelcheck: "low", match: "low", library: "low", teach: "low" };
 
 export const generate = internalAction({
-  args: { kind: v.union(v.literal("plan"), v.literal("chapter"), v.literal("simpler"), v.literal("ask"), v.literal("check"), v.literal("scenes"), v.literal("audit"), v.literal("repair"), v.literal("teach"), v.literal("intent"), v.literal("versions"), v.literal("match"), v.literal("artifact"), v.literal("move"), v.literal("library"), v.literal("stories"), v.literal("shelf"), v.literal("whyright"), v.literal("score"), v.literal("wording"), v.literal("figures")), system: v.string(), user: v.string(), model: v.optional(v.string()), effort: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("xhigh"), v.literal("max"))), trace: traceV, logAs: v.optional(v.string()) },
+  args: { kind: v.union(v.literal("plan"), v.literal("chapter"), v.literal("simpler"), v.literal("ask"), v.literal("check"), v.literal("scenes"), v.literal("audit"), v.literal("repair"), v.literal("teach"), v.literal("intent"), v.literal("levelcheck"), v.literal("versions"), v.literal("match"), v.literal("artifact"), v.literal("move"), v.literal("library"), v.literal("stories"), v.literal("shelf"), v.literal("whyright"), v.literal("score"), v.literal("wording"), v.literal("figures")), system: v.string(), user: v.string(), model: v.optional(v.string()), effort: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("xhigh"), v.literal("max"))), trace: traceV, logAs: v.optional(v.string()) },
   // trace (8 Oct, Tanisha): the handbook and chapter the call belongs to, for the call log. logAs: the step name in the
   // log when it differs from the job (e.g. "eval plan" for a prompt test), so tests never count as readers' handbooks.
   handler: async (ctx, args): Promise<Result> => {

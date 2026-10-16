@@ -682,3 +682,39 @@ For each card you get, rewrite ONLY the sentences that use one of those words, s
 
 Return only this JSON: {"cards": [{"index": <the card's index as given>, "card": <the whole card with only those sentences changed>}]}`;
 
+
+// ---------- Level check (16 Oct, Prateek: "let the users take a small survey to assess their level first") ----------
+// Optional, typed handbooks only, on the goal screen. Three questions from basic to experienced; the reader also gets a
+// "Not sure" on each (added on screen, counted as not known). Scored on the server in chooseIntent; what they knew and
+// missed reaches research and the plan as one input line (levelCheckLine), so neither prompt's text changed.
+export const LEVEL_CHECK_PROMPT = `A reader is about to get a short handbook on a topic. Before it is written, you write 3 quick questions that show how much they already know, so the handbook starts at the right place.
+
+You get:
+- Line typed: what the reader wants to learn.
+- Goal: what they want it for, if they said.
+
+Write 3 questions, easiest first:
+1. The most basic idea of the topic. Someone who has never tried it would not know it. Anyone who has tried it a little would.
+2. An idea someone knows after some real practice.
+3. An idea only someone with solid experience knows.
+
+Each question:
+- idea: the idea it checks, in 2 to 5 plain words.
+- q: one short, plain question, at most 110 characters. It tests understanding, not trivia: no dates, no names to recall, no trick wording.
+- options: exactly 3 short answers, at most 60 characters each. One is right. The other two are what someone who doesn't know would believe.
+- answer: the index of the right option, 0, 1 or 2. Put the right answer in a different place in each question.
+
+Serve the goal when there is one. Assume the reader lives in India unless the line says otherwise. Use plain words; if a question needs a term, the question is about that term. Never use the words "wrong" or "incorrect".
+
+Reply with JSON only:
+{"questions":[{"idea":"...","q":"...","options":["...","...","..."],"answer":0}]}`;
+
+export function levelCheckUserMessage(topic: string, goal?: string) {
+  return `Line typed: "${topic}"${goal ? `\nGoal: "${goal}"` : ""}`;
+}
+
+// The quiz result as one input line for research and the plan. Empty when the reader skipped the check.
+export function levelCheckLine(c?: { right: number; of: number; knows: string[]; gaps: string[] } | null) {
+  if (!c || !c.of) return "";
+  return `\nLevel check (the reader answered ${c.of} questions before this): knew ${c.knows.length ? c.knows.join("; ") : "none of them"}. Did not know yet: ${c.gaps.length ? c.gaps.join("; ") : "nothing asked"}. Start where they stopped knowing; do not reteach what they knew.`;
+}

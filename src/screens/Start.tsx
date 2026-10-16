@@ -16,7 +16,10 @@ type Props = {
   status: 'idle' | 'intent' | 'writing' | 'question' | 'failed' | 'declined'
   question?: string
   intents?: { question: string; goals: { label: string; mode: string }[] } | null
-  onChooseIntent?: (goal?: string, mode?: string, level?: 'new' | 'some') => Promise<void>
+  onChooseIntent?: (goal?: string, mode?: string, level?: 'new' | 'some', quiz?: number[]) => Promise<void>
+  // Level check (16 Oct, Prateek): optional 3 questions under "Have you tried this before?"; typed handbooks only.
+  onLevelCheck?: (goal?: string) => Promise<{ questions: { idea: string; q: string; options: string[] }[] }>
+  typedLevel?: Level   // the level the typed line already set (a line saying "advanced" starts past the basics)
   onBack?: () => void   // C2's back arrow
   suggested?: { title: string; topic: string } | null
   onTakeSuggested?: () => Promise<void>
@@ -50,7 +53,7 @@ type Props = {
 }
 
 // The first screen, and the empty state of the whole product (DESIGN.md section 4, Start).
-export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal , allowance, replacingName}: Props) {
+export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, onLevelCheck, typedLevel = 'new', suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal , allowance, replacingName}: Props) {
   const declined = status === 'declined'
   // Ready handbook names, to tell a ready suggestion (free) from one that would be written for this reader.
   const keyOf = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
@@ -65,6 +68,10 @@ export default function Start({ onBack, initialTopic = '', status, question, int
   // C2: the goal picked (an index into the goals, or 'own' for their own words) and whether they've tried it before.
   const [goalAt, setGoalAt] = useState<number | 'own' | null>(null)
   const [tried, setTried] = useState<'new' | 'some' | null>(null)
+  // The level check: its questions, the reader's picks (-1 for "Not sure") and where they are in it.
+  const [check, setCheck] = useState<{ qs: { idea: string; q: string; options: string[] }[]; picks: number[] } | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [checkError, setCheckError] = useState<string | null>(null)
   const [verySlow, setVerySlow] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   // One tap starts one thing (UX review 9 Oct: no busy state, so a double tap could start things twice).
@@ -160,16 +167,56 @@ export default function Start({ onBack, initialTopic = '', status, question, int
       if (goalAt === 'own' && !own) { setLocalError('Say it in a few words, or pick one above.'); return }
       setSending(true); setLocalError(null)
       track('submit', { via: g || own ? 'goal' : 'skip' })
-      onChooseIntent?.(g?.label ?? (own || undefined), g?.mode, tried ?? undefined).catch((e) => { setLocalError(friendly(e)); setSending(false) })
+      const quiz = check && check.picks.length === check.qs.length ? check.picks : undefined
+      onChooseIntent?.(g?.label ?? (own || undefined), g?.mode, tried ?? undefined, quiz).catch((e) => { setLocalError(friendly(e)); setSending(false) })
     }
+    const pickedGoal = typeof goalAt === 'number' ? goals[goalAt]?.label : goalAt === 'own' ? answer.trim() || undefined : undefined
+    const startCheck = () => {
+      if (checking || !onLevelCheck) return
+      setChecking(true); setCheckError(null); setTried(null)
+      track('level_check', { step: 'open' })
+      onLevelCheck(pickedGoal).then((r) => setCheck({ qs: r.questions, picks: [] }))
+        .catch((e) => setCheckError((typeof e?.data?.message === 'string' && e.data.message) || "Couldn't make the questions just now. Pick Yes or Not really instead."))
+        .finally(() => setChecking(false))
+    }
+    const pickAnswer = (k: number) => {
+      if (!check) return
+      const picks = [...check.picks, k]
+      setCheck({ ...check, picks })
+      if (picks.length === check.qs.length) track('level_check', { step: 'done', notSure: picks.filter((x) => x < 0).length })
+    }
+    const checkDone = !!check && check.picks.length === check.qs.length
+    const levelNow = checkDone ? null : (tried ?? typedLevel)
+    // Copy (agent): what the reader gets, said before they make the book.
+    const levelSays = checkDone ? 'Thanks. Your book starts where your answers stopped.'
+      : levelNow === 'some' ? 'Your book skips the basics and starts past them.'
+      : 'Your book is written for a complete beginner and starts from zero.'
+    const quizNow = check && !checkDone ? check.qs[check.picks.length] : null
     const pickRow = (k: number | 'own') => { setGoalAt(k); setLocalError(null) }
     const triedRow = (
       <div className="c2-more">
         <p>Have you tried this before?</p>
         <div className="c2-yn" role="group" aria-label="Have you tried this before?">
-          <button type="button" aria-pressed={tried === 'some'} onClick={() => setTried('some')}>Yes</button>
-          <button type="button" aria-pressed={tried === 'new'} onClick={() => setTried('new')}>Not really</button>
+          <button type="button" aria-pressed={tried === 'some'} onClick={() => { setTried('some'); setCheck(null) }}>Yes</button>
+          <button type="button" aria-pressed={tried === 'new'} onClick={() => { setTried('new'); setCheck(null) }}>Not really</button>
         </div>
+        {(tried || checkDone) && <p className="c2-level" role="status">{levelSays}</p>}
+        {!tried && !check && (
+          <>
+            {!checkDone && <p className="c2-level">Not sure? {levelSays}</p>}
+            {onLevelCheck && <button type="button" className="c2-check" onClick={startCheck} disabled={checking || sending}>{checking ? 'Writing 3 questions…' : 'Check my level: 3 questions'}</button>}
+            {checkError && <p className="error" role="alert">{checkError}</p>}
+          </>
+        )}
+        {quizNow && check && (
+          <div className="c2-quiz" role="group" aria-label={`Question ${check.picks.length + 1} of ${check.qs.length}`}>
+            <p className="c2-quiz-count">Question {check.picks.length + 1} of {check.qs.length}</p>
+            <p className="c2-quiz-q">{quizNow.q}</p>
+            {quizNow.options.map((o, k) => <button key={k} type="button" className="c2-quiz-opt" onClick={() => pickAnswer(k)}>{o}</button>)}
+            <button type="button" className="c2-quiz-opt c2-quiz-unsure" onClick={() => pickAnswer(-1)}>Not sure</button>
+            <button type="button" className="quiet c2-quiz-skip" onClick={() => setCheck(null)}>Skip the questions</button>
+          </div>
+        )}
       </div>
     )
     return (
@@ -207,7 +254,8 @@ export default function Start({ onBack, initialTopic = '', status, question, int
         </div>
         <div className="c2-fill" />
         {localError && <p className="error" role="alert">{localError}</p>}
-        <p className="c2-note">This decides what the chapters cover and how fast they go.</p>
+        {/* 16 Oct: with no goal picked, the level row never opens, so the beginner default is said here. Copy (agent). */}
+        <p className="c2-note">This decides what the chapters cover and how fast they go.{goalAt === null && typedLevel === 'new' ? ' Skip it and the book starts from zero, for a complete beginner.' : ''}</p>
         <button type="button" className="c1-go c2-go" onClick={make} disabled={sending}><span>{sending ? 'Making your book…' : 'Make my book'}</span><GoArrow /></button>
       </div>
     )

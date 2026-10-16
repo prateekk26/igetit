@@ -7,6 +7,7 @@ type Chapter = { n: number; title: string; covers: string; outcome: string; hook
 // A month-long handbook (D65, 28 chapters) groups its path into weeks; only the reader's week opens by default.
 type Week = { title: string; from: number; to: number }
 type Props = {
+  forWhom?: string   // typed handbooks: who it was written for (16 Oct)
   total?: number   // chapters in this handbook: 7, or 1 to 3 for a quick one (7 Oct)
   onOpenChapter?: (n: number) => void
   nextTopics?: React.ReactNode   // "Jump to next" topics in place of further reading (7 Oct)   // a finished chapter opens again on tap (7 Oct, Prateek); never uses the daily allowance
@@ -50,7 +51,7 @@ type Props = {
 // The handbook (14 Oct, the C boards "The plan" and "Tonight"): for a reader coming back, tonight's chapter on a marigold
 // card with its own Start; then the picture, the title, Ooh's line (the outcome) and "What's in it", one numbered row a
 // chapter, each answering a tap as the old path's stops did. A first visit has no card; the bar's button starts chapter 1.
-export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan, passed, current, chapterReady, chapterFailed, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf: _onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext, onBack, more }: Props) {
+export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forWhom, plan, passed, current, chapterReady, chapterFailed, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf: _onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext, onBack, more }: Props) {
   useEffect(() => { track('plan_view', undefined, 'plan_view:' + topic) }, [topic])
   const first = passed.length === 0 && current === 1   // a reader who came in at chapter 2 from a post is on 2
   const resuming = nextUp?.kind === 'resume'
@@ -83,6 +84,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, plan
       <div className="c3-side-col">
       <section className="c3">
         <h1>{topic}</h1>
+        {forWhom && <p className="c3-for">{forWhom}</p>}
         {plan.pushback && <p className="c3-says"><Ooh size={28} /><span>{plan.pushback}</span></p>}
         {/* A quick handbook (a recap, one recipe; 7 Oct) says so up top: no weeks of study for this one. */}
         {!plan.pushback && plan.framing && <p className="c3-says"><Ooh size={28} /><span>{plan.framing}</span></p>}

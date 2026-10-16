@@ -53,6 +53,7 @@ export default function App() {
   // screens only read it, so the number lives in one place.
   const freeChapters: number = (ms as any)?.limits?.visitorChapters ?? 2
   const lockPrice = useMutation(api.pricing.lockPrice)
+  const levelQuestions = useAction(api.levelCheck.questions)
   const payOrder = useAction(api.payments.order)
   const payConfirm = useAction(api.payments.confirm)
   const [afterSignIn, setAfterSignIn] = useState<View>('done')
@@ -448,7 +449,9 @@ export default function App() {
           intents={(hb as any)?.intents ?? null}
           suggested={(hb as any)?.suggested ?? null}
           onTakeSuggested={async () => { if (hb) await takeSuggested({ handbookId: hb._id, deviceToken: token }) }}
-          onChooseIntent={async (goal, mode, level) => { if (hb) await chooseIntent({ handbookId: hb._id, goal, mode, level, deviceToken: token }) }}
+          onChooseIntent={async (goal, mode, level, quiz) => { if (hb) await chooseIntent({ handbookId: hb._id, goal, mode, level, quiz, deviceToken: token }) }}
+          onLevelCheck={hb ? (goal) => levelQuestions({ handbookId: hb._id, deviceToken: token, goal }) : undefined}
+          typedLevel={(hb as any)?.level === 'some' ? 'some' : 'new'}
           onBack={status === 'intent' ? (backToBooks?.onClick ?? (() => { setDraftTopic(hb?.topic ?? ''); setView('start-again') })) : undefined}
           error={hb?.error}
           examples={examples}
@@ -678,6 +681,7 @@ export default function App() {
         nextTopics={<NextTopics topic={name} deviceToken={token} extra={(plan as any)?.next ?? []} onReady={(t) => { openTopic(t).catch((e) => setFlash(limitMessage(e) ?? "Couldn't open that one. Check your connection and tap again.")) }} onTyped={(t) => { openTopic(t).catch((e) => setFlash(limitMessage(e) ?? "Couldn't open that one. Check your connection and tap again.")) }} onShared={async (id) => { const r = await startFromLibrary({ libraryId: id, deviceToken: token }); pin(String(r.handbookId)); setView('auto') }} />}
         onOpenChapter={(n) => { setReadingN(n); setDoneN(null); setView('chapter') }}
         topic={name}
+        forWhom={hb.source === 'live' && !(hb as any).fromLibrary ? forWhom((hb as any).level, (hb as any).levelCheck) : undefined}
         plan={plan}
         passed={passed}
         current={currentN}
@@ -725,6 +729,12 @@ let goKnown: (() => void) | null = null
 // The wordmark on every app screen opens the front page (15 Oct, Prateek: the logo on Tonight did nothing).
 let goFront: (() => void) | null = null
 // The account circle's menu on hub screens (C4): manage the books, plans, sign in.
+// Who a typed handbook was written for (16 Oct, Prateek: make the level explicit), on its plan page. Copy (agent).
+function forWhom(level?: string, check?: { right: number; of: number } | null) {
+  if (check?.of) return `Written from your level check (${check.right} of ${check.of} right): it starts where your answers stopped.`
+  return level === 'some' ? 'Written for someone who knows the basics.' : 'Written for a complete beginner, from zero.'
+}
+
 let acct: { manage: () => void; plans: () => void; signIn: (() => void) | null; memory: () => void } | null = null
 
 // A ?l= link's first second (D25): the one book, lifted off its plank the way a Shelf tap lifts it, while the handbook

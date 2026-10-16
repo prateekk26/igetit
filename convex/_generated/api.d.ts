@@ -41,6 +41,7 @@ import type * as inkwash from "../inkwash.js";
 import type * as landing from "../landing.js";
 import type * as langfuse from "../langfuse.js";
 import type * as langfuseData from "../langfuseData.js";
+import type * as levelCheck from "../levelCheck.js";
 import type * as library from "../library.js";
 import type * as mail from "../mail.js";
 import type * as mailLimits from "../mailLimits.js";
@@ -151,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   landing: typeof landing;
   langfuse: typeof langfuse;
   langfuseData: typeof langfuseData;
+  levelCheck: typeof levelCheck;
   library: typeof library;
   mail: typeof mail;
   mailLimits: typeof mailLimits;

@@ -9,7 +9,8 @@ import { buildsOnLine, WORLD_NAMES, briefForChapter, briefForPlan, referenceForC
 import { addCost, inrOf } from "./costs";
 import { pictureCards } from "./pictureCards";
 import type { Trace } from "./trace";
-import { MOVE_PROMPT, moveUserMessage, TRYIT_PROMPT, tryItUserMessage, INTENT_PROMPT_V2, intentUserMessage, TEACH_PROMPT, teachUserMessage, ASK_SEARCH_PROMPT, askSearchUserMessage, checkUserMessage, chapterUserMessage, planUserMessage } from "./prompts";
+import { MOVE_PROMPT, moveUserMessage, TRYIT_PROMPT, tryItUserMessage, INTENT_PROMPT_V2, intentUserMessage, TEACH_PROMPT, teachUserMessage, ASK_SEARCH_PROMPT, askSearchUserMessage, checkUserMessage, chapterUserMessage, planUserMessage, levelCheckLine } from "./prompts";
+import { scoreLevelCheck } from "./levelCheck";
 import { level } from "./schema";
 import { copyInto, matchForIntent, sharedRow } from "./library";
 import { onShelf } from "./shelf";
@@ -217,7 +218,7 @@ async function fullView(ctx: QueryCtx, h: Doc<"handbooks">) {
   const chapters = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id)).collect();
   const progress = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).unique();
   return {
-    _id: h._id, topic: h.topic, level: h.level, voice: h.voice ?? "friend", status: h.status, question: h.question, intents: h.intents ?? null, suggested: (h as any).suggested ?? null, plan: h.plan, source: h.source, error: h.error, caution: cautionOf(h), pushback: h.pushback ?? (h.plan as any)?.pushback ?? null, suggestions: h.suggestions ?? [],
+    _id: h._id, topic: h.topic, level: h.level, levelCheck: h.levelCheck ? { right: h.levelCheck.right, of: h.levelCheck.of } : null, voice: h.voice ?? "friend", status: h.status, question: h.question, intents: h.intents ?? null, suggested: (h as any).suggested ?? null, plan: h.plan, source: h.source, error: h.error, caution: cautionOf(h), pushback: h.pushback ?? (h.plan as any)?.pushback ?? null, suggestions: h.suggestions ?? [],
     signedIn: !!h.userId,
     total: totalOf(h),
     // For the screens (UX review 9 Oct): a shared copy never adapts or offers "Change what you typed"; the wait screen
@@ -714,12 +715,16 @@ export const skipIntent = internalMutation({
 // The reader taps a goal, types their own, or skips. Then the plan is written for that goal.
 export const chooseIntent = mutation({
   // level (C2, 14 Oct): "Have you tried this before?" under the goal; the homepage no longer asks it.
-  args: { handbookId: v.id("handbooks"), goal: v.optional(v.string()), mode: v.optional(v.string()), level: v.optional(v.union(v.literal("new"), v.literal("some"))), deviceToken: v.optional(v.string()) },
-  handler: async (ctx, { handbookId, goal, mode, level, deviceToken }) => {
+  // quiz (16 Oct): the level check's picks, one per question, -1 for "Not sure"; its score sets the level.
+  args: { handbookId: v.id("handbooks"), goal: v.optional(v.string()), mode: v.optional(v.string()), level: v.optional(v.union(v.literal("new"), v.literal("some"))), quiz: v.optional(v.array(v.number())), deviceToken: v.optional(v.string()) },
+  handler: async (ctx, { handbookId, goal, mode, level, quiz, deviceToken }) => {
     const h = await ownedHandbook(ctx, handbookId, deviceToken);
     if (h.status !== "intent") return;
     const m = mode && ["skill", "story", "subject", "decision"].includes(mode) ? mode : undefined;
-    await ctx.db.patch(handbookId, { status: "planning", goal: goal?.trim().slice(0, 120) || undefined, mode: m, goalChosenAt: Date.now(), planSince: Date.now(), ...(level ? { level } : {}) });
+    const scored = scoreLevelCheck(h.levelQuiz, quiz);
+    const lvl = scored?.level ?? level;
+    await ctx.db.patch(handbookId, { status: "planning", goal: goal?.trim().slice(0, 120) || undefined, mode: m, goalChosenAt: Date.now(), planSince: Date.now(), ...(lvl ? { level: lvl } : {}),
+      ...(scored ? { levelCheck: { right: scored.right, of: scored.of, knows: scored.knows, gaps: scored.gaps } } : {}) });
     // Someone already made this topic for the same kind of goal: reuse their plan and chapter 1 (instant, no tokens).
     if (await matchForIntent(ctx, (await ctx.db.get(handbookId))!, m)) return;
     await ctx.scheduler.runAfter(0, internal.handbooks.generatePlan, { handbookId });
@@ -760,7 +765,7 @@ export const generatePlan = internalAction({
     // feat/handbook-shape (9 Oct): D23's typed-line guard (recipes forced to one chapter) and D27's forced 7-chapter
     // course are left out; the handbook's shape and length are what the shape work decides, from the goal and level.
     const brief = (h as any).brief ?? null;
-    const planUser = planUserMessage(h.topic, h.level, h.language, h.voice ?? "friend", clarification, h.goal, h.mode) + buildsOnLine(h.buildsOn) + briefForPlan(brief);
+    const planUser = planUserMessage(h.topic, h.level, h.language, h.voice ?? "friend", clarification, h.goal, h.mode) + buildsOnLine(h.buildsOn) + levelCheckLine((h as any).levelCheck) + briefForPlan(brief);
     // A benchmark handbook (evalShape, 9 Oct) runs on Flash alone: no Opus backup at any step, so a failure stays a
     // failure and we see what Flash does with the prompts. planOnly stops after the plan (no chapters are written).
     const flashOnly = !!(h as any).test?.flashOnly, planOnly = !!(h as any).test?.planOnly;
