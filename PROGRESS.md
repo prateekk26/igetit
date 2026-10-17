@@ -197,3 +197,4 @@ Decided by the agent in Prateek's stead, night of 4 Oct (read these first):
 2026-10-17 23:58 Quiz-only check for the easier quiz versions (D128): 6 of 6 planted quiz mistakes caught in 3 of 3 runs (the chapter check caught 4 to 5 and missed a wrong marked answer every time), about ₹1.85 a chapter against ₹2.05.
 2026-10-18 00:10 No quizzes inside chapters for new books, one recall question opens the next chapter, no quiz versions (D129); Shelf match and goal question side by side, move and Try it drawings after the chapter is saved (D130). Quick book checked on dev; the course chapter test and a real move drawing not yet seen at deploy.
 2026-10-18 00:45 Research replies with small shape slips are repaired in code instead of asked again (D131): about 18 s saved on the 7% of research calls that hit it.
+2026-10-18 00:50 Rubric score on first open instead of when written (D132).

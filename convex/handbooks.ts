@@ -1207,8 +1207,7 @@ export const generateChapter = internalAction({
     if (shareable && n > 1 && !h.test) await ctx.runMutation(internal.library.saveChapter, { handbookId, n });
     // D72 (11 Oct): every chapter is scored on the rubric in the background (convex/rubric.ts), a minute later so a
     // showcase build's Try it repair lands first. A reader never waits on it.
-    // 17 Oct: not on a test book; the eval runner grades its chapter 1 itself, so the background score was paid twice.
-    if (!(h as any).test) await ctx.scheduler.runAfter(60000, internal.rubric.scoreChapter, { handbookId, n });
+    // The rubric score is asked for when the chapter is first opened, not here (18 Oct, ensureScore).
     // Pictures come after the words. Chapter 1 is drawn now (it opens at once and gives the cover); later chapters are
     // drawn when the reader first opens them (openChapter), so a chapter written but never opened costs no pictures (7 Oct).
     if (n === 1) await ctx.scheduler.runAfter(0, internal.images.forChapter, { handbookId, n });
@@ -1521,6 +1520,17 @@ export const setPosition = mutation({
 // Pictures on first open (7 Oct, Prateek: images were drawn upfront for chapters nobody read). A ready topic's chapter is
 // drawn once for the shelf and every reader shares it; a typed handbook's chapter is drawn for its reader. Opening a
 // chapter that already has pictures, or is being drawn, does nothing.
+// D72's background rubric score, once per chapter, when a reader first opens it (18 Oct, Prateek: "yes score only when
+// opened"): about 4 in 18 chapters written ahead in quick books were never opened, and nobody reads a score but /admin.
+// Only chapters written for this reader (a ready topic's copy has no model of its own), never on a test book (the eval
+// runner grades those itself), and a minute later so a showcase build's Try it repair lands first.
+async function ensureScore(ctx: MutationCtx, h: Doc<"handbooks">, n: number) {
+  if ((h as any).test) return;
+  const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).unique();
+  if (!ch || ch.status !== "ready" || !ch.model || (ch as any).scoreAskedAt) return;
+  await ctx.db.patch(ch._id, { scoreAskedAt: Date.now() });
+  await ctx.scheduler.runAfter(60000, internal.rubric.scoreChapter, { handbookId: h._id, n });
+}
 async function ensurePictures(ctx: MutationCtx, h: Doc<"handbooks">, n: number) {
   const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", h._id).eq("n", n)).unique();
   if (!ch || ch.status !== "ready" || !ch.cards) return;
@@ -1555,6 +1565,7 @@ export const openChapter = mutation({
     const r = await tryOpen(ctx, h, n);
     if (!r.ok) throw new ConvexError(r.code);
     await ensurePictures(ctx, h, n);
+    await ensureScore(ctx, h, n);
     // A post link can open a ready topic at chapter 2 (?t=…&ch=2): the bookmark moves there, so the recall cards show.
     const p = await ctx.db.query("progress").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).unique();
     if (p && p.currentChapter < n && !p.chaptersPassed.includes(n)) await ctx.db.patch(p._id, { currentChapter: n, currentCard: 0, currentPart: 0, updatedAt: Date.now() });

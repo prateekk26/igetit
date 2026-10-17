@@ -76,6 +76,7 @@ export default defineSchema({
     // Runway pictures, one per teaching card (design/style-anchor.md). Drawn after the chapter is ready.
     pictures: v.optional(v.array(v.object({ card: v.number(), scene: v.string(), storageId: v.optional(v.id("_storage")), credit: v.optional(v.string()), source: v.optional(v.string()) }))),
     picturesStatus: v.optional(v.string()),   // "drawing" | "done" | "failed" | "skipped"
+    scoreAskedAt: v.optional(v.number()),   // 18 Oct: when the rubric score was asked for (on first open; handbooks.ts ensureScore)
     quizTiers: v.optional(v.any()),     // { easier: [...], harder: [...] }: one per exercise card, in order (7 Oct)
     recallTiers: v.optional(v.any()),   // the same for recallCards
     factCheck: v.optional(v.object({ status: v.string(), fixes: v.number(), notes: v.array(v.string()), model: v.optional(v.string()), at: v.number() })),  // live chapters: "passed" | "fixed" | "unchecked"
