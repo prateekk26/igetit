@@ -284,6 +284,29 @@ async function geminiOnce(model: string, ask: string, version: Version = LIVE, s
   return { body, error };
 }
 
+// 18 Oct (Prateek: "repair a slightly wrong research reply in code instead of asking again"): 19 of 260 Gemini research
+// replies on dev failed the shape check and were asked again in full, about 18 s more each. Small slips are fixed here
+// first, with nothing invented: a chapter count outside 3 to 7 is clamped, a depth or kind in other words is mapped,
+// over-long lists are cut to their limit, a missing outline is the pieces' names. Anything else (a missing deliverable,
+// start, piece or fact) still goes back to Gemini, as before.
+const DEPTH: Record<string, string> = { light: "light", low: "light", medium: "medium", normal: "medium", moderate: "medium", deep: "deep", heavy: "deep", high: "deep" };
+const KINDS = new Set(["story", "event", "person", "howto", "skill", "subject", "money", "health", "legal", "other"]);
+export function repairBrief(d: any): any {
+  if (!d || typeof d !== "object") return d;
+  const x = { ...d };
+  const n = Number(x.chapters);
+  if (Number.isFinite(n)) x.chapters = Math.min(7, Math.max(3, Math.round(n)));
+  if (typeof x.format === "string") x.format = x.format.trim().toLowerCase();
+  if (typeof x.kind === "string") { const k = x.kind.trim().toLowerCase(); x.kind = KINDS.has(k) ? k : "other"; }
+  if (Array.isArray(x.parts)) x.parts = x.parts.slice(0, 8).map((p: any) => (p && typeof p === "object" ? { ...p, ...(typeof p.depth === "string" && DEPTH[p.depth.trim().toLowerCase()] ? { depth: DEPTH[p.depth.trim().toLowerCase()] } : {}), ...(Array.isArray(p.needs) ? { needs: p.needs.slice(0, 10) } : {}) } : p));
+  if (!Array.isArray(x.outline) && Array.isArray(x.parts) && x.parts.length) x.outline = x.parts.map((p: any) => String(p?.part ?? "")).filter(Boolean);
+  if (Array.isArray(x.outline)) x.outline = x.outline.slice(0, 8);
+  if (Array.isArray(x.facts)) x.facts = x.facts.slice(0, 40);
+  if (Array.isArray(x.sources)) x.sources = x.sources.slice(0, 10);
+  for (const k of ["framing", "wikipediaTitle", "recapVideo"]) if (x[k] === undefined) x[k] = null;
+  return x;
+}
+
 export async function geminiResearch(model: string, ask: string, version: Version = LIVE, structured = true, thinking: Thinking = GEMINI_THINKING): Promise<Attempt> {
   const started = Date.now();
   const deadline = started + GEMINI_RESEARCH_BUDGET;
@@ -302,6 +325,7 @@ export async function geminiResearch(model: string, ask: string, version: Versio
     grounded += (cand?.groundingMetadata?.groundingChunks ?? []).length;   // web results the reply actually rests on
     queries.push(...(cand?.groundingMetadata?.webSearchQueries ?? []).map(String));
     decided = parse((cand?.content?.parts ?? []).map((p: any) => p.text ?? "").join(""));
+    if (decided && problems(schema, decided)) { const fixed = repairBrief(decided); if (!problems(schema, fixed)) { console.log("research reply repaired in code", model); decided = fixed; } }
     const wrong = problems(schema, decided);
     error = decided ? (wrong ? `schema: ${wrong.replace(/\n/g, " ").slice(0, 200)}` : undefined) : "no JSON";
     if (!error) break;
