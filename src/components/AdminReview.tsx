@@ -30,7 +30,7 @@ export default function AdminReview() {
       {auto && <p className="note">Rejected {r.reviewedAt ? when(r.reviewedAt) : ''}: {r.reviewWhy}{r.reviewedBy ? ` · by ${r.reviewedBy}` : ' · automatic filter'}</p>}
       <p><em>Chapter 1: {r.title ?? '(no title)'}</em></p>
       {r.text.map((t, i) => <p key={i} className="serif" style={{ margin: '4px 0' }}>{t}</p>)}
-      <p className="note">Judge: {r.judge ? (r.judge.error ? `failed (${r.judge.error})` : `${r.judge.score} of 12${r.judge.weakest ? `, weakest: ${r.judge.weakest}` : ''}`) : 'not run'} · {r.starts} started, {r.passes} passed chapter 1{r.why ? ` · privacy check: ${r.why}` : ''}</p>
+      <p className="note">Judge: {r.judge ? (r.judge.error ? `failed (${r.judge.error})` : (r.judge.verdict ?? `${r.judge.score} of 12${r.judge.weakest ? `, weakest: ${r.judge.weakest}` : ''}`)) : 'not run'} · {r.starts} started, {r.passes} passed chapter 1{r.why ? ` · privacy check: ${r.why}` : ''}</p>
       <div className="adm-review-actions">
         <button type="button" className="btn adm-btn-sm" onClick={() => act(r.id, true)}>Approve · put it on the Shelf</button>
         {gone === r.id

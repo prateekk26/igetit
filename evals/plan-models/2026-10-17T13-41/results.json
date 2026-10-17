@@ -1,0 +1,200 @@
+[
+ {
+  "case": "compound-interest",
+  "topic": "how compound interest works",
+  "goal": "understand why starting early matters",
+  "level": "new",
+  "models": {
+   "gemini": {
+    "handbookId": "k970h54877cbnfy4azq0dn9c7d8geecc",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "quick",
+     "minutes": 20,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "The Rolling Snowball",
+     "outcome": "By the end you'll be able to explain how interest compounds, use the Rule of 72 in your head, and show why starting early beats investing larger sums later."
+    },
+    "planCalls": 1,
+    "planSeconds": 14,
+    "planInr": 0.84,
+    "ch1": {
+     "facts": 4,
+     "outcome": 4
+    },
+    "judge": {
+     "analogy": 5,
+     "clarity": 4,
+     "coverage": 4,
+     "fit": 5,
+     "level": 5,
+     "promises": 2
+    }
+   },
+   "sonnet": {
+    "handbookId": "k979fa8mtyh50fyeqxjjbwq3918gfm3r",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "quick",
+     "minutes": 23,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "Snowball rolling downhill",
+     "outcome": "By the end you'll be able to work out how a sum grows with compounding, estimate its doubling time in your head, and explain with numbers why starting early beats saving more later."
+    },
+    "planCalls": 1,
+    "planSeconds": 10,
+    "planInr": 3.26,
+    "ch1": {
+     "facts": 4,
+     "outcome": 4
+    },
+    "judge": {
+     "analogy": 5,
+     "clarity": 5,
+     "coverage": 4,
+     "fit": 4,
+     "level": 5,
+     "promises": 4
+    }
+   },
+   "opus": {
+    "handbookId": "k97fm39hxzjr7y94r2829ynfz98ge0we",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "quick",
+     "minutes": 23,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "A snowball rolling downhill",
+     "outcome": "By the end you'll be able to show, with a worked rupee example, how interest earns interest, estimate any doubling time in your head with the Rule of 72, and explain why a 10-year delay costs more than bigger deposits later can easily make up."
+    },
+    "planCalls": 1,
+    "planSeconds": 26,
+    "planInr": 8.15,
+    "ch1": {
+     "facts": 5,
+     "outcome": 5
+    },
+    "judge": {
+     "analogy": 5,
+     "clarity": 4,
+     "coverage": 4,
+     "fit": 5,
+     "level": 5,
+     "promises": 3
+    }
+   }
+  },
+  "rank": [
+   "sonnet",
+   "opus",
+   "gemini"
+  ],
+  "why": "B is clearest and keeps the doubling shortcut approximate, although its four-sitting framing conflicts with the requested quick format; all three leave some supporting facts unplaced. C better qualifies the early-saver comparison but blurs approximate doubling times, while A promises exact timing and an unsupported judgment about which variable matters most.",
+  "worstPromise": "gemini: \"How can you estimate exactly when your money will double using just mental arithmetic?\""
+ },
+ {
+  "case": "nifty-options",
+  "topic": "nifty options trading",
+  "goal": "understand how options work before I try",
+  "level": "new",
+  "models": {
+   "gemini": {
+    "handbookId": "k9731dq2z314xdcv8fmxgyc9e58gfnwv",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "quick",
+     "minutes": 0,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "Property booking token",
+     "outcome": "By the end you'll be able to explain how Nifty option contracts work, calculate premium values, and assess the real balance of risk between buyers and sellers."
+    },
+    "planCalls": 1,
+    "planSeconds": 27,
+    "planInr": 1.27,
+    "ch1": {
+     "facts": 3,
+     "outcome": 4
+    },
+    "judge": {
+     "analogy": 3,
+     "clarity": 4,
+     "coverage": 3,
+     "fit": 5,
+     "level": 4,
+     "promises": 3
+    }
+   },
+   "sonnet": {
+    "handbookId": "k97f70yc9r22m80533gg645pjn8geyqh",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "quick",
+     "minutes": 29,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "Event ticket",
+     "outcome": "By the end you'll be able to explain what a Nifty call or put is, why its price rises and falls, why buyers and sellers face very different risks, and read an option chain and an expiry day without guessing."
+    },
+    "planCalls": 1,
+    "planSeconds": 11,
+    "planInr": 3.98,
+    "ch1": {
+     "facts": 1,
+     "outcome": 4
+    },
+    "judge": {
+     "analogy": 2,
+     "clarity": 5,
+     "coverage": 4,
+     "fit": 4,
+     "level": 5,
+     "promises": 4
+    }
+   },
+   "opus": {
+    "handbookId": "k97bgk7p2y2szmmbz5ax25zzgx8gf3kb",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "quick",
+     "minutes": 32,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "A booking amount",
+     "outcome": "By the end you'll be able to read a Nifty option chain, explain why a premium rose or fell, and say exactly what a buyer and a seller each stand to lose before you place any trade."
+    },
+    "planCalls": 1,
+    "planSeconds": 34,
+    "planInr": 10.38,
+    "ch1": {
+     "facts": 4,
+     "outcome": 4
+    },
+    "judge": {
+     "analogy": 5,
+     "clarity": 5,
+     "coverage": 3,
+     "fit": 5,
+     "level": 5,
+     "promises": 3
+    }
+   }
+  },
+  "rank": [
+   "opus",
+   "sonnet",
+   "gemini"
+  ],
+  "why": "C best matches an evening-or-two introduction and uses the most helpful picture, although it omits delta and overpromises explaining actual daily price changes. B includes delta and makes more restrained promises but proposes four sittings and a misleading ticket picture; A also omits delta and makes broader calculation promises with less beginner-friendly wording.",
+  "worstPromise": "opus: \"You can split any Nifty premium into its intrinsic and time value and explain why it shrank or grew on a given day.\""
+ }
+]

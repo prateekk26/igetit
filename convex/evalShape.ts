@@ -14,13 +14,15 @@ const OWNER = "eval-shape";
 // A handbook as it is after the reader picked a goal; the script then runs handbooks:generatePlan on it.
 export const create = internalMutation({
   // flashOnly (9 Oct): no Opus or Claude backup at any step; planOnly: stop after the plan, no chapters.
-  args: { topic: v.string(), level: v.union(v.literal("new"), v.literal("some")), goal: v.optional(v.string()), mode: v.optional(v.string()), flashOnly: v.optional(v.boolean()), planOnly: v.optional(v.boolean()), noVersions: v.optional(v.boolean()) },
-  handler: async (ctx, { topic, level, goal, mode, flashOnly, planOnly, noVersions }) => {
+  // planModel and brief (17 Oct, plan-model comparison): the plan's model, pinned with no backup, and a research brief to
+  // reuse (so every model plans from the same research).
+  args: { topic: v.string(), level: v.union(v.literal("new"), v.literal("some")), goal: v.optional(v.string()), mode: v.optional(v.string()), flashOnly: v.optional(v.boolean()), planOnly: v.optional(v.boolean()), noVersions: v.optional(v.boolean()), planModel: v.optional(v.string()), brief: v.optional(v.any()) },
+  handler: async (ctx, { topic, level, goal, mode, flashOnly, planOnly, noVersions, planModel, brief }) => {
     const now = Date.now();
     const handbookId = await ctx.db.insert("handbooks", {
       topic, topicKey: `eval-shape:${topic.toLowerCase()}`, level, language: "English", voice: "friend", status: "planning",
-      ...(goal ? { goal } : {}), ...(mode ? { mode } : {}), goalChosenAt: now,
-      ownerToken: OWNER, source: "live", test: { label: "shape-bench", startedAt: now, ...(flashOnly ? { flashOnly: true } : {}), ...(planOnly ? { planOnly: true } : {}), ...(noVersions ? { noVersions: true } : {}) }, createdAt: now,
+      ...(goal ? { goal } : {}), ...(mode ? { mode } : {}), ...(brief ? { brief } : {}), goalChosenAt: now,
+      ownerToken: OWNER, source: "live", test: { label: "shape-bench", startedAt: now, ...(flashOnly ? { flashOnly: true } : {}), ...(planOnly ? { planOnly: true } : {}), ...(noVersions ? { noVersions: true } : {}), ...(planModel ? { planModel } : {}) }, createdAt: now,
     } as any);
     await ctx.db.insert("progress", { handbookId, currentChapter: 1, currentCard: 0, chaptersPassed: [], passedExercises: [], missedExercises: [], lastOpenedAt: now, updatedAt: now });
     return handbookId;
@@ -51,7 +53,10 @@ export const cost = internalQuery({
   args: { handbookId: v.id("handbooks") },
   handler: async (ctx, { handbookId }) => {
     const rows = await ctx.db.query("callStats").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).take(200);
+    // 17 Oct: when the first call started and when chapter 1's last write or check ended, for the gate's speed line.
+    const ch1 = rows.filter((r) => r.ok && r.chapter === 1 && (r.kind === "chapter" || r.kind === "check"));
     return {
+      start: rows.length ? Math.min(...rows.map((r) => r.at - r.ms)) : null, ch1At: ch1.length ? Math.max(...ch1.map((r) => r.at)) : null,
       calls: rows.length, failed: rows.filter((r) => !r.ok).length,
       inr: rows.reduce((a, r) => a + (r.inr ?? inrOf(r.model, r.ok, r.tokensIn, r.tokensOut)), 0),
       byKind: Object.fromEntries([...new Set(rows.map((r) => r.kind))].map((k) => [k, rows.filter((r) => r.kind === k).map((r) => `${r.model}${r.ok ? "" : " (failed)"}`)])),
@@ -63,7 +68,7 @@ export const cost = internalQuery({
 export const steps = internalQuery({
   args: { handbookId: v.id("handbooks") },
   handler: async (ctx, { handbookId }) => (await ctx.db.query("callStats").withIndex("by_handbook", (q) => q.eq("handbookId", handbookId)).take(300))
-    .map((r) => ({ kind: r.kind, model: r.model, ok: r.ok, inr: r.inr ?? 0, tokensIn: r.tokensIn, tokensOut: r.tokensOut, chapter: r.chapter ?? null })),
+    .map((r) => ({ kind: r.kind, model: r.model, ok: r.ok, inr: r.inr ?? 0, ms: r.ms, tokensIn: r.tokensIn, tokensOut: r.tokensOut, chapter: r.chapter ?? null })),
 });
 
 // What the plan step saw on a Flash-only benchmark run: the faults of Flash's first plan, and those left at the end.

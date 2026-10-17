@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import type { Trace } from "./trace";
 import { nismBrief } from "./nism";
 import { jsonSchema, problems } from "./schemas";
+import { geminiKeys, noteRefused } from "./geminiKeys";
 import { edited, buildsOnLine, levelCheckLine } from "./prompts";
 
 // Research before writing (Prateek, 7 Oct: "be more agentic"; a film recap needs no quizzes and no weeks; stock topics
@@ -156,11 +157,18 @@ export const PROMPT_V8 = edited(PROMPT_V7, [
   [`- facts: up to 20 facts, as many as your results support, in the same order as the pieces. A fact is one checkable statement.`, `- facts: objects {"part": the piece it belongs to, "fact": one checkable statement}, in the same order as the pieces, as many as your results support, up to 40 in all; a deep piece gets more than a light one. A fact is one checkable statement.`],
 ]);
 
+// Research prompt v9 (17 Oct, Prateek: "lets do research 3 times"): v8 with at most 3 searches again. v8's one extra
+// search per deep piece took research to 40-108 s (about 55 s typical) on the live site; it is the longest step before
+// chapter 1. Everything else is v8.
+export const PROMPT_V9 = edited(PROMPT_V8, [
+  [`SEARCH (3 searches, plus one for each deep piece; at most 5)`, `SEARCH (at most 3 searches)`],
+]);
+
 // Which research prompt, with its own output check and search cap. Live handbooks use LIVE; v1 stays for comparison.
-export type Version = "v1" | "v4" | "v5" | "v6" | "v7" | "v8";
+export type Version = "v1" | "v4" | "v5" | "v6" | "v7" | "v8" | "v9";
 // 8 Oct: research v5 (v4 plus up to 3 true details a reader would retell) is live. v1 (PROMPT) and v4 stay here.
 // 9 Oct (feat/handbook-shape): v6, the shape framework, is live on this branch. Switch back: "v5".
-export const LIVE: Version = "v8";   // 9 Oct: v8 (must-haves and facts by piece). Switch back: "v7", "v6" or "v5".
+export const LIVE: Version = "v9";   // 17 Oct: v9 (v8, at most 3 searches). Switch back: "v8" (up to 5), "v7", "v6" or "v5".
 const SETUP: Record<Version, { prompt: () => string; schema: string; maxSearches: number }> = {
   v1: { prompt: () => PROMPT, schema: "research", maxSearches: 4 },
   v4: { prompt: () => PROMPT_V4, schema: "researchV4", maxSearches: 3 },
@@ -168,6 +176,7 @@ const SETUP: Record<Version, { prompt: () => string; schema: string; maxSearches
   v6: { prompt: () => PROMPT_V6, schema: "researchV6", maxSearches: 3 },
   v7: { prompt: () => PROMPT_V7, schema: "researchV7", maxSearches: 3 },
   v8: { prompt: () => PROMPT_V8, schema: "researchV8", maxSearches: 5 },
+  v9: { prompt: () => PROMPT_V9, schema: "researchV8", maxSearches: 3 },
 };
 
 const STORY = new Set(["film", "series", "book", "game", "franchise", "story"]);   // v1's story kinds, and v4's one
@@ -225,7 +234,11 @@ export const GEMINI_THINKING: Thinking = "medium";
 // Time budget (8 Oct): every Gemini try for one research step (both keys, the wait between rounds, the schema retry)
 // shares 120 s. Past it, Claude takes over, so a busy Gemini never keeps a reader waiting minutes for a plan.
 // 9 Oct: 180 s and longer waits between tries: a 503 "high demand" from Google can last a minute or more.
-const GEMINI_RESEARCH_BUDGET = 180000;
+// 17 Oct: each try waits up to 170 s (it was 90 s). Healthy research takes up to 143 s on the live site, so the 90 s cut
+// hung up on slow but good replies, then started again from zero while Google kept working on (and billing) the first.
+// The step budget is 240 s so a full try still leaves room; past it Opus takes over, inside the action's 10 minutes.
+const GEMINI_RESEARCH_BUDGET = 240000;
+const GEMINI_RESEARCH_TRY = 170000;
 type Attempt = { decided: any; searches: number; grounded?: number; queries?: string[]; tokensIn: number; tokensOut: number; error?: string; model: string; ms: number };
 
 export const REDIRECT = /vertexaisearch\.cloud\.google\.com\/grounding-api-redirect/;
@@ -238,7 +251,7 @@ const parse = (text: string) => { const m = text.match(/\{[\s\S]*\}/); try { ret
 
 async function geminiOnce(model: string, ask: string, version: Version = LIVE, structured = true, thinking: Thinking = GEMINI_THINKING, deadline = Date.now() + GEMINI_RESEARCH_BUDGET) {
   const { prompt, schema } = SETUP[version];
-  const keys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_BACKUP].filter(Boolean) as string[];
+  const keys = geminiKeys();
   if (!keys.length) return { body: null, error: "no Gemini key set" };
   let body: any = null, error: string | undefined;
   const dead = new Set<number>();
@@ -247,20 +260,24 @@ async function geminiOnce(model: string, ask: string, version: Version = LIVE, s
     const left = deadline - Date.now();
     if (left < 5000) { error = `Gemini time budget used up (${GEMINI_RESEARCH_BUDGET / 1000} s)`; break; }
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: "POST", signal: AbortSignal.timeout(Math.min(90000, left)),
+      method: "POST", signal: AbortSignal.timeout(Math.min(GEMINI_RESEARCH_TRY, left)),
       headers: { "Content-Type": "application/json", "x-goog-api-key": keys[i % keys.length] },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: prompt() }] }, contents: [{ role: "user", parts: [{ text: ask }] }],
         tools: [{ google_search: {} }],
         generationConfig: { maxOutputTokens: 8000, ...(thinking === "default" ? {} : { thinkingConfig: { thinkingLevel: thinking } }), ...(structured ? { responseMimeType: "application/json", ...(jsonSchema(schema) ? { responseJsonSchema: jsonSchema(schema) } : {}) } : {}) },
       }),
-    }).catch((e: any) => ({ ok: false, status: 0, json: async () => ({ error: String(e?.message ?? e) }) }) as any);
+    }).catch((e: any) => ({ ok: false, status: 0, cutOff: /timeout|abort/i.test(`${e?.name} ${e?.message}`), json: async () => ({ error: String(e?.message ?? e) }) }) as any);
     body = await res.json().catch(() => ({}));
     if (res.ok) { error = undefined; break; }
+    noteRefused(keys[i % keys.length], res.status);
     error = `Gemini ${res.status} (${i % keys.length ? "backup key" : "main key"}): ${JSON.stringify(body).slice(0, 200)}`;
     // 9 Oct: a key out of credit (402) is dropped and the other key carries on. Before, the backup's 402 ended the call
     // even when the main key had only been busy for a moment (503), and the error read "credits depleted".
-    if (res.status === 402 && dead.size + 1 < keys.length) dead.add(i % keys.length);
+    // 17 Oct: a 403 ("project denied access") is dropped the same way, as ai.ts has done since 14 Oct. And when we cut a
+    // try off ourselves, research stops there (Opus takes over) instead of asking the other key from zero.
+    if (res.cutOff) { error = `Gemini timeout after ${Math.round(Math.min(GEMINI_RESEARCH_TRY, left) / 1000)} s (${i % keys.length ? "backup key" : "main key"})`; break; }
+    if ((res.status === 402 || res.status === 403) && dead.size + 1 < keys.length) dead.add(i % keys.length);
     else if (res.status !== 503 && res.status !== 429 && res.status !== 0) break;
     if (i % keys.length === keys.length - 1 && deadline - Date.now() > 40000) await new Promise((x) => setTimeout(x, 20000));   // both keys tried: wait, then again
   }
@@ -331,7 +348,9 @@ export async function researchFor(ctx: any, ask: string, opts: { claudeOnly?: bo
   const attempts: Attempt[] = [];
   const best = () => attempts.filter((a) => !a.error).sort((a, b) => factCount(b) - factCount(a))[0];
   // models: the Gemini models to try, in order (tests only; preview). Default: 3.8 Flash, then 3.7 Flash (D89).
-  const [first, second] = opts.models ?? [GEMINI_RESEARCHER, GEMINI_SECOND];
+  // 17 Oct (Prateek: "we can remove 3.7"): live research is 3.8 Flash, then Opus. 3.7 failed every call seen on 17 Oct and
+  // on 14 Oct failed for the same reason as 3.8, so it only delayed Opus. Tests can still pass models to try it.
+  const [first, second] = opts.models ?? [GEMINI_RESEARCHER];
   if (!opts.claudeOnly) attempts.push(await geminiResearch(first, ask, LIVE, structuredFor(first)));
   // geminiOnly (9 Oct): a benchmark handbook stays on Gemini: its fallback is Gemini 3.1 Pro (which can also search), never Claude.
   if (opts.geminiOnly) { if (attempts[0].error) attempts.push(await geminiResearch(GEMINI_FALLBACK, ask)); }

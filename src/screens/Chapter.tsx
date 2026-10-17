@@ -69,7 +69,7 @@ type Props = {
   // and 2 the next chapter's picture, title and hook with a button straight into it. Without onAfter, Finish goes to Done.
   onStars?: (stars: number) => Promise<void>
   teaser?: { title: string; hook?: string; picture?: string; state: 'ready' | 'writing' | 'failed' | 'wall' } | null
-  onAfter?: (go: 'done' | 'next', stats: { minutes: number; right: number; total: number }) => void
+  onAfter?: (go: 'done' | 'next', stats: { minutes: number; right: number; total: number; reread?: boolean }) => void
 }
 
 const NO_STARS = 'igi.noStars'
@@ -118,7 +118,9 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const [wasPassed] = useState(() => _passed.includes(n))
   const [after, setAfter] = useState<null | 'stars' | 'teaser'>(null)
   const [stars, setStars] = useState(0)
-  const afterStats = useRef({ minutes: 1, right: 0, total: 0 })
+  const afterStats = useRef<{ minutes: number; right: number; total: number; reread?: boolean }>({ minutes: 1, right: 0, total: 0 })
+  // 17 Oct: false once this screen is gone, so a finish or a voice part that lands late does nothing.
+  const alive = useRef(true)
   const items: Item[] = useMemo(
     () => [
       ...(lastTime && !['exercise', 'watch', 'move', 'doit', 'steps', 'tryit'].includes(lastTime.type) ? [{ chapter: n - 1, cardIndex: -1, recall: true, card: { ...lastTime, title: 'Last time', body: dropNextLine((lastTime as any).body ?? '') } as Card }] : []),
@@ -262,9 +264,10 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const finish = async () => {
     setFinishing(true); setError(null)
     const tries = [...firstTries.current.values()]
-    const stats = { minutes: Math.max(1, Math.round((Date.now() - openedAt.current) / 60000)), right: tries.filter(Boolean).length, total: tries.length }
+    const stats = { minutes: Math.max(1, Math.round((Date.now() - openedAt.current) / 60000)), right: tries.filter(Boolean).length, total: tries.length, reread: wasPassed }
     try {
       await onFinish(stats)
+      if (!alive.current) return   // 17 Oct: closed while it saved; don't pull the reader back to Done
       if (onAfter) {
         afterStats.current = stats
         const first = wasPassed || auto ? null : onStars && !starsOff() ? 'stars' : teaser ? 'teaser' : null
@@ -333,8 +336,12 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   useEffect(() => { ensureFigures({ handbookId, n, deviceToken }).catch(() => {}) }, [handbookId, n]) // eslint-disable-line react-hooks/exhaustive-deps
   const kept = useQuery(api.handbooks.keptFor, { handbookId, chapter: n, deviceToken }) ?? []
   const reteach = useQuery(api.handbooks.reteachFor, unsure && item.card.type === 'exercise' ? { handbookId, chapter: item.chapter, cardIndex: item.cardIndex, recall: !!item.recall, deviceToken } : 'skip')
-  useEffect(() => { stopSpeaking(); stopAudio(); setSpeaking(false) }, [i])
-  useEffect(() => () => stopAudio(), [])
+  // 17 Oct: every "Read it to me" press gets a number; turning the page, Stop or closing the chapter moves it on, and a
+  // part still loading for an older number is never played. Before, only a page turn stopped it, so Stop and close let
+  // the rest of the page play on (even on the handbook page).
+  const run = useRef(0)
+  useEffect(() => { run.current++; stopSpeaking(); stopAudio(); setSpeaking(false) }, [i])
+  useEffect(() => () => { alive.current = false; run.current++; stopAudio() }, [])
 
   // 15 Oct: the page voice (Gemini speech, a warm female voice, cached per page) and auto-play. A page is read as its
   // own words: the headline, the paragraphs; a question, its options; an answer, the right option and why.
@@ -468,10 +475,11 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const label = item.recall ? (c.type === 'exercise' ? `Warm-up · ${warmAt} of ${warm.length}` : `Last time · from chapter ${item.chapter}`) : c.type === 'exercise' ? `Chapter ${n} · Check` : `${runningHead(topic)} · Chapter ${n}`
   const pagesLeft = frames.length - 1 - i
   const readAloud = async () => {
-    if (speaking) { stopSpeaking(); stopAudio(); setSpeaking(false); return }
+    if (speaking) { run.current++; stopSpeaking(); stopAudio(); setSpeaking(false); return }
     setSpeaking(true)
-    const at = i
-    if (await playParts(partsOf(frame), () => at !== iRef.current)) { setSpeaking(false); return }
+    const mine = ++run.current
+    if (await playParts(partsOf(frame), () => mine !== run.current)) { if (mine === run.current) setSpeaking(false); return }
+    if (mine !== run.current) return   // stopped or closed while it loaded: no phone voice either
     if (!voice) { setSpeaking(false); return }   // no page voice and no phone voice: nothing to read with
     const parts = [...(dialogRef.current?.querySelectorAll('.story-body .story-title, .story-body .story-kicker, .story-body .story-text, .story-body .story-q, .story-body .story-big, .story-body .story-sub, .story-body .story-opt') ?? [])]
     const text = parts.map((el) => (el.classList.contains('story-opt') ? `${el.textContent?.trim()}.` : el.textContent?.trim())).filter(Boolean).join('\n')

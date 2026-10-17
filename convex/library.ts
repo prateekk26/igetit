@@ -6,8 +6,10 @@ import { internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { LIBRARY_CHECK_PROMPT } from "./prompts";
+import { LIBRARY_CHECK_PROMPT, CHECK_PROMPT_V5, checkUserMessage } from "./prompts";
+import { applyAnywhere, validFix } from "./handbooks";
 import { JUDGE, JUDGE_MODEL } from "./evalModels";
+import { SYSTEM as SCORER, scorerUser } from "./rubric";
 import { isOwner } from "./admin";
 import { weekStartIST } from "./landing";
 import { onShelf, spotlight, syncShared } from "./shelf";
@@ -40,19 +42,103 @@ export const consider = internalAction({
     const r: any = await ctx.runAction(internal.ai.generate, { kind: "library", system: LIBRARY_CHECK_PROMPT,
       user: `Typed line: "${h.topic}"\nPlan topic: ${h.plan?.topic ?? ""}\nGoal: ${h.goal ?? ""}\nOutcome: ${h.plan?.outcome7 ?? ""}`, trace: { handbookId } });
     if (!(r.ok && r.json?.share === true)) return reject(`privacy check: ${String(r.ok ? r.json?.why ?? "no" : r.error).slice(0, 120)}`);
-    // The 6 Oct judge on chapter 1 (Opus high, 12 checks, about ₹3): under 9 is rejected with its weakest check named.
-    const j: any = await ctx.runAction(internal.ai.generate, { kind: "audit", system: JUDGE, user: "Chapter JSON:\n" + JSON.stringify({ title: d.ch.title, cards: d.ch.cards, outcomeLine: d.ch.outcomeLine }), model: JUDGE_MODEL, effort: "high", trace: { handbookId, chapter: 1 } });
-    // Chapter 1 has no quizzes by design, so the three quiz checks are "n/a" and never the weakest; the bar for chapter 1 is
-    // under 7 of 12 (dc, 9 Oct: at most two real faults out of the nine checks that apply; 7 and 8 go to the queue).
-    const NA = ["one_idea", "answerable", "feedback_names_confusion"];
-    const checks: Record<string, any> = j.ok && j.json?.checks && typeof j.json.checks === "object" ? { ...j.json.checks } : {};
-    for (const k of NA) if (k in checks) checks[k] = "n/a";
-    const weakest = Object.entries(checks).find(([k, v]) => !NA.includes(k) && (v === false || v === 0))?.[0] ?? null;
-    const judge: any = j.ok ? { score: Number(j.json?.score ?? 0), checks, weakest, why: String(j.json?.why ?? "").slice(0, 300), dubious: Array.isArray(j.json?.dubious_claims) ? j.json.dubious_claims.slice(0, 5) : [] } : { error: String(j.error).slice(0, 120) };
-    if (j.ok && judge.score < 7) return reject(`judge ${judge.score} of 12${weakest ? `: ${weakest}` : ""}`, judge);
-    await ctx.runMutation(internal.library.publish, { handbookId, share: true, why: String(r.json?.why ?? "").slice(0, 120), review: "pending", judge });
+    const facts: string | null = await ctx.runQuery(internal.library.briefFacts, { handbookId });
+    const out = await shelfReview(ctx, { plan: h.plan, ch: d.ch, facts }, [], { handbookId, chapter: 1 });
+    if (out.review === "rejected") return reject(out.reviewWhy ?? "a false claim after fixing", out.judge);
+    // The fixes go on the reader's own chapter 1 first, so the shared copy (made from it) carries them.
+    if (out.fixes.length) await ctx.runMutation(internal.library.fixChapterOne, { handbookId, cards: out.cards });
+    await ctx.runMutation(internal.library.publish, { handbookId, share: true, why: String(r.json?.why ?? "").slice(0, 120), review: "pending", judge: out.judge });
     // D42: the rebuild replaces the row it was started from, which steps aside with the reason.
     if (h.rebuildOf) await ctx.runMutation(internal.library.retire, { id: h.rebuildOf, why: "replaced by a rebuild" });
+  },
+});
+
+// The Shelf review (17 Oct, D120; Prateek: "think well, how a book on shelf should be evaluated for quality and readers
+// benefit"). Prateek approves every book by hand, so the review fixes what it can, says in one line what it found, and
+// keeps out only a book still false after fixing. Three questions instead of one score out of 12:
+//  1. Is it true? The Opus judge lists doubtful claims; Sonnet fixes them (check v4 edits); then the eval gate's facts
+//     grader (rubric.ts) scores the fixed chapter against the research. Level 1 (a false claim) is rejected.
+//  2. Does it deliver its promise? The eval gate's outcome grader. Shown, never blocks: Prateek decides.
+//  3. Will people enjoy it? The judge's reading checks (hook, concrete images, keep reading...). Shown, never blocks.
+// Quiz checks are left out: chapter 1 has no quizzes, and later chapters' quizzes are fact checked when written. About
+// Rs 5 to 7 a book (Opus judge, a Sonnet fix when doubts are named, two Sonnet grades).
+const READING = ["hook", "concrete_images", "short_cards", "no_cliche", "topic_specific", "would_keep_reading", "laugh_or_sit_up", "open_loop"];
+async function judgeChapter(ctx: any, ch: { title?: string; cards: any[]; outcomeLine?: string }, trace: { handbookId?: Id<"handbooks">; chapter?: number }) {
+  const j: any = await ctx.runAction(internal.ai.generate, { kind: "audit", system: JUDGE, user: "Chapter JSON:\n" + JSON.stringify({ title: ch.title, cards: ch.cards, outcomeLine: ch.outcomeLine }), model: JUDGE_MODEL, effort: "high", ...(trace.handbookId ? { trace } : {}) });
+  if (!j.ok) return { error: String(j.error).slice(0, 120) } as any;
+  const checks: Record<string, any> = j.json?.checks && typeof j.json.checks === "object" ? { ...j.json.checks } : {};
+  for (const k of ["one_idea", "answerable", "feedback_names_confusion"]) if (k in checks) checks[k] = "n/a";
+  return { score: Number(j.json?.score ?? 0), checks, why: String(j.json?.why ?? "").slice(0, 300), dubious: Array.isArray(j.json?.dubious_claims) ? j.json.dubious_claims.slice(0, 5).map(String) : [] };
+}
+type Grade = { level: number | null; quote: string; why: string } | null;
+export async function shelfReview(ctx: any, x: { plan: any; ch: { title?: string; cards: any[]; outcomeLine?: string }; facts: string | null }, edits: any[], trace: { handbookId?: Id<"handbooks">; chapter?: number }) {
+  let cards: any[] = x.ch.cards.slice();
+  const fixes: string[] = [];
+  const apply = (list: any[]) => { for (const f of list) {
+    const hit = applyAnywhere(cards, f), i = hit?.i ?? -1, next = hit?.next ?? null;
+    if (next && validFix(cards[i], next) && JSON.stringify(next) !== JSON.stringify(cards[i])) { cards[i] = next; fixes.push(`card ${i}: ${String(f.why ?? `"${f.find}" to "${f.replace}"`).slice(0, 200)}`); }
+  } };
+  apply(edits);
+  const t = trace.handbookId ? { trace } : {};
+  const judge: any = await judgeChapter(ctx, { ...x.ch, cards }, trace);
+  if (!judge.error && judge.dubious.length) {
+    const user = checkUserMessage(x.plan?.topic ?? "", "new", { title: x.ch.title, cards }) + `\nToday: ${new Date().toISOString().slice(0, 10)}` + (x.facts ? `\n\nReference material these cards must agree with:\n${x.facts.slice(0, 6000)}` : "") + `\n\nAn editor flagged these claims as doubtful. Fix each one that is truly false, out of date or contradicted by another card, and nothing else:\n- ${judge.dubious.join("\n- ")}`;
+    const r: any = await ctx.runAction(internal.ai.generate, { kind: "check", system: CHECK_PROMPT_V5, user, ...t });
+    if (r.ok && Array.isArray(r.json?.fixes)) apply(r.json.fixes);
+  }
+  const grade = async (lever: "facts" | "outcome"): Promise<Grade> => {
+    const r: any = await ctx.runAction(internal.ai.generate, { kind: "score", system: SCORER, user: scorerUser(lever, x.plan, 1, cards, x.facts), ...t });
+    if (!r.ok || !r.json) return null;
+    return { level: typeof r.json.level === "number" ? Math.max(1, Math.min(5, Math.round(r.json.level))) : null, quote: String(r.json.quote ?? "").slice(0, 300), why: String(r.json.why ?? "").slice(0, 300) };
+  };
+  const truth = await grade("facts"), delivers = await grade("outcome");
+  const reading = judge.error ? null : { yes: READING.filter((k) => judge.checks[k] === true), no: READING.filter((k) => judge.checks[k] === false) };
+  const lvl = (g: Grade) => (g?.level ? `L${g.level}` : "?");
+  const line = `True ${lvl(truth)}${fixes.length ? ` after ${fixes.length} fix${fixes.length === 1 ? "" : "es"}` : ""} · Delivers ${lvl(delivers)} · Reading ${reading ? `${reading.yes.length} of ${READING.length}${reading.no.length ? ` (not: ${reading.no.join(", ")})` : ""}` : "not judged"}`;
+  const review = truth?.level === 1 ? "rejected" : "pending";
+  return { cards, fixes, review, reviewWhy: review === "rejected" ? `a false claim after fixing: "${truth?.quote ?? ""}"`.slice(0, 200) : undefined,
+    judge: { ...judge, verdict: { line, truth, delivers, reading, fixes } } };
+}
+export const rowFor = internalQuery({ args: { handbookId: v.id("handbooks") }, handler: async (ctx, { handbookId }) => await ctx.db.query("library").withIndex("by_source", (q) => q.eq("sourceHandbookId", handbookId)).first() });
+export const readRow = internalQuery({ args: { id: v.id("library") }, handler: async (ctx, { id }) => await ctx.db.get(id) });
+// The research facts the graders read, as rubric.ts inputs gives them.
+export const briefFacts = internalQuery({ args: { handbookId: v.id("handbooks") }, handler: async (ctx, { handbookId }) => {
+  const h: any = await ctx.db.get(handbookId);
+  return Array.isArray(h?.brief?.facts) ? h.brief.facts.map((f: any) => (typeof f === "string" ? f : f?.fact ?? f?.text ?? JSON.stringify(f))).join("\n") : null;
+} });
+export const fixChapterOne = internalMutation({ args: { handbookId: v.id("handbooks"), cards: v.any() }, handler: async (ctx, { handbookId, cards }) => {
+  const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", 1)).unique();
+  if (ch && Array.isArray(cards) && cards.length === (ch.cards ?? []).length) await ctx.db.patch(ch._id, { cards });
+} });
+
+// Review a shared row again (17 Oct): optional find-and-replace edits by hand ({card, find, replace}), then the Shelf
+// review above. The row goes to the queue ("pending") unless a false claim survives; nothing is published here.
+//   npx convex run --prod library:rejudge '{"id":"...","edits":[{"card":5,"find":"...","replace":"..."}]}'
+export const rejudge = internalAction({
+  args: { id: v.id("library"), edits: v.optional(v.array(v.object({ card: v.number(), find: v.string(), replace: v.string() }))) },
+  handler: async (ctx, { id, edits }): Promise<any> => {
+    const row: any = await ctx.runQuery(internal.library.readRow, { id });
+    if (!row?.chapter1?.cards || row.published || /already shared/.test(String(row.reviewWhy ?? row.why ?? ""))) return null;   // a twin stays out
+    const facts: string | null = row.sourceHandbookId ? await ctx.runQuery(internal.library.briefFacts, { handbookId: row.sourceHandbookId }) : null;
+    const before = row.judge?.verdict?.line ?? (typeof row.judge?.score === "number" ? `${row.judge.score} of 12` : null);
+    const out = await shelfReview(ctx, { plan: row.plan, ch: row.chapter1, facts }, edits ?? [], row.sourceHandbookId ? { handbookId: row.sourceHandbookId, chapter: 1 } : {});
+    await ctx.runMutation(internal.library.saveRejudge, { id, cards: out.fixes.length ? out.cards : undefined, judge: { ...out.judge, before }, review: out.review, reviewWhy: out.reviewWhy });
+    return { before, after: out.judge.verdict.line, fixes: out.fixes, review: out.review };
+  },
+});
+// The fixed cards go on the shared row and, card by card where the reader's own chapter 1 still matches, on the source.
+export const saveRejudge = internalMutation({
+  args: { id: v.id("library"), cards: v.optional(v.any()), judge: v.any(), review: v.optional(v.string()), reviewWhy: v.optional(v.string()) },
+  handler: async (ctx, { id, cards, judge, review, reviewWhy }) => {
+    const row: any = await ctx.db.get(id);
+    if (!row) return;
+    if (Array.isArray(cards) && row.sourceHandbookId) {
+      const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", row.sourceHandbookId).eq("n", 1)).unique();
+      const old: any[] = row.chapter1?.cards ?? [];
+      if (ch?.cards) await ctx.db.patch(ch._id, { cards: (ch.cards as any[]).map((c, i) => (JSON.stringify(c) === JSON.stringify(old[i]) && cards[i] ? cards[i] : c)) });
+    }
+    await ctx.db.patch(id, { ...(Array.isArray(cards) ? { chapter1: { ...row.chapter1, cards } } : {}), judge, ...(review ? { review, reviewWhy } : {}) });
+    const fresh = await ctx.db.get(id); if (fresh) await syncShared(ctx, fresh);
   },
 });
 
@@ -245,7 +331,7 @@ export const reviewQueue = query({
       const cards: any[] = Array.isArray(r.chapter1?.cards) ? r.chapter1.cards : [];
       const text = cards.filter((c) => typeof c?.body === "string").slice(0, 2).map((c) => String(c.body).replace(/\*\*/g, "").slice(0, 320));
       return { id: r._id, review: r.review, reviewWhy: r.reviewWhy ?? null, topic: r.topic, level: r.level, goal: r.goal ?? null, mode: r.mode ?? null, title: r.chapter1?.title ?? null, text,
-        judge: r.judge ? { score: r.judge.score ?? null, weakest: r.judge.weakest ?? null, error: r.judge.error ?? null } : null, starts: r.starts, passes: r.passes, createdAt: r.createdAt, why: r.why ?? null,
+        judge: r.judge ? { score: r.judge.score ?? null, weakest: r.judge.weakest ?? null, error: r.judge.error ?? null, verdict: r.judge.verdict?.line ?? null } : null, starts: r.starts, passes: r.passes, createdAt: r.createdAt, why: r.why ?? null,
         reviewedBy: r.reviewedBy ?? null, reviewedAt: r.reviewedAt ?? null };
     });
   },

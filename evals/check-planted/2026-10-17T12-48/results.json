@@ -1,0 +1,135 @@
+{
+ "planted": [
+  {
+   "k": 1,
+   "card": 0,
+   "words": "only once a minute"
+  },
+  {
+   "k": 2,
+   "card": 1,
+   "words": "exactly 1,000"
+  },
+  {
+   "k": 3,
+   "card": 1,
+   "words": "directly from the company"
+  },
+  {
+   "k": 4,
+   "card": 2,
+   "words": "up 6%"
+  },
+  {
+   "k": 5,
+   "card": 3,
+   "words": "was taught by Warren"
+  },
+  {
+   "k": 6,
+   "card": 7,
+   "words": "opened in 1995"
+  },
+  {
+   "k": 7,
+   "card": 4,
+   "words": "8:30 am"
+  },
+  {
+   "k": 8,
+   "card": 1,
+   "words": "guaranteed share"
+  },
+  {
+   "k": 9,
+   "card": 5,
+   "words": "and the price falls"
+  },
+  {
+   "k": 10,
+   "card": 6,
+   "answer": "b"
+  }
+ ],
+ "rows": [
+  {
+   "fixes": [
+    {
+     "card": 0,
+     "find": "A share's price can change only once a minute, and most of those changes come from traders, not from the company.",
+     "replace": "A share's price can change many times a minute, and those changes come from buyers and sellers, not from the company.",
+     "why": "Prices change continuously during trading hours, not once a minute."
+    },
+    {
+     "card": 1,
+     "find": "Big Indian companies are cut into exactly 1,000 pieces, so 1 share is like one grain from a full rice godown.",
+     "replace": "Big Indian companies are cut into millions or even billions of pieces, so 1 share is like one grain from a full rice godown.",
+     "why": "There is no fixed 1,000 pieces; big listed companies have far more shares."
+    },
+    {
+     "card": 1,
+     "find": "with a guaranteed share of the profits every month and a vote at the yearly meeting.",
+     "replace": "with a claim on a share of the company's profits (paid as dividends, which are not guaranteed) and a vote at the yearly meeting.",
+     "why": "Profits are not guaranteed or paid monthly."
+    },
+    {
+     "card": 1,
+     "find": "From then on, you usually buy your slice directly from the company, not from another owner.",
+     "replace": "From then on, you usually buy your slice from another owner, not from the company.",
+     "why": "After the first sale, trading happens between investors."
+    },
+    {
+     "card": 2,
+     "find": "up 6%",
+     "replace": "up 0.6%",
+     "why": "₹500 to ₹503 is 0.6%, not 6%."
+    },
+    {
+     "card": 3,
+     "find": "Benjamin Graham, who was taught by Warren Buffett,",
+     "replace": "Benjamin Graham, who taught Warren Buffett,",
+     "why": "Roles reversed: Graham was Buffett's teacher."
+    },
+    {
+     "card": 6,
+     "find": "\"answer\": \"a\"",
+     "replace": "\"answer\": \"b\"",
+     "why": "Price rises when buyers outnumber sellers; the company doesn't set it."
+    },
+    {
+     "card": 6,
+     "find": "Buyers and sellers don't set the price; the company does.",
+     "replace": "The company doesn't set the daily price; it is formed by trading.",
+     "why": "Original whyNot was for the wrong option and false; reworded for option a's logic."
+    },
+    {
+     "card": 7,
+     "find": "India's oldest exchange, the Bombay Stock Exchange, opened in 1995.",
+     "replace": "exchanges such as the Bombay Stock Exchange (founded in 1875) and the National Stock Exchange.",
+     "why": "BSE was founded in 1875, not 1995."
+    },
+    {
+     "card": 5,
+     "find": "4 hands up and 40 slices on offer, and it falls. News",
+     "replace": "4 hands up and 40 slices on offer, and it falls. In the first case it rises. News",
+     "why": "With 40 buyers for 4 slices the price rises, not falls."
+    }
+   ],
+   "version": "v4",
+   "effort": "low",
+   "caught": 7,
+   "missed": [
+    7,
+    9,
+    10
+   ],
+   "stray": [],
+   "applied": 9,
+   "skipped": 1,
+   "ms": 8674,
+   "tokensIn": 3163,
+   "tokensOut": 913,
+   "inr": 1.97
+  }
+ ]
+}

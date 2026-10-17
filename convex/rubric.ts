@@ -45,7 +45,7 @@ export const LEVERS = {
 } as const;
 export type Lever = keyof typeof LEVERS;
 
-const SYSTEM = `You score one chapter of a short phone handbook on ONE lever of a rubric. Read the chapter's cards and the plan's line for this chapter. Pick the single level whose text fits best; when two fit, pick the lower. Quote the exact words (at most 25) from the chapter that decided it. If the chapter doesn't show enough to tell, set "level" to null and "cantTell" to true. Reply with JSON only: {"level": 1-5 or null, "quote": "...", "why": "one plain sentence", "cantTell": false}.`;
+export const SYSTEM = `You score one chapter of a short phone handbook on ONE lever of a rubric. Read the chapter's cards and the plan's line for this chapter. Pick the single level whose text fits best; when two fit, pick the lower. Quote the exact words (at most 25) from the chapter that decided it. If the chapter doesn't show enough to tell, set "level" to null and "cantTell" to true. Reply with JSON only: {"level": 1-5 or null, "quote": "...", "why": "one plain sentence", "cantTell": false}.`;
 
 const cardText = (c: any) => [c.type, c.title, c.body, c.prompt, c.idea, c.instruction, c.kind && c.type === "doit" ? `${c.kind}${c.target ? ` ${c.target}` : ""}` : null, Array.isArray(c.items) ? c.items.join(" / ") : null, Array.isArray(c.options) ? c.options.map((o: any) => `${o.id}) ${o.text}${c.answer === o.id ? " [marked answer]" : ""}`).join(" | ") : null, Array.isArray(c.steps) ? c.steps.map((s: any) => (typeof s === "string" ? s : s?.text ?? "")).join(" / ") : null].filter(Boolean).join(" :: ");
 

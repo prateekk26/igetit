@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 // Convex environment, never from the interface.
 import { v } from "convex/values";
 import { jsonSchema, problems } from "./schemas";
+import { geminiKeys, noteRefused } from "./geminiKeys";
 import { traceV } from "./trace";
 import { realUrl, REDIRECT } from "./research";
 import { internalAction } from "./_generated/server";
@@ -67,7 +68,7 @@ const JOB: Record<Kind, { model: string; effort?: Effort; maxTokens: number }> =
   audit: { model: OPUS, effort: "high", maxTokens: 16000 },
   repair: { model: OPUS, effort: "medium", maxTokens: 16000 },
   teach: { model: SONNET, effort: "low", maxTokens: 2000 },   // teach it back: a short reply to the reader's own 2 sentences   // one-off fixes to chapters already written (convex/repair.ts)   // measurement only (convex/audit.ts): what slipped past the fact check   // one scene line per teaching card, for the chapter pictures
-  check: { model: SONNET, effort: "low", maxTokens: 16000 },
+  check: { model: SONNET, effort: "low", maxTokens: 16000 },   // 17 Oct, back to low (Prateek: "sonnet on low effort for fact check"): on real chapters low and medium caught the same (8.0 vs 8.17 planted, live path) and low is cheaper and quicker (₹2.53, 8.0 s vs ₹2.71, 8.4 s). Earlier the same day (Prateek: "what about sonnet at medium effort"): with check v4's edits, medium caught 8.7 of 10 planted mistakes (low: 7.4; v3 low: 7.7) at about ₹2 a check (evals/check-planted/)
   score: { model: SONNET, effort: "low", maxTokens: 4000 },
   wording: { model: SONNET, effort: "low", maxTokens: 8000 },   // D87 (11 Oct): rewrites only sentences using "wrong"/"incorrect"   // D72 (11 Oct): one rubric lever of one chapter (convex/rubric.ts)
   artifact: { model: SONNET, effort: "medium", maxTokens: 16000 },
@@ -178,7 +179,7 @@ const GEMINI_THINKING: Record<string, string> = { "gemini-3.8-flash": "medium", 
 export const GEMINI_STEP_BUDGET = 150000;
 const GEMINI_BUDGET: Partial<Record<Kind, number>> = { plan: 90000, chapter: 150000 };
 async function callGemini(kind: Kind, system: string, user: string, model: string, maxTokens: number, deadline = Date.now() + GEMINI_STEP_BUDGET): Promise<{ text: string; tokensIn?: number; tokensOut?: number; model: string }> {
-  const keys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_BACKUP].filter(Boolean) as string[];
+  const keys = geminiKeys();
   if (!keys.length) throw new Error("No Gemini key");
   const schema = jsonSchema(kind);
   let res: any, body: any;
@@ -201,6 +202,7 @@ async function callGemini(kind: Kind, system: string, user: string, model: strin
     }).catch((e: any) => ({ ok: false, status: 0, json: async () => ({ error: String(e?.message ?? e) }) }) as any);
     body = await res.json().catch(() => ({}));
     if (res.ok) break;
+    noteRefused(keys[i % keys.length], res.status);   // 17 Oct: skipped first by every call for 10 minutes (geminiKeys.ts)
     // 9 Oct: a key out of credit (402) is dropped and the other key carries on. Before, the backup's 402 ended the call
     // even when the main key had only been busy for a moment (503), and the error read "credits depleted".
     // 14 Oct: a key whose project Google refused (403, "Your project has been denied access") is dropped the same way. The

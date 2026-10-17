@@ -110,6 +110,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
   const [doneN, setDoneN] = useState<number | null>(null)
+  const [doneReread, setDoneReread] = useState(false)   // 17 Oct: the chapter on Done was read again; auto-play stops there
   // The chapter on screen stays on screen when its last quiz passes it and the server moves the reader on (6 Oct).
   const [readingN, setReadingN] = useState<number | null>(null)
   const [starredN, setStarredN] = useState<number | null>(null)   // D100: the chapter just rated on the star slide
@@ -606,6 +607,8 @@ export default function App() {
           starred={starredN === doneN}
           nextReady={chapterReady && chapter?.n === doneN + 1}
           nextWriting={hb.chapters.find((c) => c.n === doneN + 1)?.status === 'writing'}
+          reread={doneReread}
+          nextLocked={!isMember && chapterLocked && chapter?.n === doneN + 1}
           nextFailed={!!chapterFailed && chapter?.n === doneN + 1}
           onNext={() => { setDoneN(null); if (chapterFailed && chapter?.n === doneN + 1) { retry({ handbookId: hb._id, deviceToken: token }).catch(() => {}); setView('plan'); return } if (lockNote && lock && routeLock(lock.code, lock.note)) return; setView(chapterReady ? 'chapter' : 'plan') }}
         />
@@ -647,7 +650,7 @@ export default function App() {
           onStars={async (stars) => { setStarredN(chapter.n); await starChapter({ handbookId: hb._id, n: chapter.n, stars, deviceToken: token }) }}
           teaser={teaserFor(chapter.n)}
           onAfter={(go, stats) => {
-            if (go === 'done') { setDoneStats(stats); setDoneN(chapter.n); setView('done'); return }
+            if (go === 'done') { setDoneStats(stats); setDoneReread(!!stats.reread); setDoneN(chapter.n); setView('done'); return }
             // Straight into the next chapter, the way Done's button goes (D100).
             setDoneN(null); setReadingN(null)
             const nx = hb.chapters.find((c) => c.n === chapter.n + 1)

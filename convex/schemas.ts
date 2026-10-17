@@ -43,8 +43,14 @@ export const plan = z.looseObject({
   topic: str.optional(),
   mode: z.enum(["skill", "story", "subject", "decision"]).optional(),
   body: z.boolean().optional(),
+  // 17 Oct: the picture was missing here, so Gemini (held to this schema) never wrote one and every Flash course plan
+  // failed the picture check and was rewritten, usually ending on Opus (366 of 367 Flash plans had none). Required in
+  // what Gemini is sent (SEND_REQUIRED below), optional in the check: 42 of 191 Claude plans leave pictureWhyNot out.
+  picture: z.looseObject({ name: str, line: str, maps: z.array(z.looseObject({ part: str, is: str })).optional() }).nullable().optional(),
   pictureWhyNot: nullableStr.optional(),   // plan v8 (9 Oct): why there is no analogy, when there is none   // plan v8 (9 Oct): learned by moving one's own body; the code reads it for move and doit cards
   outcome7: nullableStr,
+  horizon14: nullableStr,   // 17 Oct: in the prompt and on the plan page, missing here, so Flash plans had none
+  horizon28: nullableStr,
   format: z.enum(["course", "quick"]).optional(),
   framing: nullableStr,
   // minutes (plan v8, 9 Oct): the reading and doing time this chapter needs, from the weight of what it covers.
@@ -72,7 +78,8 @@ export const chapter = z.looseObject({
 
 export const check = z.looseObject({
   ok: z.boolean().optional(),
-  fixes: z.array(z.looseObject({ card: z.number().int().min(0), problem: str.optional(), fixed: z.looseObject({ type: z.enum(CARD_TYPES) }) })),
+  // check v4 (17 Oct): an edit ({card, find, replace, why} or {card, answer, why}); v3's whole card ("fixed") still reads.
+  fixes: z.array(z.looseObject({ card: z.number().int().min(0), find: str.optional(), replace: str.optional(), answer: z.enum(["a", "b", "c"]).optional(), why: str.optional(), problem: str.optional(), fixed: z.looseObject({ type: z.enum(CARD_TYPES) }).optional() })),
 });
 
 const versionList = z.array(exercise.and(z.looseObject({ n: z.number().int().min(1) })));
@@ -176,5 +183,14 @@ export function problems(kind: string, json: unknown): string | null {
 export function jsonSchema(kind: string): Record<string, unknown> | null {
   const s = SCHEMAS[kind];
   if (!s) return null;
-  try { return z.toJSONSchema(s, { unrepresentable: "any" }) as Record<string, unknown>; } catch { return null; }
+  try {
+    const j = z.toJSONSchema(s, { unrepresentable: "any" }) as Record<string, unknown>;
+    const must = SEND_REQUIRED[kind];
+    if (must) j.required = [...new Set([...((j.required as string[]) ?? []), ...must])];
+    return j;
+  } catch { return null; }
 }
+
+// Fields a provider must fill in (null allowed), though the reply check above lets them be absent. Gemini leaves out
+// any field the schema doesn't require; Claude, not held to the schema, sometimes omits them and is still fine.
+const SEND_REQUIRED: Record<string, string[]> = { plan: ["picture", "pictureWhyNot"] };

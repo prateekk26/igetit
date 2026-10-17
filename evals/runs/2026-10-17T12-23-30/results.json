@@ -1,0 +1,81 @@
+{
+  "at": "2026-10-17T12-23-30",
+  "runs": 1,
+  "rubric": "r2",
+  "previous": "2026-10-14T21-09-09",
+  "pass": true,
+  "pooled": {
+    "outcome": {
+      "avg": 3,
+      "n": 1,
+      "base": 3.22
+    }
+  },
+  "cases": [
+    {
+      "name": "chess-course",
+      "list": "fix",
+      "why": "The live chess chapter once had 7 problems (4 Oct).",
+      "expect": {
+        "outcome": 4,
+        "taught": 4
+      },
+      "runs": [
+        {
+          "handbookId": "k979vz47f7yq2b635mdvbwexyd8gfx3n",
+          "pass": false,
+          "unsure": [],
+          "noQuiz": true,
+          "status": "ready",
+          "chapter": "ready",
+          "levels": {
+            "outcome": 3,
+            "taught": null
+          },
+          "failedChecks": [],
+          "cost": {
+            "byKind": {
+              "chapter": [
+                "gemini-3.8-flash"
+              ],
+              "check": [
+                "claude-sonnet-5-5"
+              ],
+              "figures": [
+                "claude-sonnet-5-5"
+              ],
+              "plan": [
+                "gemini-3.8-flash"
+              ],
+              "research": [
+                "gemini-3.8-flash"
+              ],
+              "score": [
+                "claude-sonnet-5-5",
+                "claude-sonnet-5-5"
+              ],
+              "wording": [
+                "claude-sonnet-5-5"
+              ]
+            },
+            "calls": 8,
+            "failed": 0,
+            "inr": 11.93157
+          }
+        }
+      ],
+      "errored": false,
+      "passed": false,
+      "passes": 0,
+      "floorHeld": true,
+      "failed": false,
+      "avg": {
+        "outcome": 3
+      },
+      "drops": [],
+      "crashed": 0,
+      "unsure": [],
+      "before": null
+    }
+  ]
+}

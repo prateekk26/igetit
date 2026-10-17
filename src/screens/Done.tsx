@@ -45,6 +45,8 @@ type Props = {
   quick?: boolean   // D23 (9 Oct): a recipe or one-off task; read in one sitting, no wall, no reminder, no tomorrow
   isMember?: boolean   // members never get the membership pitch (UX review 9 Oct: the last chapter pitched it to paying members)
   nextWriting?: boolean   // the next chapter is being written right now: its button waits here instead of dropping the reader on the plan
+  reread?: boolean   // this chapter was passed before it was opened: auto-play stops here (17 Oct)
+  nextLocked?: boolean   // the next chapter isn't open for this free reader today: auto-play stops here (17 Oct)
 }
 
 // Reminder moments (7 Oct, Prateek: "more casual and witty"): a moment in the day, the clock underneath. Copy (agent).
@@ -65,7 +67,7 @@ function pretty(t: string) {
 }
 
 // The rung lights. Sign-in is asked only here, after the night is done.
-export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture: _nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats: _stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false }: Props) {
+export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture: _nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats: _stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false, reread = false, nextLocked = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
   const [stay, setStay] = useState(false)
   const last = n >= total
@@ -76,14 +78,18 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
   // Auto-play carries on into the next chapter once it's open (15 Oct, Prateek: "It should span chapters as well"); it
   // stops here at the free-account wall, after the last chapter, or when tapped off.
   const [auto, setAutoState] = useState(autoOn)
-  const carries = auto && !wall && !last && !!onNext && !nextFailed
-  useEffect(() => { if (carries && nextReady) { const t = setTimeout(() => onNext?.(), 4000); return () => clearTimeout(t) } }, [carries, nextReady]) // eslint-disable-line react-hooks/exhaustive-deps
+  // 17 Oct: it no longer carries on after a chapter read again (a reader re-opening chapter 2 was taken into chapter 3
+  // and read to), or into a chapter a free reader hasn't opened today (it landed them on Pricing with no tap).
+  const carries = auto && !wall && !last && !!onNext && !nextFailed && !reread && !nextLocked
+  // A tap on "Writing chapter…" (it used to do nothing) asks for the chapter as soon as it lands.
+  const [want, setWant] = useState(false)
+  useEffect(() => { if ((carries || want) && nextReady) { const t = setTimeout(() => onNext?.(), want ? 300 : 4000); return () => clearTimeout(t) } }, [carries, want, nextReady]) // eslint-disable-line react-hooks/exhaustive-deps
   // The last chapter of a handbook entered part-way (a post link to chapter 7) is not "seven chapters, done" (UX review 9 Oct).
   const left = Math.max(0, total - new Set([...passed, n]).size)
   // While the next chapter is still being written, its button waits here, busy, and turns live when it lands (UX review
   // 9 Oct: it dropped the reader on the handbook page to wait).
   const nextBtn = (label: string, ghost = false) => nextWriting && !nextReady && !nextFailed
-    ? <button className="btn" disabled aria-busy="true">{`Writing chapter ${n + 1}… about a minute`}</button>
+    ? <button className="btn" aria-disabled="true" aria-busy="true" onClick={() => setWant(true)}>{want ? `Opening chapter ${n + 1} as soon as it's written…` : `Writing chapter ${n + 1}… about a minute`}</button>
     : <button className={ghost ? 'btn btn-ghost' : 'btn c-go'} onClick={onNext}><span>{nextFailed ? `Chapter ${n + 1} didn't write. Try again` : label}</span>{!ghost && <GoArrow />}</button>
   return (
     <>

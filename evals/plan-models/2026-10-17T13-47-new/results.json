@@ -1,0 +1,100 @@
+[
+ {
+  "case": "inference-routing",
+  "topic": "How does inference routing work?",
+  "goal": "Build model routing systems",
+  "level": "new",
+  "models": {
+   "gemini": {
+    "handbookId": "k977f5r3t0x9tfskh5hd6381318gekpv",
+    "status": "ready",
+    "checks": {
+     "chapters": 5,
+     "format": "course",
+     "minutes": 0,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "hospital triage desk",
+     "outcome": "By day 5 you'll be able to build, deploy, and calibrate an inference proxy that dynamically routes prompts between cheap and frontier LLMs."
+    },
+    "planCalls": 1,
+    "planSeconds": 19,
+    "planInr": 0.97,
+    "ch1": {
+     "facts": 3,
+     "outcome": 3
+    },
+    "judge": {
+     "analogy": 5,
+     "clarity": 2,
+     "coverage": 4,
+     "fit": 3,
+     "level": 2,
+     "promises": 1
+    }
+   },
+   "sonnet": {
+    "handbookId": "k978qpbjn6hp6pbc3anbjfa2658gfdx6",
+    "status": "ready",
+    "checks": {
+     "chapters": 5,
+     "format": "course",
+     "minutes": 52,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "Airport check-in desk",
+     "outcome": "By day 5 you'll be able to set up a gateway that routes prompts across several models, add failover and difficulty-based routing, and tune it against a cost budget."
+    },
+    "planCalls": 1,
+    "planSeconds": 12,
+    "planInr": 4.02,
+    "ch1": {
+     "facts": 3,
+     "outcome": null
+    },
+    "judge": {
+     "analogy": 3,
+     "clarity": 5,
+     "coverage": 4,
+     "fit": 4,
+     "level": 4,
+     "promises": 3
+    }
+   },
+   "opus": {
+    "handbookId": "k977mmkdjph1kgsrgrmxeebaqs8gfass",
+    "status": "ready",
+    "checks": {
+     "chapters": 5,
+     "format": "course",
+     "minutes": 69,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "A hospital OPD desk",
+     "outcome": "By day 5 you'll be able to put a gateway in front of several models, route each prompt by rules, health, predicted difficulty or a cheap-first cascade, and tune the cutoffs against cost and quality numbers you track."
+    },
+    "planCalls": 1,
+    "planSeconds": 31,
+    "planInr": 9.89,
+    "ch1": {
+     "facts": 3
+    },
+    "judge": {
+     "analogy": 5,
+     "clarity": 4,
+     "coverage": 4,
+     "fit": 3,
+     "level": 3,
+     "promises": 3
+    }
+   }
+  },
+  "rank": [
+   "sonnet",
+   "opus",
+   "gemini"
+  ],
+  "why": "B offers the gentlest progression and most realistic beginner tasks, while C packs more implementation into short sittings and assumes an unexplained regional setting. All three leave some research details unplaced, but A also combines unrelated performance findings into promises the evidence does not support.",
+  "worstPromise": "gemini: \"Can a five-millisecond embedding search cut your prompt costs by eighty-five percent without quality drops?\""
+ }
+]

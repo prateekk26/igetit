@@ -13,6 +13,12 @@ const HARD = new Set(["pushbackOrDeclined", "noPromptLeak", "caution"]);
 // runs a case swing about half a level), so the gate judges the whole set: each lever's average over every graded run
 // of every case, against the baseline's (cases.json "base"), plus the hard checks. A case is only flagged.
 export const SET_DROP = 0.25, CASE_FLAG = 1;
+// 17 Oct (Prateek: "is it a good one or needs improvement?"; "yes do 1-3"): the facts average mixes a false claim (L1)
+// with a vague one (L3), and swings 0.9 between two runs with no change (2.63 and 3.56 on 14 Oct), more than the 0.25
+// the gate allowed. So facts is a trend line, and the gate fails on any false claim (facts L1) beyond the baseline's
+// count (cases.json base.falseClaims; 0 in the 11 Oct and 14 Oct runs). Speed, cost and the planted-mistakes test are
+// judged in eval-run.mjs.
+export const TREND_ONLY = new Set(["facts"]);
 // One case: its graded levels per lever (a crashed run, a "can't tell", and "taught" on a chapter with no quiz are left
 // out), its averages, and whether it is flagged (a drop of CASE_FLAG or more against its own base) or failed outright.
 export function caseView(r, base, needsChapter) {
@@ -32,8 +38,10 @@ export function setGate(views, base) {
   const pool = {};
   for (const v of views) for (const [lever, ns] of Object.entries(v.graded)) (pool[lever] ??= []).push(...ns);
   const pooled = Object.fromEntries(Object.entries(pool).map(([lever, ns]) => [lever, { avg: Math.round((ns.reduce((a, n) => a + n, 0) / ns.length) * 100) / 100, n: ns.length, base: base?.[lever] ?? null }]));
-  const dropped = Object.entries(pooled).filter(([, p]) => typeof p.base === "number" && p.avg < p.base - SET_DROP).map(([l]) => l);
-  return { pooled, dropped, pass: !dropped.length && !views.some((v) => v.failed) };
+  const dropped = Object.entries(pooled).filter(([l, p]) => !TREND_ONLY.has(l) && typeof p.base === "number" && p.avg < p.base - SET_DROP).map(([l]) => l);
+  const falseClaims = (pool.facts ?? []).filter((n) => n === 1).length, falseBase = base?.falseClaims ?? 0;
+  if (falseClaims > falseBase) dropped.push(`false claims (${falseClaims}, baseline ${falseBase})`);
+  return { pooled, dropped, falseClaims, pass: !dropped.length && !views.some((v) => v.failed) };
 }
 
 export function summarise(results, caseFile) {
@@ -60,7 +68,7 @@ export function summarise(results, caseFile) {
   const inr = results.cases.flatMap((r) => r.runs).reduce((s, x) => s + (x.cost?.inr ?? 0), 0);
   const full = results.runs >= 3 && results.cases.length >= caseFile.cases.length;
   const set = setGate(views, caseFile.base);
-  return { stamp: results.at, at, baseline, pass: set.pass, pooled: set.pooled, rubric: results.rubric ?? caseFile.rubric, runs: results.runs, full, inr: Math.round(inr), cases };
+  return { stamp: results.at, at, baseline, pass: set.pass && (results.extra?.pass ?? true), pooled: set.pooled, rubric: results.rubric ?? caseFile.rubric, runs: results.runs, full, inr: Math.round(inr), cases };
 }
 
 export async function record(summary) {

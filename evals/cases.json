@@ -2,8 +2,10 @@
   "about": "The eval test set (D72, 11 Oct; docs/evals/advanced.md). Each case is a typed line and goal run through the real pipeline on dev to chapter 1, scored on the rubric (convex/rubric.ts), three runs a case; a case passes only when all three runs reach every expected level and every code check holds. Each case has a target (expect) and a base: its average level per lever over the 3 runs of the baseline (11 Oct, evals/runs/2026-10-11T00-19-53). The gate (npm run eval:gate; D88) judges the whole set: it fails when a lever's average over every graded run of every case falls more than 0.25 below the baseline's (top-level base), or a hard check fails in any run (pushback on a harmful line, no prompt leak, the money caution), or every run of a case failed to write chapter 1. A case whose own average drops 1 or more below its base is flagged for a look, not failed; targets show progress. list 'keep' = the target is met in every run today; 'fix' = what we work on next. Cases added from live misses on /admin are stored in the evalCases table on prod and merged in by the runner.",
   "rubric": "r2",
   "base": {
-    "outcome": 3.22,
-    "facts": 3.64
+    "note": "17 Oct evening: from gate run 2026-10-17T16-24-12, the settings that went live that night (Sonnet medium plans, check v5 on Sonnet low, no 3.7 Flash). Was outcome 3.22, facts 3.64 (an older run with Opus plans in it).",
+    "outcome": 3.69,
+    "facts": 3.63,
+    "falseClaims": 0
   },
   "cases": [
     {
@@ -338,5 +340,11 @@
         "outcome": 4.5
       }
     }
-  ]
+  ],
+  "limits": {
+    "note": "17 Oct (agent; change freely): the gate fails when the median time from the first call to chapter 1 checked, or the median rupees per test handbook, is over these, or the planted-mistakes test catches fewer than plantedMin of 10 on average (3 runs, live settings). Set from the 17 Oct run (96 s, Rs 9.4) with headroom. inrPerRun raised 12 to 14.5 on 17 Oct evening (Prateek: \"Keep a 20% buffer\"): Sonnet plans put the median at Rs 12.1 (gate run 2026-10-17T15-54-05), plus 20%.",
+    "secondsToChapter1": 120,
+    "inrPerRun": 14.5,
+    "plantedMin": 8
+  }
 }

@@ -5,7 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { buildsOnLine, WORLD_NAMES, briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V3, CHECK_SCENES_PROMPT_V3, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
+import { buildsOnLine, WORLD_NAMES, briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V5, CHECK_SCENES_PROMPT_V5, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
 import { addCost, inrOf } from "./costs";
 import { pictureCards } from "./pictureCards";
 import type { Trace } from "./trace";
@@ -740,9 +740,13 @@ export const chooseIntent = mutation({
 // medium is the backup when Gemini fails. D62 (10 Oct, Prateek: "Let's follow Tanisha"): plan prompt v9, the shape
 // framework (convex/prompts.ts); chapters are 3 to 7 by the research step's depths. Switch back: PLAN_PROMPT.
 const PLAN_LIVE = PLAN_PROMPT_V9;
-const PLAN_MODEL: string | undefined = "gemini-3.8-flash";
+// 17 Oct (Prateek: "i agree with sonnet on plan"): Sonnet 5.5 medium writes plans. On two new topics as whole books
+// (evals/plan-models/) a blind judge ranked Sonnet first on both, ahead of Opus and Flash, at about ₹4 and 12 s a plan.
+// Opus medium stays the backup; the 3.7 Flash step is skipped (it failed every call on 17 Oct). Back to Flash:
+// PLAN_MODEL = "gemini-3.8-flash", PLAN_SECOND = "gemini-3.7-flash".
+const PLAN_MODEL: string | undefined = "claude-sonnet-5-5";
 const PLAN_EFFORT = "medium" as const;   // used only when the plan runs on Claude
-const PLAN_SECOND = "gemini-3.7-flash";   // D89 (Prateek, 11 Oct evening: "Yes", the plan too): when 3.8 fails, before Opus
+const PLAN_SECOND: string | undefined = undefined;   // D89 (Prateek, 11 Oct evening: "Yes", the plan too): when 3.8 fails, 3.7 Flash before Opus
 const PLAN_BACKUP = { model: "claude-opus-5-5", effort: "medium" as const };
 
 export const generatePlan = internalAction({
@@ -769,12 +773,15 @@ export const generatePlan = internalAction({
     // A benchmark handbook (evalShape, 9 Oct) runs on Flash alone: no Opus backup at any step, so a failure stays a
     // failure and we see what Flash does with the prompts. planOnly stops after the plan (no chapters are written).
     const flashOnly = !!(h as any).test?.flashOnly, planOnly = !!(h as any).test?.planOnly;
-    let r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: h.writer ?? PLAN_MODEL, effort: h.writer ? undefined : PLAN_EFFORT, trace: { handbookId } });
+    // 17 Oct: a test handbook can pin the plan's model (test.planModel, evalPlanModels): that model alone writes the plan
+    // and its rewrite, with no backup, so three models can be compared on the same research.
+    const planPin: string | undefined = h.writer ?? (h as any).test?.planModel;
+    let r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: planPin ?? PLAN_MODEL, effort: h.writer ? undefined : PLAN_EFFORT, trace: { handbookId } });
     // D89: as for chapters, a 3.8 failure goes to 3.7 Flash, then Opus. 3.7 is skipped when 3.8 ran out of time, or when
     // research and 3.8 have used 4 of this action's 10 minutes, so Opus always has time. Flash-only benchmarks keep the old rule.
     if (!r.ok && !h.writer && PLAN_MODEL && flashOnly && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: PLAN_MODEL, trace: { handbookId } }); }
-    if (!r.ok && !h.writer && PLAN_MODEL && !flashOnly && !timedOut(r.error) && Date.now() - t0 < 240000) r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: PLAN_SECOND, trace: { handbookId } });
-    if (!r.ok && !h.writer && PLAN_MODEL && !flashOnly) r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, ...PLAN_BACKUP, trace: { handbookId } });
+    if (!r.ok && !planPin && PLAN_MODEL && PLAN_SECOND && !flashOnly && !timedOut(r.error) && Date.now() - t0 < 240000) r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, model: PLAN_SECOND, trace: { handbookId } });
+    if (!r.ok && !planPin && PLAN_MODEL && !flashOnly) r = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: planUser, ...PLAN_BACKUP, trace: { handbookId } });
     // Claude's own safety check said no: say so plainly, never "try again".
     if (!r.ok && /^declined/.test(r.error)) {
       const ready: any[] = await ctx.runQuery(internal.handbooks.listCache, {});
@@ -809,8 +816,8 @@ export const generatePlan = internalAction({
       const isCourse = (p?.format ?? (p?.chapters?.length < CHAPTERS ? "quick" : "course")) === "course";
       if (Array.isArray(p?.chapters) && p.chapters.length >= 3 && p.mode !== "story") {
         if (isCourse && p.body !== true && !p.pictureWhyNot && (!p.picture || !p.picture.name)) out.push("\"picture\" is null: a course that teaches a skill, a system or an idea needs one analogy where it helps, with its \"maps\", or \"pictureWhyNot\" saying why none fits");
-        const lists = p.chapters.slice(1).map((c: any) => JSON.stringify(c.blocks ?? []));
-        if (lists.length > 1 && new Set(lists).size === 1) out.push("every chapter after the first has the same block list: choose each chapter's blocks for what it teaches");
+        // 17 Oct: the same block list in every chapter is no longer a fault. It sent 52 of 235 dev plans back for a whole
+        // rewrite (20 to 56 s, often ending on Opus) for blocks that were valid, just not varied. Logged below instead.
       }
       // 9 Oct (the 26 changes): coverage before any chapter is written. Every piece of the brief is in some chapter, and
       // every piece a chapter "assumes" was in an earlier chapter's "pieces". Names are matched loosely.
@@ -825,10 +832,12 @@ export const generatePlan = internalAction({
     };
     let planFaults = faults(plan);
     const firstFaults = planFaults;
+    const sameBlocks = Array.isArray(plan.chapters) && plan.chapters.length > 2 && new Set(plan.chapters.slice(1).map((c: any) => JSON.stringify(c?.blocks ?? []))).size === 1;
+    if (sameBlocks) console.log("plan note: every chapter after the first has the same block list", handbookId);
     if (planFaults.length) {
       const again = planUser + `\n\nYour previous plan had these faults: ${planFaults.join("; ")}. Write the whole plan again with them fixed.`;
-      let r2 = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: again, model: h.writer ?? PLAN_MODEL, effort: h.writer ? undefined : PLAN_EFFORT, trace: { handbookId }, logAs: "plan" });
-      if ((!r2.ok || faults(r2.json).length) && !h.writer && !flashOnly) r2 = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: again, ...PLAN_BACKUP, trace: { handbookId } });
+      let r2 = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: again, model: planPin ?? PLAN_MODEL, effort: h.writer ? undefined : PLAN_EFFORT, trace: { handbookId }, logAs: "plan" });
+      if ((!r2.ok || faults(r2.json).length) && !planPin && !flashOnly) r2 = await ctx.runAction(internal.ai.generate, { kind: "plan", system: PLAN_LIVE, user: again, ...PLAN_BACKUP, trace: { handbookId } });
       if (r2.ok && Array.isArray(r2.json?.chapters) && r2.json.chapters.length >= 1 && faults(r2.json).length < planFaults.length) { Object.assign(plan, r2.json); planFaults = faults(plan); }
       console.log("plan faults", handbookId, planFaults.length ? planFaults : "fixed");
     }
@@ -868,7 +877,7 @@ export const generatePlan = internalAction({
 // Fact check a freshly written chapter before the reader sees it. Applies the checker's corrected cards only when they
 // keep the card's type and, for exercises, a valid three-option shape. A failed check never blocks the chapter.
 type FactReport = { status: string; fixes: number; notes: string[]; model?: string; at: number };
-function validFix(orig: any, fixed: any): boolean {
+export function validFix(orig: any, fixed: any): boolean {
   if (!fixed || typeof fixed !== "object" || fixed.type !== orig?.type) return false;
   if (orig.type === "exercise") return Array.isArray(fixed.options) && fixed.options.length === 3 && fixed.options.some((o: any) => o.id === fixed.answer);
   // 10 Oct: a fix keeps the card's shape when every field the original had is still there with the same kind of value
@@ -877,6 +886,51 @@ function validFix(orig: any, fixed: any): boolean {
   return Object.keys(orig).every((k) => k in fixed && typeof fixed[k] === typeof orig[k] && Array.isArray(fixed[k]) === Array.isArray(orig[k]) && (!Array.isArray(orig[k]) || orig[k].length === 0 || fixed[k].length > 0));
 }
 type Scene = { card: number; scene: string; real?: string };
+// check v4 (17 Oct): the checker returns edits ({card, find, replace, why} or {card, answer, why}) instead of whole
+// cards. An edit changes text inside one field of the card, so the card keeps its shape by construction; ids, the card's
+// type and kind and its html are never edited. A find that isn't in the card returns null (asked again once, below).
+const NO_EDIT = new Set(["type", "kind", "id", "answer", "html"]);
+const quotes = (s: string) => s.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');   // one char for one, so indexes hold
+// The card an edit belongs to: the one it names, or, when its "find" is not there but is in exactly one other card, that
+// card (17 Oct: most second asks on dev were the right words with the wrong card number).
+export function applyAnywhere(cards: any[], f: any): { i: number; next: any } | null {
+  const i = Number(f?.card);
+  if (Number.isInteger(i) && cards[i]) { const next = applyEdit(cards[i], f); if (next) return { i, next }; }
+  if (typeof f?.find !== "string" || !f.find) return null;
+  const hits = cards.map((c, k) => ({ k, next: k === i ? null : applyEdit(c, { ...f, card: k }) })).filter((x) => x.next);
+  return hits.length === 1 ? { i: hits[0].k, next: hits[0].next } : null;
+}
+export function applyEdit(card: any, f: any): any | null {
+  // A changed marked answer sent as text ("answer": "a" to "answer": "b") is read as the answer field it means.
+  const asAnswer = (s: unknown) => (typeof s === "string" ? /^\s*"?answer"?\s*:\s*"?([abc])"?\s*,?\s*$/.exec(s)?.[1] : undefined);
+  if (asAnswer(f?.find) && asAnswer(f?.replace)) f = { card: f.card, answer: asAnswer(f.replace), why: f.why };
+  // An empty edit whose reason names the right option ("Exercise answer must be b") is that answer change (17 Oct: 2 of 5
+  // planted runs lost a wrong marked answer this way).
+  const named = !f?.find && !f?.answer ? /\b(?:answer|right option|correct option)\b[^.]*?\b(?:is|be|should be|must be|to)\s+\(?([abc])\)?\b/i.exec(String(f?.why ?? ""))?.[1] : undefined;
+  if (named) f = { card: f.card, answer: named.toLowerCase(), why: f.why };
+  const answer = typeof f?.answer === "string" ? f.answer : null;
+  const find = typeof f?.find === "string" && f.find ? f.find : null;
+  if (!find && answer) return card?.type === "exercise" && (card.options ?? []).some((o: any) => o?.id === answer) ? { ...card, answer } : null;
+  if (!find || typeof f?.replace !== "string") return null;
+  let done = false;
+  const walk = (x: any, key?: string): any => {
+    if (done) return x;
+    if (typeof x === "string") {
+      if (key && NO_EDIT.has(key)) return x;
+      const at = x.includes(find) ? x.indexOf(find) : quotes(x).indexOf(quotes(find));   // curly or straight quotes alike
+      if (at < 0) return x;
+      done = true;
+      return x.slice(0, at) + f.replace + x.slice(at + find.length);
+    }
+    if (Array.isArray(x)) return x.map((v) => walk(v));
+    if (x && typeof x === "object") return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, walk(v, k)]));
+    return x;
+  };
+  const out = walk(card);
+  if (!done) return null;
+  if (answer) { if (card?.type !== "exercise" || !(card.options ?? []).some((o: any) => o?.id === answer)) return null; out.answer = answer; }
+  return out;
+}
 // With opts.pictures, the same call also writes the picture scenes for the listed cards (8 Oct, Tanisha: one call, not two).
 // D87 (Prateek, 11 Oct): "wrong" and "incorrect" never reach a reader. After the fact check, a small call rewrites only the
 // cards that use either word (about 1 chapter in 7); a rewrite is kept only when it keeps the card's shape and answer and
@@ -921,28 +975,37 @@ async function factCheckOnly(ctx: any, topic: string, level: string, title: stri
   }
   const out = cards.slice();
   const notes: string[] = [];
-  const broken: { i: number; problem: string }[] = [];
-  for (const f of Array.isArray(r.json?.fixes) ? r.json.fixes : []) {
-    const i = Number(f?.card);
-    if (!Number.isInteger(i) || i < 0 || i >= out.length) continue;
-    if (!validFix(out[i], f.fixed)) { broken.push({ i, problem: String(f.problem ?? "").slice(0, 200) }); continue; }
-    out[i] = f.fixed;
-    notes.push(`card ${i}: ${String(f.problem ?? "").slice(0, 300)}`);
-  }
+  const broken: { i: number; problem: string; find?: string }[] = [];
+  // One fix: an edit (check v4), or a whole card (v3 and any model still answering that way).
+  const apply = (f: any): boolean => {
+    let i = Number(f?.card);
+    if (!Number.isInteger(i) || i < 0 || i >= out.length) return true;
+    if (typeof f?.find === "string" && f.find === f?.replace && !f?.answer) return true;   // an "edit" that changes nothing is not a fix
+    const why = String(f?.why ?? f?.problem ?? "").slice(0, 300);
+    const hit = f?.fixed && !f?.find && !f?.answer ? null : applyAnywhere(out, f);
+    if (hit) i = hit.i;
+    const next = f?.fixed && !f?.find && !f?.answer ? f.fixed : hit?.next ?? null;
+    if (!validFix(out[i], next)) { broken.push({ i, problem: why.slice(0, 200), ...(f?.find ? { find: String(f.find).slice(0, 300) } : {}) }); return false; }
+    out[i] = next;
+    notes.push(`card ${i}: ${why}`);
+    return true;
+  };
+  for (const f of Array.isArray(r.json?.fixes) ? r.json.fixes : []) apply(f);
   // D31b (3) (9 Oct): a fix that broke the card's shape used to be skipped and the chapter still went out as "passed"
   // with the error in it. Now the checker is asked once more for just those cards, with the shape named; if a fix is
   // still unusable the chapter is stored as "unchecked" with the notes, never "passed".
   let stillBroken = broken;
   if (broken.length) {
-    const again = `Topic: ${topic}\nThese cards had a real problem but your corrected version did not keep the card's shape (same "type", same fields; an exercise keeps exactly three options with ids a, b, c and "answer" one of them). Return the corrected WHOLE card for each, same shape as the original, in the same JSON format as before.\n` +
-      broken.map(({ i, problem }) => `Card ${i} (problem: ${problem}):\n${JSON.stringify(out[i])}`).join("\n\n") + `\n\nReturn only this JSON: {"ok": false, "fixes": [{"card": <index>, "problem": "...", "fixed": <the corrected card>}]}`;
+    // check v4: an edit whose "find" is not in the card (a misquote) is asked for once more, with the card as it stands.
+    const asked = broken.splice(0);
+    const again = `Topic: ${topic}\nThese edits could not be applied: the "find" text is not in the card exactly as written (or the change broke the card). For each, copy "find" character for character from the card below and give the edit again, in the same JSON format as before.\n` +
+      asked.map(({ i, problem, find }) => `Card ${i} (problem: ${problem}${find ? `; your find was: ${find}` : ""}):\n${JSON.stringify(out[i])}`).join("\n\n") + `\n\nReturn only this JSON: {"ok": false, "fixes": [{"card": <index>, "find": "<exact text from that card>", "replace": "<the new text>", "why": "<one plain line>"}]}`;
     const r2 = await ctx.runAction(internal.ai.generate, { kind: "check", system: checkPrompt(false), user: again, ...callOpts });
-    stillBroken = [];
-    for (const b of broken) {
-      const f = r2.ok ? (Array.isArray(r2.json?.fixes) ? r2.json.fixes : []).find((x: any) => Number(x?.card) === b.i) : null;
-      if (f && validFix(out[b.i], f.fixed)) { out[b.i] = f.fixed; notes.push(`card ${b.i}: ${b.problem} (fixed on the second ask)`); }
-      else { stillBroken.push(b); notes.push(`card ${b.i}: fix skipped (shape) - ${b.problem}`); }
-    }
+    const before = notes.length;
+    for (const f of r2.ok && Array.isArray(r2.json?.fixes) ? r2.json.fixes : []) if (asked.some((b) => b.i === Number(f?.card))) apply(f);
+    for (let k = before; k < notes.length; k++) notes[k] += " (fixed on the second ask)";
+    stillBroken = asked.filter((b) => !notes.slice(before).some((x) => x.startsWith(`card ${b.i}:`)));
+    for (const b of stillBroken) notes.push(`card ${b.i}: fix skipped (shape) - ${b.problem}`);
   }
   // check v3 (9 Oct): a missing must-have comes back as a new card after a given card; at most 2, only among the
   // chapter's own cards (not the recall quizzes after them), inserted from the last so the indexes hold. The picture
@@ -1018,9 +1081,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // D86 shipped (Prateek, 11 Oct, after its gate run): recaps and explainers end with a "Say it back" line. PROMPT_TRIAL=writerV6
 // runs the old writer, for comparison only.
 const chapterLive = () => (promptTrial() === "writerV6" ? CHAPTER_PROMPT_V6 : CHAPTER_PROMPT_SAYBACK);
-const checkPrompt = (withScenes: boolean) => (promptTrial() === "noWrong" ? (withScenes ? CHECK_SCENES_PROMPT_NOWRONG : CHECK_PROMPT_NOWRONG) : withScenes ? CHECK_SCENES_PROMPT_V3 : CHECK_PROMPT_V3);
+// 17 Oct: check v5 (prompts.ts), with the house rule on "wrong"/"incorrect" folded in.
+export const checkPrompt = (withScenes: boolean) => (promptTrial() === "noWrong" ? (withScenes ? CHECK_SCENES_PROMPT_NOWRONG : CHECK_PROMPT_NOWRONG) : withScenes ? CHECK_SCENES_PROMPT_V5 : CHECK_PROMPT_V5);
 const CHAPTER_MODEL: string | undefined = "gemini-3.8-flash";
-const CHAPTER_SECOND = "gemini-3.7-flash";   // D89: when 3.8 fails, before Opus
+const CHAPTER_SECOND: string | undefined = undefined;   // D89 put 3.7 Flash here, between 3.8 and Opus; removed 17 Oct (Prateek: "remove 3.7 flash"): it failed every call seen that day
 const CHAPTER_BACKUP = { model: "claude-opus-5-5", effort: "medium" as const };
 // A Gemini step that used up its time budget (or was cut off by it), as opposed to one that failed fast.
 export const timedOut = (error: unknown) => /time budget|timeout|aborted/i.test(String(error ?? ""));
@@ -1066,7 +1130,7 @@ export const generateChapter = internalAction({
     const flashOnly = !!(h as any).test?.flashOnly;
     const firstError = r.ok ? undefined : r.error;
     if (!r.ok && !pinned && CHAPTER_MODEL && flashOnly && quickFail(r.error)) { await sleep(5000); r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: CHAPTER_MODEL, trace }); }
-    if (!r.ok && !pinned && CHAPTER_MODEL && !flashOnly && !timedOut(r.error)) r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: CHAPTER_SECOND, trace });
+    if (!r.ok && !pinned && CHAPTER_MODEL && CHAPTER_SECOND && !flashOnly && !timedOut(r.error)) r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: CHAPTER_SECOND, trace });
     if (!r.ok && !pinned && CHAPTER_MODEL && !flashOnly) { bounce = timedOut(firstError) ? "budget" : "error"; r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, ...CHAPTER_BACKUP, trace }); }
     if (!r.ok) { await ctx.runMutation(internal.handbooks.setChapterFailed, { handbookId, n, error: r.error }); return; }
     // D27's length floor (30 paragraphs and 800 words, else a retry and then Opus) is left out on feat/handbook-shape
@@ -1156,8 +1220,14 @@ export const addQuizVersions = internalAction({
     const lists = [qv?.easier ?? [], qv?.harder ?? [], rv?.easier ?? [], rv?.harder ?? []];
     const extra = lists.flatMap((l) => l.filter(Boolean));
     if (!extra.length) return;
-    const checked = await factCheck(ctx, topic, h.level, title, [...ch.cards, ...recall, ...extra], { ...(h.writer ? { model: h.writer } : {}), trace });
-    let at = ch.cards.length + recall.length;
+    // 17 Oct: only the new quiz versions are checked. The chapter's own cards were checked before the reader saw them, and
+    // re-sending them made Sonnet re-check (and re-fix) cards whose fixes were then thrown away: 34% of the fact-check
+    // bill on prod. They travel as reference instead (read, never edited), with the research facts the main check had.
+    const strip = (c: any) => { const { html: _h, ...rest } = c ?? {}; return rest; };
+    const facts = referenceForCheck((h as any).brief, h.plan?.chapters?.[n - 1]?.pieces);
+    const reference = [`The chapter these quizzes test (already fact checked: check the quizzes against it, never fix it):\n${JSON.stringify([...ch.cards, ...recall].map(strip))}`, facts].filter(Boolean).join("\n\n");
+    const checked = await factCheck(ctx, topic, h.level, title, extra, { ...(h.writer ? { model: h.writer } : {}), trace, reference });
+    let at = 0;
     const [qe, qh, re, rh] = lists.map((l) => l.map((x: any) => (x ? checked.cards[at++] : null)));
     await ctx.runMutation(internal.handbooks.setQuizTiers, { handbookId, n, cardsCount: ch.cards.length, quizTiers: qv ? { easier: qe, harder: qh } : undefined, recallTiers: rv ? { easier: re, harder: rh } : undefined });
     if (shareable && n > 1 && !h.test) await ctx.runMutation(internal.library.saveChapter, { handbookId, n, tiersOnly: true });

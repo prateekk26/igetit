@@ -629,6 +629,39 @@ export const CHECK_SCENES_PROMPT_V3 = edited(CHECK_SCENES_PROMPT_V2, [...CHECK_V
   [`If the card is abstract, draw the handbook's analogy.\nRules`, `If the card is abstract, draw the handbook's analogy only if the card uses it; otherwise draw a person using the card's idea.\nRules`],
 ]);
 
+// The fact check, v4 (17 Oct, Prateek: "how sonnet passes each fix should be structured replace this with this and one
+// liner why so we have structured and controlled token output"). A fix is an edit inside a card, not the whole card
+// again: on prod 9 checks in 10 return fixes, and the whole cards were most of the about 1,250 tokens written per check
+// (written tokens cost 5 times read ones, and are most of the wait before chapter 1). handbooks.ts applies each edit and
+// keeps the card's shape by construction. Every rule of what to check is v3's, word for word.
+const CHECK_V4_EDITS: [string, string][] = [
+  [`For every card with a problem, return a corrected version of the WHOLE card: same type, same fields, same voice, same length, the smallest change that makes it true. For an exercise, keep exactly three options with the same ids, and make "answer" the id of the one correct option.`,
+    `For every problem, return the smallest edit that makes it true, as a find-and-replace inside one card: "find" is the exact text to change, copied character for character from one field of that card (as short as still unique in the card: a phrase or one sentence, never a whole card), "replace" is the new text (same voice, about the same length; "" removes it), and "why" is one plain line. Several problems in one card are several edits. Put the false words themselves in "find", so the replace removes them: never keep a false sentence and add a correction beside it. To change which option an exercise marks as right, give "answer" (the new option id) with no find or replace, never an edit of the text "answer"; option ids and the three options stay.`],
+  [`"problem": "<one plain sentence: what was false and what is true, or which term a beginner met before it was explained>", "fixed": <the corrected card object>}]`,
+    `"find": "<exact text from that card>", "replace": "<the new text>", "why": "<one plain line: what was false and what is true, or which term a beginner met before it was explained>"}, or, to change which option an exercise marks as right, {"card": <index>, "answer": "<a, b or c>", "why": "<one plain line>"}]`],
+];
+export const CHECK_PROMPT_V4 = edited(CHECK_PROMPT_V3, CHECK_V4_EDITS);
+export const CHECK_SCENES_PROMPT_V4 = edited(CHECK_SCENES_PROMPT_V3, CHECK_V4_EDITS);
+
+// The fact check, v5 (17 Oct, Prateek: "we can improve our fact check as per suggestion. fold the wording"). Three lines
+// on top of v4. The three test topics that scored low on facts in every gate run, by their graders' reasons: Nifty
+// options (a 24,200 call "200 points below" a Nifty that is under it; Thursday expiry after NSE moved to Tuesday), ITR
+// filing (an old capital-gains rule; a wrong section number), the Avengers recap (plot details from memory). So the
+// check redoes the sums, and on fast-changing topics and stories it no longer trusts its own memory for a specific the
+// research does not back. And D87's house rule moves in here as edits: on 11 Oct the rule cost the check facts on
+// number-heavy topics, but that check rewrote whole cards; v5 edits single sentences. The wording step stays behind it
+// and runs only if a banned word gets through (handbooks.ts).
+const CHECK_V5_EDITS: [string, string][] = [
+  [`- Invented examples: a number on an invented person is fine as an example; it must not read as a measured or reported result.`,
+    `- Invented examples: a number on an invented person is fine as an example; it must not read as a measured or reported result.
+- Worked numbers: redo every sum, difference, percentage, total and comparison in a card or an exercise yourself ("300 buyers and 100 sellers leave 200", "above" or "below", "up 0.6%"). If a result or a direction is off, it is a problem: fix the number or the word, and keep the rest.`],
+  [`has its precaution beside it; add it if it is missing.`, `has its precaution beside it; add it if it is missing.
+- Things that change: on money, tax, law, health and current events, and in a recap of a story, a specific number, date, deadline, limit, rule, schedule or plot detail that the Reference material does not give is a problem even when you remember it: rules and schedules change, and memory of a plot drifts. Replace it with what the Reference material says, or say it without the specific.
+- House rule: the words "wrong" and "incorrect" (and "wrongly", "incorrectly") never appear, in any card or field, even describing something other than the reader. A sentence that uses one is a problem: one edit rewrites only that sentence without the word, same meaning, in plain words ("the wrong cluster" becomes "another cluster", "picking wrong" becomes "mixing them up").`],
+];
+export const CHECK_PROMPT_V5 = edited(CHECK_PROMPT_V4, CHECK_V5_EDITS);
+export const CHECK_SCENES_PROMPT_V5 = edited(CHECK_SCENES_PROMPT_V4, CHECK_V5_EDITS);
+
 // Pieces are matched loosely: the plan may shorten or reword a brief's piece name.
 const pieceKey = (x: string) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 export function samePiece(a: string, b: string): boolean {
@@ -666,8 +699,8 @@ const NO_WRONG_EDITS: [string, string][] = [
   [`has its precaution beside it; add it if it is missing.`, `has its precaution beside it; add it if it is missing.
 - House rule: the words "wrong" and "incorrect" (and "wrongly", "incorrectly") never appear, in any card or field, even describing something other than the reader. A card that uses one is a problem: rewrite only that sentence without the word, same meaning ("the wrong cluster" becomes "a cluster that doesn't fit").`],
 ];
-export const CHECK_PROMPT_NOWRONG = edited(CHECK_PROMPT_V3, NO_WRONG_EDITS);
-export const CHECK_SCENES_PROMPT_NOWRONG = edited(CHECK_SCENES_PROMPT_V3, NO_WRONG_EDITS);
+export const CHECK_PROMPT_NOWRONG = edited(CHECK_PROMPT_V4, NO_WRONG_EDITS);
+export const CHECK_SCENES_PROMPT_NOWRONG = edited(CHECK_SCENES_PROMPT_V4, NO_WRONG_EDITS);
 // D84: a story recap or an explainer has no task by design, so its summary card asks the reader to say the point back.
 export const CHAPTER_PROMPT_SAYBACK = CHAPTER_PROMPT_V6 + `
 

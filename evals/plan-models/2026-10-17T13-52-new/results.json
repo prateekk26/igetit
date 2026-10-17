@@ -1,0 +1,398 @@
+[
+ {
+  "case": "inference-routing",
+  "topic": "How does inference routing work?",
+  "goal": "Build model routing systems",
+  "level": "new",
+  "models": {
+   "gemini": {
+    "handbookId": "k97c6dd553k7dsdmftbsa7mea98gf8kq",
+    "status": "ready",
+    "checks": {
+     "chapters": 5,
+     "format": "course",
+     "minutes": 39,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "Hospital triage desk",
+     "outcome": "By day 5 you'll be able to design, benchmark, and deploy a multi-model inference router that cuts API costs while protecting output quality."
+    },
+    "chaptersWritten": 5,
+    "chaptersFailed": 0,
+    "planCalls": 1,
+    "planSeconds": 16,
+    "planInr": 0.9,
+    "bookInr": 44.7,
+    "opusChapters": 0,
+    "grades": [
+     {
+      "n": 1,
+      "facts": 3,
+      "outcome": 4
+     },
+     {
+      "n": 2,
+      "facts": 3,
+      "outcome": 4,
+      "taught": 5
+     },
+     {
+      "n": 3,
+      "facts": 3,
+      "outcome": 4,
+      "taught": 3
+     },
+     {
+      "n": 4,
+      "facts": 4,
+      "outcome": 4,
+      "taught": 4
+     },
+     {
+      "n": 5,
+      "facts": 4,
+      "outcome": 5,
+      "taught": 1
+     }
+    ],
+    "facts": 3.4,
+    "outcome": 4.2,
+    "taught": 3.25,
+    "falseClaims": 0,
+    "misleading": 0,
+    "judge": {
+     "analogy": 5,
+     "clarity": 3,
+     "coverage": 4,
+     "fit": 3,
+     "level": 3,
+     "promises": 2
+    }
+   },
+   "sonnet": {
+    "handbookId": "k9793ftv00peyfzwhkhnxm0agn8gev8x",
+    "status": "ready",
+    "checks": {
+     "chapters": 5,
+     "format": "course",
+     "minutes": 57,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "Hospital triage desk",
+     "outcome": "By day 5 you'll be able to sketch and build an inference router that sends each prompt to the right model, with rules, similarity matching, a trained classifier, a cascade and a failover plan."
+    },
+    "chaptersWritten": 5,
+    "chaptersFailed": 0,
+    "planCalls": 1,
+    "planSeconds": 13,
+    "planInr": 4.15,
+    "bookInr": 48.7,
+    "opusChapters": 0,
+    "grades": [
+     {
+      "n": 1,
+      "facts": 3,
+      "outcome": 3
+     },
+     {
+      "n": 2,
+      "facts": 4,
+      "outcome": 5,
+      "taught": 4
+     },
+     {
+      "n": 3,
+      "facts": 3,
+      "outcome": 4,
+      "taught": 3
+     },
+     {
+      "n": 4,
+      "facts": 2,
+      "outcome": 3,
+      "taught": 3
+     },
+     {
+      "n": 5,
+      "facts": 4,
+      "outcome": 5,
+      "taught": 4
+     }
+    ],
+    "facts": 3.2,
+    "outcome": 4,
+    "taught": 3.5,
+    "falseClaims": 0,
+    "misleading": 1,
+    "judge": {
+     "analogy": 5,
+     "clarity": 5,
+     "coverage": 4,
+     "fit": 5,
+     "level": 4,
+     "promises": 4
+    }
+   },
+   "opus": {
+    "handbookId": "k97dnzsfscprbcbaf8d1prpqg18gej42",
+    "status": "ready",
+    "checks": {
+     "chapters": 5,
+     "format": "course",
+     "minutes": 56,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "Clinic triage desk",
+     "outcome": "By day 5 you'll be able to sketch and defend a working router for several LLMs: cheap rules and embedding checks up front, a RouteLLM-style difficulty classifier, a cascade that escalates on low confidence, all behind a gateway with failover and drift checks."
+    },
+    "chaptersWritten": 5,
+    "chaptersFailed": 0,
+    "planCalls": 1,
+    "planSeconds": 31,
+    "planInr": 9.89,
+    "bookInr": 61.6,
+    "opusChapters": 0,
+    "grades": [
+     {
+      "n": 1,
+      "facts": 3,
+      "outcome": 4
+     },
+     {
+      "n": 2,
+      "facts": 4,
+      "outcome": 3,
+      "taught": 4
+     },
+     {
+      "n": 3,
+      "facts": 1,
+      "outcome": 4,
+      "taught": 1
+     },
+     {
+      "n": 4,
+      "facts": 4,
+      "outcome": 4,
+      "taught": 4
+     },
+     {
+      "n": 5,
+      "facts": 4,
+      "outcome": 4,
+      "taught": 4
+     }
+    ],
+    "facts": 3.2,
+    "outcome": 3.8,
+    "taught": 3.25,
+    "falseClaims": 1,
+    "misleading": 0,
+    "judge": {
+     "analogy": 5,
+     "clarity": 4,
+     "coverage": 4,
+     "fit": 4,
+     "level": 4,
+     "promises": 3
+    }
+   }
+  },
+  "rank": [
+   "sonnet",
+   "opus",
+   "gemini"
+  ],
+  "why": "A gives beginners more practice time and mostly bounded outcomes; C is similarly clear but incorrectly promises semantic routing before any model runs, although embeddings require an encoder model. B squeezes implementation into shorter sittings, uses more unexplained jargon, and promises production readiness beyond what the brief supports.",
+  "worstPromise": "gemini: \"You can deploy a hardened model gateway that handles upstream outages, stays within latency limits, and tracks classifier drift.\""
+ },
+ {
+  "case": "credit-score-india",
+  "topic": "how credit scores work in India",
+  "goal": "Understand my CIBIL score and raise it before a home loan",
+  "level": "new",
+  "models": {
+   "gemini": {
+    "handbookId": "k97brgv88pzr1xa740eheyc46s8gfvkj",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "course",
+     "minutes": 20,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "a school report card",
+     "outcome": "By day 4 you'll be able to audit your CIBIL report, dispute bank errors under RBI rules, and lower utilization to cross 750 before applying for a home loan."
+    },
+    "chaptersWritten": 4,
+    "chaptersFailed": 0,
+    "planCalls": 1,
+    "planSeconds": 30,
+    "planInr": 1.6,
+    "bookInr": 40.3,
+    "opusChapters": 0,
+    "grades": [
+     {
+      "n": 1,
+      "facts": 4,
+      "outcome": 4
+     },
+     {
+      "n": 2,
+      "facts": 2,
+      "outcome": 4,
+      "taught": 3
+     },
+     {
+      "n": 3,
+      "facts": 4,
+      "outcome": 4,
+      "taught": null
+     },
+     {
+      "n": 4,
+      "facts": 2,
+      "outcome": 4,
+      "taught": 4
+     }
+    ],
+    "facts": 3,
+    "outcome": 4,
+    "taught": 3.5,
+    "falseClaims": 0,
+    "misleading": 2,
+    "judge": {
+     "analogy": 2,
+     "clarity": 3,
+     "coverage": 3,
+     "fit": 3,
+     "level": 4,
+     "promises": 1
+    }
+   },
+   "sonnet": {
+    "handbookId": "k973xjgwy5x6rcstecqf8fkkjx8gf1f3",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "course",
+     "minutes": 29,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "School report card",
+     "outcome": "By day 4 you'll be able to read your own CIBIL report, name what is pulling your score down, dispute errors under the RBI 30-day rule, and follow a month-by-month plan to move toward 750 before you apply for a home loan."
+    },
+    "chaptersWritten": 4,
+    "chaptersFailed": 0,
+    "planCalls": 1,
+    "planSeconds": 12,
+    "planInr": 4.22,
+    "bookInr": 38.3,
+    "opusChapters": 0,
+    "grades": [
+     {
+      "n": 1,
+      "facts": 4,
+      "outcome": 4
+     },
+     {
+      "n": 2,
+      "facts": 3,
+      "outcome": 4,
+      "taught": 3
+     },
+     {
+      "n": 3,
+      "facts": 4,
+      "outcome": 4,
+      "taught": 3
+     },
+     {
+      "n": 4,
+      "facts": 3,
+      "outcome": 4,
+      "taught": 4
+     }
+    ],
+    "facts": 3.5,
+    "outcome": 4,
+    "taught": 3.33,
+    "falseClaims": 0,
+    "misleading": 0,
+    "judge": {
+     "analogy": 5,
+     "clarity": 5,
+     "coverage": 4,
+     "fit": 5,
+     "level": 5,
+     "promises": 4
+    }
+   },
+   "opus": {
+    "handbookId": "k973k4aw1gptdj2rtpz71fpy8x8gejr1",
+    "status": "ready",
+    "checks": {
+     "chapters": 4,
+     "format": "course",
+     "minutes": 35,
+     "missingPieces": 0,
+     "usedBeforeTaught": 0,
+     "picture": "Your school report card",
+     "outcome": "By day 4 you'll be able to read your own CIBIL report line by line, dispute any error under RBI's 30-day rule, and follow a month-by-month plan to push your score toward 750 before you apply for a home loan."
+    },
+    "chaptersWritten": 4,
+    "chaptersFailed": 0,
+    "planCalls": 1,
+    "planSeconds": 23,
+    "planInr": 8.51,
+    "bookInr": 47.8,
+    "opusChapters": 0,
+    "grades": [
+     {
+      "n": 1,
+      "facts": 4,
+      "outcome": 4
+     },
+     {
+      "n": 2,
+      "facts": 2,
+      "outcome": 4,
+      "taught": 2
+     },
+     {
+      "n": 3,
+      "facts": 4,
+      "outcome": 2,
+      "taught": 2
+     },
+     {
+      "n": 4,
+      "facts": 2,
+      "outcome": 4,
+      "taught": 4
+     }
+    ],
+    "facts": 3,
+    "outcome": 3.5,
+    "taught": 2.67,
+    "falseClaims": 0,
+    "misleading": 2,
+    "judge": {
+     "analogy": 4,
+     "clarity": 4,
+     "coverage": 4,
+     "fit": 5,
+     "level": 5,
+     "promises": 2
+    }
+   }
+  },
+  "rank": [
+   "sonnet",
+   "opus",
+   "gemini"
+  ],
+  "why": "A offers a well-paced beginner course with realistic improvement timelines, while C places more report details explicitly but promises an exact application date and too much certainty about rates. B squeezes practical work into shorter chapters, uses unexplained jargon and a strained analogy, and suggests crossing 750 by day four without support.",
+  "worstPromise": "gemini: \"By day 4 you'll be able to audit your CIBIL report, dispute bank errors under RBI rules, and lower utilization to cross 750 before applying for a home loan.\""
+ }
+]

@@ -12,7 +12,9 @@ function audio() {
 export function playUrl(url: string): Promise<boolean> {
   const a = audio(), mine = ++token
   return new Promise((resolve) => {
-    const done = (ok: boolean) => { a.onended = null; a.onerror = null; resolve(ok && mine === token) }
+    // 17 Oct: only the clip still playing clears the handlers. A clip cut off while loading fails late (its play()
+    // rejects after the next clip has started) and used to clear the next clip's handlers, so auto-play froze on a page.
+    const done = (ok: boolean) => { if (mine === token) { a.onended = null; a.onerror = null } resolve(ok && mine === token) }
     a.onended = () => done(true)
     a.onerror = () => done(false)
     a.src = url
@@ -27,10 +29,11 @@ export function stopAudio() {
 }
 
 // Auto-play (15 Oct, Prateek: "We want auto scroll (quizes auto answered) as well as an option. It should span
-// chapters"): one switch for the phone, kept across chapters and visits.
+// chapters"): one switch, kept across chapters. 17 Oct: kept for this visit only (it was kept for good), so a reader who
+// comes back and taps an old chapter isn't read to and carried on into the next one without asking.
 const AUTO = 'igi.autoplay'
-export const autoOn = () => { try { return localStorage.getItem(AUTO) === '1' } catch { return false } }
-export const setAuto = (on: boolean) => { try { localStorage.setItem(AUTO, on ? '1' : '0') } catch { /* private mode: this visit only */ } }
+export const autoOn = () => { try { return sessionStorage.getItem(AUTO) === '1' } catch { return false } }
+export const setAuto = (on: boolean) => { try { sessionStorage.setItem(AUTO, on ? '1' : '0'); localStorage.removeItem(AUTO) } catch { /* private mode: this screen only */ } }
 
 // Seconds a page needs when no voice plays: about 3 words a second, at least 4 s.
 export const readMs = (text: string) => Math.max(4000, Math.round((text.split(/\s+/).filter(Boolean).length / 3) * 1000) + 1200)
