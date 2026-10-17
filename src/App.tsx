@@ -330,6 +330,7 @@ export default function App() {
   goKnown = () => { setDoneN(null); setView('known'); window.scrollTo({ top: 0 }) }
   goFront = () => { setDoneN(null); setView('home'); window.scrollTo({ top: 0 }) }
   authLinks = isAuthenticated || view === 'signin' ? null : { signIn: () => signInFrom(view), signUp: () => signUpFrom(view) }
+  authSignOut = isAuthenticated ? () => { void signOut(); setDoneN(null); setView('home'); window.scrollTo({ top: 0 }) } : null
   const tabs = (lib?.handbooks?.length ?? 0) > 0 || !!hb   // C4's bar shows once there is a handbook to come back to
   // The landing page's starts: the box, a chip, or the demo, which has already shown chapter 1 and opens at chapter 2
   // the way a post link does (?t=…&ch=2), so the reader never reads chapter 1 twice (14 Oct).
@@ -353,9 +354,9 @@ export default function App() {
   }
 
   // A first-time visitor's pick stays on the landing page, with the card lifted, until its handbook is ready (8 Oct night).
-  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   // The front page for a reader who already has books (15 Oct): the same page as a first visit, plus "Your books".
-  if (view === 'home') return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
+  if (view === 'home') return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
   const libRows = lib?.handbooks ?? []
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   // C4 Tonight is the home of a reader with books (14 Oct); the old list, with remove and the sign-in nudge, is Manage.
@@ -431,7 +432,7 @@ export default function App() {
     )
   }
   if (!hb && view !== 'start-again' && libRows.length === 0 && lib !== undefined) {
-    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   }
 
   // No handbook yet, or the person wants a different line: the first screen.
@@ -757,6 +758,7 @@ let acct: { manage: () => void; plans: () => void; signIn: (() => void) | null; 
 // 18 Oct (Prateek: "home page landing page all should have sign in sign up button"): set on every render for a visitor
 // who isn't signed in, null otherwise (and on the sign-in screen itself). Both open the same email-code screen.
 let authLinks: { signIn: () => void; signUp: () => void } | null = null
+let authSignOut: (() => void) | null = null   // signed in: the same spot says Sign out, then the front page
 
 // A ?l= link's first second (D25): the one book, lifted off its plank the way a Shelf tap lifts it, while the handbook
 // is copied to this phone. No landing page, no splash. The cover comes from the Shelf's list when it has answered.
@@ -793,7 +795,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
       {tab && !bare && (
         <header className="hub-top">
           <button type="button" className="wordmark wordmark-btn" onClick={() => goFront?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}</button>
-          <AuthButtons links={authLinks} />
+          <AuthButtons links={authLinks} onSignOut={authSignOut} />
           <button type="button" className="hub-acct" aria-label="Your account" aria-expanded={menu} onClick={() => setMenu(true)}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6" /><path d="M5 19.5c1.4-3.3 4-5 7-5s5.6 1.7 7 5" /></svg>
             <span className="hub-acct-label">Your account</span>
@@ -812,14 +814,13 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
           </nav>
         </Sheet>
       )}
-      {!bare && !tab && <header className={`top${authLinks ? ' has-auth' : ''}`}>
+      {!bare && !tab && <header className={`top${authLinks || authSignOut ? ' has-auth' : ''}`}>
         <button type="button" className="wordmark wordmark-btn" onClick={() => goFront?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Five minutes at a time.</small></button>
         {/* The Shelf (8 Oct, Prateek): always one tap away, on every screen. */}
         {!hideShelf && <ShelfButton onOpen={() => goShelf?.()} />}
         <span className="top-actions">
-          <AuthButtons links={authLinks} />
+          <AuthButtons links={authLinks} onSignOut={authSignOut} />
           {back && <button type="button" className="back-link" onClick={back.onClick}>← <span className="bl-long">{back.label}</span><span className="bl-short">Back</span></button>}
-          {onSignOut && <button type="button" className="quiet hide-phone" onClick={() => onSignOut()}>Sign out</button>}
           {rail && <button type="button" className="menu-btn" aria-label="Menu" aria-expanded={menu} onClick={() => setMenu(true)}>☰</button>}
         </span>
       </header>}

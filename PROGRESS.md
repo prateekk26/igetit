@@ -200,3 +200,4 @@ Decided by the agent in Prateek's stead, night of 4 Oct (read these first):
 2026-10-18 00:50 Rubric score on first open instead of when written (D132).
 2026-10-18 01:05 Complimentary membership (D133): membership:grant gives an account N days without a payment, for the shared test account.
 2026-10-18 01:40 Sign in / Sign up on every top bar for visitors; pricing with tappable Monthly/Yearly cards and a Pay button that signs in first, then pays; 'Become a member' at the typed-book limit (D134). Checked at 390 and 1280 px.
+2026-10-18 01:55 Sign out in the same spot once signed in, on every bar, phone and desktop (D135); full sign-up, sign-out cycle seen on dev at 390 px.

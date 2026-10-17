@@ -3,8 +3,10 @@
 // only changes its heading. Short labels on a phone. Copy (agent).
 export type AuthLinks = { signIn: () => void; signUp: () => void } | null
 
-export default function AuthButtons({ links }: { links: AuthLinks | undefined }) {
-  if (!links) return null
+// Signed in, the same spot says "Sign out" (18 Oct, Prateek: "sign in after signed in will become sign out right? just
+// make whole sign up signin signout flow"), on a phone too.
+export default function AuthButtons({ links, onSignOut }: { links: AuthLinks | undefined; onSignOut?: (() => void) | null }) {
+  if (!links) return onSignOut ? <span className="auth-links"><button type="button" className="auth-in auth-out" onClick={onSignOut}>Sign out</button></span> : null
   return (
     <span className="auth-links">
       <button type="button" className="auth-in" onClick={links.signIn}>Sign in</button>
