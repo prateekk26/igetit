@@ -114,6 +114,22 @@ export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onB
           <p className="sub" style={{ marginTop: 10 }}>{fromDone ? 'You reached the summit' : 'Pricing'}</p>
           <h1>Come early, pay less, for as long as you stay.</h1>
           <p className="lede">{freeChaptersText((ms as any)?.limits?.visitorChapters ?? 2)} of any handbook need no account. A free account opens every chapter of every ready one, plus one of your own. Members get more of their own, and the first 50 pay the least.</p>
+          {/* 18 Oct (Prateek: "none of price plans div are clickable"): the choice is month or year, as two cards you tap,
+              at the top; the tiers below are information. The Pay button under them always says Pay. Copy (agent). */}
+          {live && !p.paidUntil && (
+            <div className="plan-cards" role="radiogroup" aria-label="Pay for">
+              <button type="button" role="radio" aria-checked={plan === 'month'} className="plan-card" onClick={() => setPlan('month')}>
+                <span className="plan-card-name">Monthly</span>
+                <span className="plan-card-price">{inr(p.price.month)}</span>
+                <span className="plan-card-note">30 days, paid once</span>
+              </button>
+              <button type="button" role="radio" aria-checked={plan === 'year'} className="plan-card" onClick={() => setPlan('year')}>
+                <span className="plan-card-name">Yearly</span>
+                <span className="plan-card-price">{inr(p.price.year)}</span>
+                <span className="plan-card-note">365 days, saves {inr(saving)}</span>
+              </button>
+            </div>
+          )}
           <table className="compare">
             <thead><tr><th scope="col"><span className="lp-visually-hidden">What you get</span></th><th scope="col">Free account</th><th scope="col">Member</th></tr></thead>
             <tbody>{COMPARE.map((r) => <tr key={r.what}><th scope="row">{r.what}</th><td>{r.free}</td><td>{r.member}</td></tr>)}</tbody>
@@ -122,6 +138,7 @@ export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onB
         </>
       )}
 
+      <p className="tiers-head">Early-bird prices, by how many people have paid</p>
       <ol className="tiers">
         {plans.tiers.map((t) => (
           <li key={t.tier} className={t.open ? 'open' : t.left === 0 ? 'full' : ''}>
@@ -148,12 +165,7 @@ export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onB
           {p.paidUntil ? <p className="locked">Paid. You're covered until {until(p.paidUntil)}.</p>
             : p.kept ? <p className="locked">Your early price is kept: {inr(p.price.month)} a month or {inr(p.price.year)} a year.</p> : null}
           {/* The struck price is always the real next tier, never a made-up "was" price (7 Oct). */}
-          {!p.paidUntil && (
-            <div className="chips" role="group" aria-label="Pay for">
-              <button type="button" className="chip price-chip" aria-pressed={plan === 'month'} onClick={() => setPlan('month')}>A month · {inr(p.price.month)}</button>
-              <button type="button" className="chip price-chip" aria-pressed={plan === 'year'} onClick={() => setPlan('year')}>A year · {inr(p.price.year)}</button>
-            </div>
-          )}
+
           {/* One price per chip (8 Oct night, review: "₹299₹199" read as a typo); the next tier is a line, not a strike-through. */}
           {!p.paidUntil && later && <p className="note" style={{ textAlign: 'center' }}>{inr(later.month)} a month once the {WHO[p.tier - 1]?.toLowerCase() ?? 'first'} spots are gone. Your price stays yours while you keep paying.</p>}
           <ActionBar busy={busy}>
@@ -162,10 +174,10 @@ export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onB
             {payNote && !payError && <p className="note pay-note" role="status">{payNote}</p>}
             {p.paidUntil ? <button className="btn btn-ghost" onClick={onBack}>Back</button>
               : pending ? <button className="btn" disabled={busy} onClick={checkAgain}>Check again</button>
-              : !plans.signedIn ? <><button className="btn" onClick={onSignIn}>Sign in to pay {inr(price)}</button><button type="button" className="quiet" onClick={onBack}>I'll decide later</button></>
+              : !plans.signedIn ? <><button className="btn" onClick={onSignIn}>Pay {inr(price)} for one {plan}</button><button type="button" className="quiet" onClick={onBack}>I'll decide later</button></>
               : <><button className="btn" disabled={busy} onClick={() => payNow()}>Pay {inr(price)} for one {plan}</button><button type="button" className="quiet" onClick={onBack}>I'll decide later</button></>}
           </ActionBar>
-          {!plans.signedIn && <p className="note" style={{ textAlign: 'center' }}>Sign in first, so what you pay for stays with you on any phone.</p>}
+          {!plans.signedIn && <p className="note" style={{ textAlign: 'center' }}>Tapping Pay asks for your email first (a free account, so what you pay for stays with you on any phone), then the payment opens.</p>}
         </>
       ) : (
         <>

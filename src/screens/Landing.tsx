@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import AuthButtons, { type AuthLinks } from '../components/AuthButtons'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import Rich, { inline } from '../components/Rich'
@@ -18,7 +19,7 @@ import Ooh, { GoArrow, Wordmark } from '../components/Ooh'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
-type Props = { onCreate: (topic: string, level: Level, voice: Voice, chapter?: number) => Promise<void>; onExplore?: () => void; onBooks?: () => void; freeChapters?: number; allowance?: TypedAllowance | null }
+type Props = { onCreate: (topic: string, level: Level, voice: Voice, chapter?: number) => Promise<void>; onExplore?: () => void; onBooks?: () => void; freeChapters?: number; allowance?: TypedAllowance | null; account?: AuthLinks; onMember?: () => void; memberPrice?: number }
 
 type Frame =
   | { kind: 'picture' | 'teach' | 'example' | 'mistake' | 'try'; title?: string; text: string; picture: string | null }
@@ -27,7 +28,7 @@ type DemoBook = { topic: string; label: string; title: string; frames: Frame[]; 
 
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
-export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance }: Props) {
+export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance, account, onMember, memberPrice }: Props) {
   const freeText = freeChaptersText(freeChapters)   // D26: chapters 1 and 2 need no account; the number is the server's
   const c = useQuery(api.landing.content, {})
   const [topic, setTopic] = useState('')
@@ -134,6 +135,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
           {/* 15 Oct: a reader with books lands here after a break; their books are one tap away. Copy (agent). */}
           {onBooks && <button type="button" className="c1-shelf" onClick={onBooks}>Your books</button>}
           {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>The Shelf</button>}
+          <AuthButtons links={account} />
         </span>
       </header>
 
@@ -153,6 +155,8 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
               after chapter 2, and the typed-topic rule on Start another topic. Only a phone that has used its free typed
               topic hears it here, before it types again. */}
           {typedUsed && <p className="lp-fine c1-fine">{typedLine}</p>}
+          {/* 18 Oct (Prateek): from the typed-book limit, one tap to paying (sign-in first if needed). Copy (agent). */}
+          {typedUsed && onMember && <button type="button" className="c1-member" onClick={onMember}>Become a member{memberPrice ? ` · ₹${memberPrice.toLocaleString('en-IN')} a month` : ''}</button>}
         </div>
       </section>
 

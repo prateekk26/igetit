@@ -1072,3 +1072,55 @@ div.c3-row { cursor: default; }
   .story-body.no-pic .story-text.size-md, .story-body.no-pic .story-text.size-lg { font-size: 1.75rem; line-height: 1.4; max-width: 30ch; }
   .story-body.no-pic .story-text.size-xl { font-size: 3rem; }
 }
+
+/* 18 Oct (Prateek): Sign in and Sign up on every top bar for a visitor not signed in (components/AuthButtons.tsx). */
+.auth-links { display: inline-flex; align-items: center; gap: 12px; flex: none; }
+.auth-in { all: unset; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; font: 700 16px var(--sans); color: var(--ink); text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 2px; white-space: nowrap; }
+.auth-up { cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--accent); color: var(--ink); font: 700 16px var(--sans); white-space: nowrap; }
+.auth-in:focus-visible, .auth-up:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 999px; }
+.auth-up:hover { filter: brightness(0.96); }
+.auth-short { display: none; }
+/* On the home page the bar sits on the marigold hero: the button is ink there, so it shows. */
+.home-bar .auth-up { background: var(--ink); color: var(--paper); }
+@media (max-width: 560px) {
+  .auth-long { display: none; }
+  .auth-short { display: inline; }
+  .auth-links { gap: 8px; }
+  .auth-up { padding: 0 14px; font-size: 15px; }
+  .auth-in { font-size: 15px; }
+  .top.has-auth .wordmark small { display: none; }
+  .top.has-auth .back-link .bl-long { display: none; }
+  .top.has-auth .back-link .bl-short { display: inline; }
+  .top.has-auth .top-actions { gap: 8px; }
+  .home-bar { padding-left: 16px; padding-right: 16px; }
+  .home-bar-links { gap: 12px; }
+}
+@media (max-width: 380px) {
+  .top.has-auth .shelf-btn .shelf-label, .top.has-auth > .shelf-btn span:not(:first-child) { display: none; }
+  .auth-up { padding: 0 11px; }
+}
+/* Desktop tab screens: the bar is the left column, so the two buttons stack under the wordmark. */
+@media (min-width: 1024px) {
+  .shell.has-tabs > .hub-top .auth-links { flex-direction: column; align-items: stretch; gap: 8px; margin-top: 16px; }
+  .shell.has-tabs > .hub-top .auth-up { justify-content: center; }
+}
+.c1-member { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-height: 52px; margin-top: 10px; padding: 0 24px; border: 0; border-radius: 999px; background: var(--ink); color: var(--paper); font: 700 17px var(--sans); }
+.c1-member:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* 18 Oct (Prateek: "none of price plans div are clickable"; "put pointer cursor when on card"): Pricing's choice is two
+   cards you tap (month, year); the early-bird tiers are a plain list under them, so they no longer look like buttons. */
+.plan-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: var(--l) 0 var(--m); }
+@media (max-width: 420px) { .plan-cards { grid-template-columns: 1fr; } }
+.plan-card { cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 2px; min-height: 96px; padding: 16px 18px; border: 2px solid var(--rule); border-radius: var(--radius-card); background: var(--paper); color: var(--ink); font-family: var(--sans); }
+.plan-card:hover { border-color: var(--ink); }
+.plan-card[aria-checked="true"] { border-color: var(--ink); background: var(--accent); }
+.plan-card:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.plan-card-name { font-weight: 700; font-size: var(--ui); }
+.plan-card-price { font-weight: 800; font-size: 1.75rem; line-height: 1.1; }
+.plan-card-note { font-size: var(--small); color: var(--ink-2); }
+.plan-card[aria-checked="true"] .plan-card-note { color: var(--ink); }
+.tiers-head { margin: var(--l) 0 0; font-size: var(--small); font-weight: 700; color: var(--ink-2); }
+.tiers { margin-top: 4px; gap: 0; }
+.tiers li, .tiers li.open { cursor: default; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; background: none; padding: 10px 2px; }
+.tiers li:last-child { border-bottom: 0; }
+.tiers li.open .tier-who::after { content: " · now"; color: var(--ink); }

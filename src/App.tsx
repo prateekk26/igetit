@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import AuthButtons from './components/AuthButtons'
 import { useAction, useConvexAuth, useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '../convex/_generated/api'
@@ -168,12 +169,24 @@ export default function App() {
   const goExplore = () => { setExploreFrom(view === 'auto' || view === 'explore' ? (hb ? 'plan' : 'auto') : view); setView('explore') }
   // Declared before any early return (UX review 9 Oct, #1): Your handbooks returns early, and its "Make a free account"
   // called this before it existed, which threw and did nothing.
-  const signIn = (back: View) => { setAfterSignIn(back); setView('signin') }
+  // 18 Oct: the header's "Sign up" only changes the heading; one code signs in or makes the account.
+  const [signinHeading, setSigninHeading] = useState<string | null>(null)
+  const signIn = (back: View, heading: string | null = null) => { setSigninHeading(heading); setAfterSignIn(back); setView('signin') }
+  const signInFrom = (back: View) => signIn(back)
+  const signUpFrom = (back: View) => signIn(back, 'Make your free account.')
   // Pricing goes back to where it was opened from, never always to the handbook page (UX review 9 Oct).
   const [pricingFrom, setPricingFrom] = useState<View>('auto')
   const goPricing = () => { if (view !== 'pricing') setPricingFrom(view); setView('pricing') }
   // Month or year survives the sign-in, and the payment sheet opens right after it, as the sign-in screen promises.
   const [payPlan, setPayPlan] = useState<'month' | 'year'>('month')
+  const signInToPay = () => { setPayAfterSignIn(true); setSigninReason('Sign in or sign up first (free, just your email); the payment opens right after. Nothing is charged until you approve it there.'); signIn('pricing') }
+  // 18 Oct (Prateek, at the typed-book limit: "lets do it"): one tap from the limit to paying. Signed in, the pricing
+  // page opens with the payment already starting; signed out, sign-in or sign-up comes first, then the same.
+  const becomeMember = (notice: string | null = null) => {
+    setPricingNotice(notice); setPayPlan('month'); goPricing()
+    if (isAuthenticated) setPayAfterSignIn(true); else signInToPay()
+  }
+  const memberPrice: number | undefined = (plansData as any)?.pay?.price?.month
   const [payAfterSignIn, setPayAfterSignIn] = useState(false)
   // A chapter ahead on the path opens a short preview (Prateek, 9 Oct: "the chapters in the path don't seem clickable").
   const [previewN, setPreviewN] = useState<number | null>(null)
@@ -316,6 +329,7 @@ export default function App() {
   goTonight = () => { setDoneN(null); setView((lib?.handbooks?.length ?? 0) > 0 ? 'library' : hb ? 'plan' : 'auto'); window.scrollTo({ top: 0 }) }
   goKnown = () => { setDoneN(null); setView('known'); window.scrollTo({ top: 0 }) }
   goFront = () => { setDoneN(null); setView('home'); window.scrollTo({ top: 0 }) }
+  authLinks = isAuthenticated || view === 'signin' ? null : { signIn: () => signInFrom(view), signUp: () => signUpFrom(view) }
   const tabs = (lib?.handbooks?.length ?? 0) > 0 || !!hb   // C4's bar shows once there is a handbook to come back to
   // The landing page's starts: the box, a chip, or the demo, which has already shown chapter 1 and opens at chapter 2
   // the way a post link does (?t=…&ch=2), so the reader never reads chapter 1 twice (14 Oct).
@@ -339,9 +353,9 @@ export default function App() {
   }
 
   // A first-time visitor's pick stays on the landing page, with the card lifted, until its handbook is ready (8 Oct night).
-  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   // The front page for a reader who already has books (15 Oct): the same page as a first visit, plus "Your books".
-  if (view === 'home') return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
+  if (view === 'home') return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
   const libRows = lib?.handbooks ?? []
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   // C4 Tonight is the home of a reader with books (14 Oct); the old list, with remove and the sign-in nudge, is Manage.
@@ -396,7 +410,6 @@ export default function App() {
     setPricingNotice(null); setPayAfterSignIn(false)
     setView(['auto', 'pricing', 'signin'].includes(pricingFrom) || (pricingFrom === 'done' && !doneN) ? (hb ? 'plan' : 'library') : pricingFrom)
   }
-  const signInToPay = () => { setPayAfterSignIn(true); setSigninReason('Sign in first; the payment sheet opens right after. Nothing is charged until you approve it there.'); signIn('pricing') }
 
   // Library and pricing can be reached from anywhere, with or without a current handbook.
   if (view === 'pricing') {
@@ -413,12 +426,12 @@ export default function App() {
   if (!hb && view === 'signin') {
     return (
       <Shell back={{ label: 'Back', onClick: () => { if (afterSignIn === 'pricing') setPayAfterSignIn(false); setView(afterSignIn) } }}>
-        <SignIn reason={signinReason} heading={afterSignIn === 'pricing' ? 'Sign in, then pay.' : undefined} onDone={async () => afterSignedIn(() => { setSigninReason(null); setView(afterSignIn === 'done' ? 'library' : afterSignIn) })} onBack={() => { setSigninReason(null); if (afterSignIn === 'pricing') setPayAfterSignIn(false); if (afterSignIn === 'done') { declineWall(); setDoneN(null); setView('plan') } else setView(afterSignIn) }} />
+        <SignIn reason={signinReason} heading={afterSignIn === 'pricing' ? 'Sign in or sign up, then pay.' : signinHeading ?? undefined} onDone={async () => afterSignedIn(() => { setSigninReason(null); setView(afterSignIn === 'done' ? 'library' : afterSignIn) })} onBack={() => { setSigninReason(null); if (afterSignIn === 'pricing') setPayAfterSignIn(false); if (afterSignIn === 'done') { declineWall(); setDoneN(null); setView('plan') } else setView(afterSignIn) }} />
       </Shell>
     )
   }
   if (!hb && view !== 'start-again' && libRows.length === 0 && lib !== undefined) {
-    return <Landing freeChapters={freeChapters} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   }
 
   // No handbook yet, or the person wants a different line: the first screen.
@@ -441,6 +454,8 @@ export default function App() {
           startedAt={(hb as any)?.startedAt}
           goal={(hb as any)?.goal ?? null}
           onPricing={goPricing}
+          onMember={() => becomeMember()}
+          memberPrice={memberPrice}
           onPickReady={view === 'start-again' ? openTopic : undefined}
           onExplore={goExplore}
           key={hb?._id ?? 'new'}
@@ -559,7 +574,7 @@ export default function App() {
       <Shell back={{ label: 'Back', onClick: () => { if (afterSignIn === 'pricing') setPayAfterSignIn(false); setView(afterSignIn) } }}>
         {/* "Want it on every device?" after a free chapter is not the wall: the next chapter is free either way, so the
             heading must not say it needs an account (UX review 9 Oct, #5). Copy (agent). */}
-        <SignIn reason={signinReason} heading={afterSignIn === 'pricing' ? 'Sign in, then pay.' : afterSignIn === 'done' && lockedN && lockedN <= freeChapters ? 'Keep your place on every device.' : signinReason && lockedN ? `Chapter ${lockedN} is free with an account.` : undefined} backLabel={afterSignIn === 'done' ? 'Not now, back to the handbook' : undefined} onDone={async () => afterSignedIn(() => {
+        <SignIn reason={signinReason} heading={afterSignIn === 'pricing' ? 'Sign in or sign up, then pay.' : signinHeading ? signinHeading : afterSignIn === 'done' && lockedN && lockedN <= freeChapters ? 'Keep your place on every device.' : signinReason && lockedN ? `Chapter ${lockedN} is free with an account.` : undefined} backLabel={afterSignIn === 'done' ? 'Not now, back to the handbook' : undefined} onDone={async () => afterSignedIn(() => {
           setSigninReason(null)
           // From the wall after a chapter (8 Oct night): straight on to the next chapter, which the account now opens
           // (only once the handbook is attached to the account; see afterSignedIn).
@@ -739,6 +754,9 @@ function forWhom(level?: string, check?: { right: number; of: number } | null) {
 }
 
 let acct: { manage: () => void; plans: () => void; signIn: (() => void) | null; memory: () => void } | null = null
+// 18 Oct (Prateek: "home page landing page all should have sign in sign up button"): set on every render for a visitor
+// who isn't signed in, null otherwise (and on the sign-in screen itself). Both open the same email-code screen.
+let authLinks: { signIn: () => void; signUp: () => void } | null = null
 
 // A ?l= link's first second (D25): the one book, lifted off its plank the way a Shelf tap lifts it, while the handbook
 // is copied to this phone. No landing page, no splash. The cover comes from the Shelf's list when it has answered.
@@ -775,6 +793,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
       {tab && !bare && (
         <header className="hub-top">
           <button type="button" className="wordmark wordmark-btn" onClick={() => goFront?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}</button>
+          <AuthButtons links={authLinks} />
           <button type="button" className="hub-acct" aria-label="Your account" aria-expanded={menu} onClick={() => setMenu(true)}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6" /><path d="M5 19.5c1.4-3.3 4-5 7-5s5.6 1.7 7 5" /></svg>
             <span className="hub-acct-label">Your account</span>
@@ -793,11 +812,12 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
           </nav>
         </Sheet>
       )}
-      {!bare && !tab && <header className="top">
+      {!bare && !tab && <header className={`top${authLinks ? ' has-auth' : ''}`}>
         <button type="button" className="wordmark wordmark-btn" onClick={() => goFront?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}<small>Five minutes at a time.</small></button>
         {/* The Shelf (8 Oct, Prateek): always one tap away, on every screen. */}
         {!hideShelf && <ShelfButton onOpen={() => goShelf?.()} />}
         <span className="top-actions">
+          <AuthButtons links={authLinks} />
           {back && <button type="button" className="back-link" onClick={back.onClick}>← <span className="bl-long">{back.label}</span><span className="bl-short">Back</span></button>}
           {onSignOut && <button type="button" className="quiet hide-phone" onClick={() => onSignOut()}>Sign out</button>}
           {rail && <button type="button" className="menu-btn" aria-label="Menu" aria-expanded={menu} onClick={() => setMenu(true)}>☰</button>}
