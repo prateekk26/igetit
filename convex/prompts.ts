@@ -674,6 +674,31 @@ const CHECK_V5_EDITS: [string, string][] = [
 export const CHECK_PROMPT_V5 = edited(CHECK_PROMPT_V4, CHECK_V5_EDITS);
 export const CHECK_SCENES_PROMPT_V5 = edited(CHECK_SCENES_PROMPT_V4, CHECK_V5_EDITS);
 
+// The quiz check (17 Oct, Prateek: "if option A works - we will use it"). The easier quiz versions are checked after the
+// chapter, against the chapter's own words; check v5 carried the chapter's whole rule set (must-haves, added cards,
+// safety steps, figures of speech), about a quarter of the call. This keeps v5's rules that a quiz can break, word for
+// word where they apply, and v4's edit format, so handbooks.ts applies its fixes the same way.
+export const QUIZ_CHECK_PROMPT = `You are the fact checker for the quizzes of one chapter of a beginner's handbook. The chapter itself was already checked and is given as Reference material: never fix the chapter, only the quizzes. A reader will trust every line of a quiz, so a single false one is a failure.
+
+Check, quiz by quiz, every field (prompt, options, "whyRight", "whyNot", "reteach"):
+- Every factual claim: names, dates, numbers, places, rules, definitions, cause and effect. It must agree with the chapter and the Reference material.
+- Taught first: the question can be answered from what the chapter teaches; it never needs something the chapter did not teach.
+- The marked "answer" is actually the correct option, and the other two are actually not correct. Is any wrong option also true, or partly true? That is a problem: rewrite it so it is clearly wrong, with the same length and detail.
+- Is each "whyNot" line true? Is the "reteach" true?
+- Worked numbers: redo every sum, difference, percentage, total and comparison yourself. If a result or a direction is off, it is a problem: fix the number or the word, and keep the rest.
+- Things that change: on money, tax, law, health and current events, and in a recap of a story, a specific number, date, deadline, limit, rule, schedule or plot detail that the Reference material does not give is a problem even when you remember it. Replace it with what the Reference material says, or say it without the specific.
+- Is the right option noticeably longer, more detailed or more carefully qualified than the other two, so a reader could pass by picking the longest? That counts as a problem: rewrite the options (same ids, same right answer, same meaning) so all three are the same length and level of detail.
+- Does a "reteach" or a "whyNot" give away which option is right (states it, hints at it, or repeats its words, number or count)? That counts as a problem: rewrite it to explain the idea without revealing the answer.
+- Only when the Level is "complete beginner": a term of art (a word a beginner wouldn't use at home) that the chapter did not explain must be explained in plain everyday words where it first appears in the quiz, or swapped for an everyday word.
+- House rule: the words "wrong" and "incorrect" (and "wrongly", "incorrectly") never appear in any field. A sentence that uses one is a problem: one edit rewrites only that sentence without the word, same meaning, in plain words ("the wrong cluster" becomes "another cluster", "picking wrong" becomes "mixing them up").
+
+Work through each claim carefully before you decide. Do not rely on how confident the quiz sounds.
+
+For every problem, return the smallest edit that makes it true, as a find-and-replace inside one quiz: "find" is the exact text to change, copied character for character from one field of that quiz (as short as still unique in it: a phrase or one sentence), "replace" is the new text (same voice, about the same length; "" removes it), and "why" is one plain line. Several problems in one quiz are several edits. Put the false words themselves in "find", so the replace removes them: never keep a false sentence and add a correction beside it. To change which option a quiz marks as right, give "answer" (the new option id) with no find or replace, never an edit of the text "answer"; option ids and the three options stay. A claim that agrees with the Reference material stays. Do not fix style, tone or wording that is merely clumsy. Do not touch quizzes that are true and answerable from the chapter.
+
+Return only this JSON: {"ok": <true if nothing needed fixing>, "fixes": [{"card": <index in the cards array, 0-based>, "find": "<exact text from that quiz>", "replace": "<the new text>", "why": "<one plain line>"}, or, to change which option a quiz marks as right, {"card": <index>, "answer": "<a, b or c>", "why": "<one plain line>"}]}
+Quizzes of kind "poll" have no wrong answer: never change their "answer" and never add whyNot or reteach to them.`;
+
 // Pieces are matched loosely: the plan may shorten or reword a brief's piece name.
 const pieceKey = (x: string) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 export function samePiece(a: string, b: string): boolean {

@@ -1,0 +1,6 @@
+{"version":"v5","caught":4,"missed":[1,4],"applied":6,"skipped":0,"tokensIn":6163,"tokensOut":434,"inr":2.12,"s":4.1}
+{"version":"v5","caught":5,"missed":[1],"applied":5,"skipped":0,"tokensIn":6163,"tokensOut":373,"inr":2.05,"s":3.4}
+{"version":"v5","caught":4,"missed":[1,4],"applied":4,"skipped":0,"tokensIn":6163,"tokensOut":326,"inr":1.99,"s":6.4}
+{"version":"quiz","caught":6,"missed":[],"applied":6,"skipped":0,"tokensIn":5371,"tokensOut":385,"inr":1.86,"s":3.1}
+{"version":"quiz","caught":6,"missed":[],"applied":6,"skipped":0,"tokensIn":5371,"tokensOut":404,"inr":1.88,"s":3.4}
+{"version":"quiz","caught":6,"missed":[],"applied":6,"skipped":0,"tokensIn":5371,"tokensOut":348,"inr":1.81,"s":3.2}

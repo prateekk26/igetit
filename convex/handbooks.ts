@@ -5,7 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { buildsOnLine, WORLD_NAMES, briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V5, CHECK_SCENES_PROMPT_V5, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT_EASIER, versionsUserMessage } from "./prompts";
+import { buildsOnLine, WORLD_NAMES, briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V5, CHECK_SCENES_PROMPT_V5, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT_EASIER, versionsUserMessage, QUIZ_CHECK_PROMPT } from "./prompts";
 import { addCost, inrOf } from "./costs";
 import { pictureCards } from "./pictureCards";
 import type { Trace } from "./trace";
@@ -959,13 +959,13 @@ export async function factCheck(...args: Parameters<typeof factCheckOnly>): Retu
   if (!clean.fixed) return checked;
   return { ...checked, cards: clean.cards, report: { ...checked.report, notes: [...checked.report.notes, `Wording: rewrote ${clean.fixed} card${clean.fixed === 1 ? "" : "s"} that used "wrong" or "incorrect".`] } };
 }
-async function factCheckOnly(ctx: any, topic: string, level: string, title: string, cards: any[], opts: { model?: string; effort?: "low" | "medium" | "high" | "xhigh" | "max"; trace?: Trace; pictures?: { cards: number[]; analogy: string }; reference?: string; delivery?: string; mainCount?: number } = {}): Promise<{ cards: any[]; report: FactReport; scenes: Scene[]; added: number }> {
-  const { pictures, reference, delivery, mainCount, ...callOpts } = opts;
+async function factCheckOnly(ctx: any, topic: string, level: string, title: string, cards: any[], opts: { system?: string; model?: string; effort?: "low" | "medium" | "high" | "xhigh" | "max"; trace?: Trace; pictures?: { cards: number[]; analogy: string }; reference?: string; delivery?: string; mainCount?: number } = {}): Promise<{ cards: any[]; report: FactReport; scenes: Scene[]; added: number }> {
+  const { pictures, reference, delivery, mainCount, system: systemOverride, ...callOpts } = opts;
   const withScenes = !!pictures?.cards.length;
   // reference (D29c): material the cards must agree with (a handbook's own chapters, for its wait stories).
   // Today (9 Oct, after the outside reviews): the checker has no date of its own, so it took recent facts for errors.
   const user = checkUserMessage(topic, level, { title, cards }, withScenes ? pictures : undefined) + `\nToday: ${new Date().toISOString().slice(0, 10)}` + (reference ? `\n\nReference material these cards must agree with (names and numbers in the cards should trace to it or to a named source):\n${reference}` : "") + (delivery ? `\n\nThis chapter must deliver:\n${delivery}` : "");
-  const r = await ctx.runAction(internal.ai.generate, { kind: "check", system: checkPrompt(withScenes), user, ...callOpts });
+  const r = await ctx.runAction(internal.ai.generate, { kind: "check", system: systemOverride ?? checkPrompt(withScenes), user, ...callOpts });
   if (!r.ok) return { cards, report: { status: "unchecked", fixes: 0, notes: [r.error], at: Date.now() }, scenes: [], added: 0 };
   const scenes: Scene[] = [];
   for (const x of withScenes && Array.isArray(r.json?.scenes) ? r.json.scenes : []) {
@@ -1000,7 +1000,7 @@ async function factCheckOnly(ctx: any, topic: string, level: string, title: stri
     const asked = broken.splice(0);
     const again = `Topic: ${topic}\nThese edits could not be applied: the "find" text is not in the card exactly as written (or the change broke the card). For each, copy "find" character for character from the card below and give the edit again, in the same JSON format as before.\n` +
       asked.map(({ i, problem, find }) => `Card ${i} (problem: ${problem}${find ? `; your find was: ${find}` : ""}):\n${JSON.stringify(out[i])}`).join("\n\n") + `\n\nReturn only this JSON: {"ok": false, "fixes": [{"card": <index>, "find": "<exact text from that card>", "replace": "<the new text>", "why": "<one plain line>"}]}`;
-    const r2 = await ctx.runAction(internal.ai.generate, { kind: "check", system: checkPrompt(false), user: again, ...callOpts });
+    const r2 = await ctx.runAction(internal.ai.generate, { kind: "check", system: systemOverride ?? checkPrompt(false), user: again, ...callOpts });
     const before = notes.length;
     for (const f of r2.ok && Array.isArray(r2.json?.fixes) ? r2.json.fixes : []) if (asked.some((b) => b.i === Number(f?.card))) apply(f);
     for (let k = before; k < notes.length; k++) notes[k] += " (fixed on the second ask)";
@@ -1230,7 +1230,8 @@ export const addQuizVersions = internalAction({
     const taught = ch.cards.filter((c: any) => c?.type !== "exercise" && typeof c?.body === "string").map((c: any) => `${c.title ? `${c.title}: ` : ""}${c.body}`).join("\n\n");
     const facts = referenceForCheck((h as any).brief, h.plan?.chapters?.[n - 1]?.pieces);
     const reference = [`The chapter these quizzes test (already fact checked: check the quizzes against it, never fix it):\n${taught}`, facts].filter(Boolean).join("\n\n");
-    const checked = await factCheck(ctx, topic, h.level, title, extra, { ...(h.writer ? { model: h.writer } : {}), trace, reference });
+    // 17 Oct: the quiz-only check (prompts.ts QUIZ_CHECK_PROMPT), not the whole chapter's rules.
+    const checked = await factCheck(ctx, topic, h.level, title, extra, { ...(h.writer ? { model: h.writer } : {}), trace, reference, system: QUIZ_CHECK_PROMPT });
     let at = 0;
     const [qe, qh, re, rh] = lists.map((l) => l.map((x: any) => (x ? checked.cards[at++] : null)));
     await ctx.runMutation(internal.handbooks.setQuizTiers, { handbookId, n, cardsCount: ch.cards.length, quizTiers: qv ? { easier: qe, harder: qh } : undefined, recallTiers: rv ? { easier: re, harder: rh } : undefined });
