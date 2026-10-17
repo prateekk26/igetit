@@ -2,11 +2,18 @@ import { Password } from "@convex-dev/auth/providers/Password";
 import { Email } from "@convex-dev/auth/providers/Email";
 import { internal } from "./_generated/api";
 import { convexAuth } from "@convex-dev/auth/server";
+import { ConvexError } from "convex/values";
+import { isEmail } from "./emailCheck";
 
 // Email + a 6-digit code (7 Oct, Prateek): no password to make up, the lightest sign-up we can offer. The code goes out
 // through Gmail (mail.ts). Email + password stays for accounts made before 7 Oct and as a fallback.
 const EmailCode = Email({
   id: "email-otp",
+  // 18 Oct: an address that can't be real gets no code (and no account).
+  normalizeIdentifier(identifier: string) {
+    if (!isEmail(identifier)) throw new ConvexError("bad-email");
+    return identifier;
+  },
   maxAge: 10 * 60,
   async generateVerificationToken() {
     const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
@@ -18,7 +25,15 @@ const EmailCode = Email({
   },
 });
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [EmailCode, Password],
+  // 18 Oct: a password sign-up with an address that can't be real is refused (it saved "test@demo..com"); signing in to
+  // an existing account is never blocked by the check.
+  providers: [EmailCode, Password({
+    profile(params) {
+      const email = String(params.email ?? "");
+      if (params.flow === "signUp" && !isEmail(email)) throw new ConvexError("bad-email");
+      return { email };
+    },
+  })],
   callbacks: {
     // A code sign-in proves the person controls that inbox, so it joins the account that already has this email
     // (7 Oct: everyone before today signed up with a password, and Prateek's membership is on that account). A

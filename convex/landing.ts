@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { smallUrl } from "./pictures";
 import { query } from "./_generated/server";
-import { onShelf } from "./shelf";
+import { onShelf, weekStarts } from "./shelf";
 import { isFreeRow } from "./freeTen";
 import { CHIP } from "./shortNames";
 
@@ -37,17 +37,13 @@ export const content = query({
     const pictureFor = async (ch: any, card: number) => url(ch?.pictures?.find((p: any) => p.card === card)?.storageId);
     // The shelf (shelf.ts) holds one light row per ready topic, so this page never loads every full handbook (7 Oct).
     const rows = (await ctx.db.query("shelf").withIndex("by_kind", (q) => q.eq("kind", "ready")).collect()).filter((r) => r.level === "new" && onShelf(r));   // D34
-    // Real numbers for the carousel pills (6 Oct): started this week, share passing chapter 1, trending, new.
-    const excluded = await ctx.db.query("statsExcluded").collect();
-    const xTokens = new Set(excluded.map((e) => e.deviceToken).filter(Boolean) as string[]);
-    const weekAgo = Date.now() - 7 * 24 * 3600000;
-    const recent = (await ctx.db.query("handbooks").withIndex("by_created", (q) => q.gte("createdAt", weekAgo)).collect())
-      .filter((h) => h.source === "cache" && !h.ownerToken?.startsWith("abuse-") && !(h.ownerToken && xTokens.has(h.ownerToken)));
+    // Real numbers for the carousel pills (6 Oct): started this week, share passing chapter 1, trending, new. "This week"
+    // is the last 7 India days from each row's startsByDay (18 Oct: reading the week's handbooks passed 16 MB on dev).
     const thisWeek = weekStartIST();
     const shelf = [];
     for (const r of rows) {
       shelf.push({ topic: r.title, outcome: r.outcome, cover: await url(r.cover),
-        week: recent.filter((h) => h.topic === r.topic).length, starts: r.starts, passRate: r.starts >= 3 ? r.passes / r.starts : null,
+        week: weekStarts(r.startsByDay), starts: r.starts, passRate: r.starts >= 3 ? r.passes / r.starts : null,
         trending: r.trendingWeek === thisWeek, addedAt: r.addedAt, mode: r.mode ?? null, free: isFreeRow(r),
         improved: !!r.improvedAt && Date.now() - r.improvedAt < 14 * 24 * 3600000 });
     }

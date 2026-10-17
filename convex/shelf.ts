@@ -113,7 +113,55 @@ export const countReady = internalMutation({
     const h = handbookId ? await ctx.db.get(handbookId) : null;
     if (h?.ownerToken && (h.ownerToken.startsWith("abuse-") || await ctx.db.query("statsExcluded").filter((q) => q.eq(q.field("deviceToken"), h.ownerToken)).first())) return;
     const s = await ctx.db.query("shelf").withIndex("by_topic_kind", (q) => q.eq("topic", topic).eq("kind", "ready")).unique();
-    if (s) await ctx.db.patch(s._id, { starts: (s.starts ?? 0) + (started ? 1 : 0), passes: (s.passes ?? 0) + (passed ? 1 : 0) });
+    if (s) await ctx.db.patch(s._id, { starts: (s.starts ?? 0) + (started ? 1 : 0), passes: (s.passes ?? 0) + (passed ? 1 : 0), ...(started ? { startsByDay: bumpDay(s.startsByDay) } : {}) });
+  },
+});
+
+// "Started this week" on the home page (18 Oct): it read every handbook made in the last 7 days, whole, and on dev passed
+// Convex's 16 MB a call (landing.ts). Each ready topic now keeps its starts per India day for the last 8 days.
+const DAY_MS = 24 * 3600000;
+export const istDayOf = (t: number) => new Date(t + 5.5 * 3600000).toISOString().slice(0, 10);
+export const lastDays = (n: number, now = Date.now()) => Array.from({ length: n }, (_, k) => istDayOf(now - k * DAY_MS));
+function bumpDay(m: Record<string, number> | undefined, now = Date.now()) {
+  const keep = new Set(lastDays(8, now)), today = istDayOf(now);
+  const out: Record<string, number> = {};
+  for (const [d, n] of Object.entries(m ?? {})) if (keep.has(d)) out[d] = n;
+  out[today] = (out[today] ?? 0) + 1;
+  return out;
+}
+export const weekStarts = (m: Record<string, number> | undefined, now = Date.now()) => lastDays(7, now).reduce((t, d) => t + (m?.[d] ?? 0), 0);
+// One-off fill of startsByDay from the last 8 days of handbooks, a page at a time (each page stays far under the limit):
+//   npx convex run --prod shelf:fillWeekStarts
+export const weekPage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()), since: v.number() },
+  handler: async (ctx, { cursor, since }) => {
+    const r = await ctx.db.query("handbooks").withIndex("by_created", (q) => q.gte("createdAt", since)).paginate({ cursor, numItems: 40 });
+    const excluded = new Set((await ctx.db.query("statsExcluded").collect()).map((e) => e.deviceToken));
+    const out = r.page.filter((h) => h.source === "cache" && !h.ownerToken?.startsWith("abuse-") && !(h.ownerToken && excluded.has(h.ownerToken))).map((h) => ({ topic: h.topic, day: istDayOf(h.createdAt) }));
+    return { out, cursor: r.continueCursor, done: r.isDone };
+  },
+});
+export const setWeekStarts = internalMutation({
+  args: { counts: v.record(v.string(), v.record(v.string(), v.number())) },
+  handler: async (ctx, { counts }) => {
+    let n = 0;
+    for (const s of await ctx.db.query("shelf").withIndex("by_kind", (q) => q.eq("kind", "ready")).collect()) { await ctx.db.patch(s._id, { startsByDay: counts[s.topic] ?? {} }); n++; }
+    return n;
+  },
+});
+export const fillWeekStarts = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ rows: number; starts: number }> => {
+    const since = Date.now() - 8 * DAY_MS;
+    const counts: Record<string, Record<string, number>> = {};
+    let cursor: string | null = null, starts = 0;
+    for (;;) {
+      const r: any = await ctx.runQuery(internal.shelf.weekPage, { cursor, since });
+      for (const x of r.out) { (counts[x.topic] ??= {})[x.day] = (counts[x.topic][x.day] ?? 0) + 1; starts++; }
+      if (r.done) break; cursor = r.cursor;
+    }
+    const rows: number = await ctx.runMutation(internal.shelf.setWeekStarts, { counts });
+    return { rows, starts };
   },
 });
 

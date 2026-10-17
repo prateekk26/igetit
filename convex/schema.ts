@@ -410,6 +410,8 @@ export default defineSchema({
     // chapter, else 5 a chapter, the average). Set by syncReady and syncShared; old rows by shelf.fillLengths.
     chapters: v.optional(v.number()), minutes: v.optional(v.number()),
     starts: v.number(), passes: v.number(),
+    // 18 Oct: starts per India day, the last 8 days, so the home page's "this week" reads no handbooks (shelf.countReady).
+    startsByDay: v.optional(v.record(v.string(), v.number())),
   }).index("by_topic_kind", ["topic", "kind"]).index("by_library", ["libraryId"]).index("by_kind", ["kind"]),
 
   // Estimated spend per IST day, model and job (costs.ts, 7 Oct): what /admin's cost view reads.

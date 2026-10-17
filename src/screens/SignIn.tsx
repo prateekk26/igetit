@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { isEmail } from '../../convex/emailCheck'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -23,7 +24,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
   const [sentNote, setSentNote] = useState<string | null>(null)
   const [resendAt, setResendAt] = useState(0)   // "Send a new code" waits 30 s, and says when it has sent one (UX review 9 Oct)
   const [, tick] = useState(0)
-  const valid = /^\S+@\S+\.\S+$/.test(email.trim())
+  const valid = isEmail(email)   // 18 Oct: the same check as the server (convex/emailCheck.ts)
   // Until the Gmail app password is set (mailLimits.codesReady), codes can't go out: start on the password form.
   const codesReady = useQuery(api.mailLimits.codesReady, {})
   // The code field takes focus when the step changes (autoFocus alone misses it on some phones).
@@ -36,7 +37,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
   const edit = (set: (v: string) => void) => (v: string) => { set(v); if (error) setError(null) }
 
   const sendCode = async (again = false) => {
-    if (!valid) { setError("Check the email: it needs an @ and a dot."); return }
+    if (!valid) { setError("Check the email: it doesn't look complete (for example, two dots in a row, or no ending like .com)."); return }
     setBusy(true); setError(null); setSentNote(null)
     try {
       await signIn('email-otp', { email: email.trim() }); setStep('code'); setCode('')
@@ -45,6 +46,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
     }
     catch (e: any) {
       const m = String(e?.message ?? e)
+      if (e?.data === 'bad-email' || m.includes('bad-email')) { setError("Check the email: it doesn't look complete (for example, two dots in a row, or no ending like .com)."); return }
       setError(m.includes('too many') ? "That's a few codes in a row. Wait a few minutes, then try again." : "Couldn't send the code just now. Try again in a minute.")
     } finally { setBusy(false) }
   }
@@ -56,7 +58,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
   }
   const pwOk = valid && password.length >= (flow === 'signUp' ? 8 : 1)
   const withPassword = async () => {
-    if (!valid) { setError("Check the email: it needs an @ and a dot."); return }
+    if (!valid) { setError("Check the email: it doesn't look complete (for example, two dots in a row, or no ending like .com)."); return }
     if (flow === 'signUp' && password.length < 8) { setError('Use at least 8 characters for the password.'); return }
     if (!password) { setError('Type your password.'); return }
     setBusy(true); setError(null)
@@ -65,6 +67,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
       const m = String(e?.message ?? e)
       // Say what to do next, not "didn't go through" (UX review 9 Oct: an existing account got that). On the live site
       // the server's reason is hidden, so each message covers the likely causes without saying which accounts exist.
+      if (e?.data === 'bad-email' || m.includes('bad-email')) { setError("Check the email: it doesn't look complete (for example, two dots in a row, or no ending like .com)."); return }
       if (/already exists/i.test(m)) { setFlow('signIn'); setPassword(''); setError('There is already an account with this email. Sign in with its password, or use a code by email.'); return }
       if (flow === 'signIn') { setPassword(''); setError("That email and password don't match. Forgot it, or never set one? A code by email signs you in."); return }
       setError("Couldn't make that account. If this email has signed up before, sign in instead: a code by email works for every account.")

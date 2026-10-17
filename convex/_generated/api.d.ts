@@ -17,6 +17,7 @@ import type * as auth from "../auth.js";
 import type * as costs from "../costs.js";
 import type * as crons from "../crons.js";
 import type * as doctor from "../doctor.js";
+import type * as emailCheck from "../emailCheck.js";
 import type * as evalArtifact from "../evalArtifact.js";
 import type * as evalCases from "../evalCases.js";
 import type * as evalChapterPrompt from "../evalChapterPrompt.js";
@@ -132,6 +133,7 @@ declare const fullApi: ApiFromModules<{
   costs: typeof costs;
   crons: typeof crons;
   doctor: typeof doctor;
+  emailCheck: typeof emailCheck;
   evalArtifact: typeof evalArtifact;
   evalCases: typeof evalCases;
   evalChapterPrompt: typeof evalChapterPrompt;
