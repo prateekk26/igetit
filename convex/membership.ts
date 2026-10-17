@@ -188,3 +188,29 @@ export const budgetToday = query({
     return { day, spent: Math.round(row ? Number(row.value) || 0 : 0), budget: LIMITS.dailyBudgetInr };
   },
 });
+
+// Delete one account made by mistake (18 Oct, Prateek: "Delete the other .. user", a sign-up typed as "test@demo..com").
+// Only an account with nothing on it: no handbooks, payments, price taps or membership; its profile and sign-in records
+// go with it. The email must match the id, so a wrong id deletes nothing. Run by hand:
+//   npx convex run --prod membership:deleteEmptyAccount '{"userId":"...","email":"..."}'
+export const deleteEmptyAccount = internalMutation({
+  args: { userId: v.id("users"), email: v.string() },
+  handler: async (ctx, { userId, email }) => {
+    const user = await ctx.db.get(userId);
+    if (!user || user.email !== email) return { ok: false, error: "No account with that id and email." };
+    const has = async (table: "handbooks" | "payments" | "priceIntents" | "grants") => !!(await (ctx.db.query(table) as any).withIndex("by_user", (q: any) => q.eq("userId", userId)).first());
+    for (const t of ["handbooks", "payments", "priceIntents", "grants"] as const) if (await has(t)) return { ok: false, error: `It has ${t}; not deleted.` };
+    let removed = 0;
+    for (const p of await ctx.db.query("profiles").withIndex("by_user", (q) => q.eq("userId", userId)).collect()) { await ctx.db.delete(p._id); removed++; }
+    for (const s of await ctx.db.query("authSessions").withIndex("userId", (q) => q.eq("userId", userId)).collect()) {
+      for (const t of await ctx.db.query("authRefreshTokens").withIndex("sessionId", (q) => q.eq("sessionId", s._id)).collect()) { await ctx.db.delete(t._id); removed++; }
+      await ctx.db.delete(s._id); removed++;
+    }
+    for (const a of await ctx.db.query("authAccounts").withIndex("userIdAndProvider", (q) => q.eq("userId", userId)).collect()) {
+      for (const c of await ctx.db.query("authVerificationCodes").withIndex("accountId", (q) => q.eq("accountId", a._id)).collect()) { await ctx.db.delete(c._id); removed++; }
+      await ctx.db.delete(a._id); removed++;
+    }
+    await ctx.db.delete(userId);
+    return { ok: true, removed: removed + 1 };
+  },
+});
