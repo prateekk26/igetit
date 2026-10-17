@@ -1224,9 +1224,12 @@ export const addQuizVersions = internalAction({
     // 17 Oct: only the new quiz versions are checked. The chapter's own cards were checked before the reader saw them, and
     // re-sending them made Sonnet re-check (and re-fix) cards whose fixes were then thrown away: 34% of the fact-check
     // bill on prod. They travel as reference instead (read, never edited), with the research facts the main check had.
-    const strip = (c: any) => { const { html: _h, ...rest } = c ?? {}; return rest; };
+    // 17 Oct (Prateek: "lets trim it as well"): the chapter goes as its reading text (title and words of each teaching
+    // card), not as every card's JSON with options, feedback and settings: the check only needs what was taught. On a
+    // dev chapter: 7,243 characters of text against 11,377 of JSON, in a call of about 7,500 tokens.
+    const taught = ch.cards.filter((c: any) => c?.type !== "exercise" && typeof c?.body === "string").map((c: any) => `${c.title ? `${c.title}: ` : ""}${c.body}`).join("\n\n");
     const facts = referenceForCheck((h as any).brief, h.plan?.chapters?.[n - 1]?.pieces);
-    const reference = [`The chapter these quizzes test (already fact checked: check the quizzes against it, never fix it):\n${JSON.stringify([...ch.cards, ...recall].map(strip))}`, facts].filter(Boolean).join("\n\n");
+    const reference = [`The chapter these quizzes test (already fact checked: check the quizzes against it, never fix it):\n${taught}`, facts].filter(Boolean).join("\n\n");
     const checked = await factCheck(ctx, topic, h.level, title, extra, { ...(h.writer ? { model: h.writer } : {}), trace, reference });
     let at = 0;
     const [qe, qh, re, rh] = lists.map((l) => l.map((x: any) => (x ? checked.cards[at++] : null)));
