@@ -198,3 +198,4 @@ Decided by the agent in Prateek's stead, night of 4 Oct (read these first):
 2026-10-18 00:10 No quizzes inside chapters for new books, one recall question opens the next chapter, no quiz versions (D129); Shelf match and goal question side by side, move and Try it drawings after the chapter is saved (D130). Quick book checked on dev; the course chapter test and a real move drawing not yet seen at deploy.
 2026-10-18 00:45 Research replies with small shape slips are repaired in code instead of asked again (D131): about 18 s saved on the 7% of research calls that hit it.
 2026-10-18 00:50 Rubric score on first open instead of when written (D132).
+2026-10-18 01:05 Complimentary membership (D133): membership:grant gives an account N days without a payment, for the shared test account.

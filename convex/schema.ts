@@ -355,6 +355,9 @@ export default defineSchema({
     .index("by_device", ["deviceToken"]),
 
   // Razorpay payments (6 Oct). One row per order; "paid" only after Razorpay's signature checks out.
+  // 18 Oct (Prateek: "member, give it 30 days"): membership given without a payment, for a shared test account. Never a
+  // payment row, so the early-bird tiers count only people who paid (pricing.ts TIERS). membership.ts memberUntil reads it.
+  grants: defineTable({ userId: v.id("users"), until: v.number(), why: v.string(), at: v.number() }).index("by_user", ["userId"]),
   payments: defineTable({
     userId: v.id("users"),
     amount: v.number(),                  // rupees

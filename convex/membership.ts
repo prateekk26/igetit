@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { isSuper } from "./admin";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { DAYS } from "./pricing";
 import { isOwner } from "./admin";
@@ -51,8 +51,26 @@ export async function memberUntil(ctx: QueryCtx | MutationCtx, userId: Id<"users
     if (r.status !== "paid" || r.mode !== modeOf()) continue;
     end = Math.max(end, (r.paidAt ?? r.at) + ((r as any).days ?? DAYS.month) * DAY);
   }
+  // A membership given without a payment (grants, 18 Oct): the same member, until its date.
+  for (const g of await ctx.db.query("grants").withIndex("by_user", (q) => q.eq("userId", userId)).collect()) end = Math.max(end, g.until);
   return end > Date.now() ? end : null;
 }
+
+// Give an account membership for some days without a payment (18 Oct, Prateek: a shared test account, "member, give it
+// 30 days"). The account must exist first (signed up on the site). Run by hand:
+//   npx convex run --prod membership:grant '{"email":"...","days":30,"why":"shared test account"}'
+export const grant = internalMutation({
+  args: { email: v.string(), days: v.number(), why: v.string() },
+  handler: async (ctx, { email, days, why }) => {
+    const e = email.trim();
+    const user = (await ctx.db.query("users").withIndex("email", (q: any) => q.eq("email", e)).first()) ?? (await ctx.db.query("users").withIndex("email", (q: any) => q.eq("email", e.toLowerCase())).first());
+    if (!user) return { ok: false, error: "No account with that email yet: sign up on the site first." };
+    if (!(days >= 1 && days <= 366)) return { ok: false, error: "Days must be 1 to 366." };
+    const until = Date.now() + Math.round(days) * DAY;
+    await ctx.db.insert("grants", { userId: user._id, until, why: why.slice(0, 200), at: Date.now() });
+    return { ok: true, until: new Date(until).toISOString() };
+  },
+});
 
 export async function ownerIsMember(ctx: QueryCtx | MutationCtx, h: Doc<"handbooks">) {
   return !!(await memberUntil(ctx, h.userId));
