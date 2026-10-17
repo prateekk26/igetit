@@ -5,6 +5,37 @@ What each day taught us, not what shipped (that's PROGRESS.md). Every build day 
 Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-of-sprint write-up. A message that starts with "learned:" lands under "Noted during the day" at the bottom; fold those into the day before the session ends.
 
 
+## Fri 16 Oct, the day (day 15; payments blocked, the level check)
+
+### Product/Tech
+- **Thought:** a domain move is done when the app and its settings use the new address. **Learned:** Razorpay checks the website a payment comes from against the websites on the account; ours listed only the .convex.site address, so every payment on www.igetit.now failed at the first step for six days, and nothing on our side logged an error. **Now:** after any address change, make one real attempt through each outside service from the new address.
+- **Thought:** "Tapped Pay: 0" meant nobody tried to pay. **Learned:** Razorpay had an attempt our funnel never counted. **Now:** read the provider's own dashboard next to our numbers before saying nobody paid.
+- **Thought:** a level quiz needs a prompt rewrite and an eval run. **Learned:** passing the result as one extra input line was enough: research started from what the reader knew ("you understand that index funds mirror benchmarks") and chapter 1 went straight to the missed idea (SIPs). Readers who skip get the same request as before. **Now:** new reader signals go in as input lines first; the prompt's text changes only if the line is ignored.
+
+### GTM
+- **Thought:** 10 people passing chapter 1 and 1 sign-up means the sign-up ask fails. **Learned:** the real ask comes after chapter 2, and only 2 readers reached it that week (1 signed up). **Now:** read where an ask sits in the code before judging its rate.
+
+## Thu 15 Oct, the night (day 14; the C boards finished and launched)
+
+### Product/Tech
+- **Thought:** "close" screens needed small tweaks. **Learned:** the last seven took a schema field (kept answers), two queries, a new screen (C11) and a running-head name map; "close" hid one new flow (C7's sure step) and one new screen's worth of data. **Now:** a board marked close gets its gaps listed as work items with their data needs before it's called close.
+- **Thought:** a 24 px margin is a one-line change. **Learned:** it moved every full-bleed band (C9's marigold band showed an 8 px edge) because those bands assumed the old margin. **Now:** after a margin change, check every band and sideways row at 390 px before calling it done.
+- **Thought:** the screenshot script ran my tap scripts. **Learned:** three runs passed it the tap script as a setting, not an argument, so it never ran and the shots showed the page before the tap. **Now:** the script prints what the tap returned ("PRE: true"); no line means it didn't run.
+
+### GTM
+- **Thought:** the boards are the whole spec. **Learned:** working features the boards don't draw (C2's "Ready now" card, Done's reminder link, the pace question) need a yes or no from Prateek, not a quiet removal or a quiet keep. **Now:** each one is listed on the side-by-side page as "your call".
+
+## Mon 12 Oct, the day (day 11; the teaching ads)
+
+### Product/Tech
+- **Thought:** a handbook Prateek types can go on the Shelf by the usual route. **Learned:** the automatic route (library.consider) turns down anything typed on our own phones, so the corporate handbook would never have reached his Approve queue. Adding it with library.publish as "pending", then his tap on /admin, kept the D32 rule (nothing typed goes public without him) in one step. **Now:** our own handbooks for posts go in as pending and wait for his tap; never set published by hand.
+
+### GTM
+- **Thought:** a feature list sells the product. **Learned:** feedback on the first ad was that the script could be a lot better; the rewrite teaches one real card ("26 times subscribed tells you about the crowd, not the company") and adds one sourced number (52 of 112 FY26 mainboard IPOs below issue price, Business Standard / PRIME Database). It cost 84 more credits (about ₹78) in new clips, and it gives the viewer something even if they never tap. **Now:** every ad teaches one card from the real chapter, with one number and its source on screen.
+- **Thought:** a character sheet from 7 photos looks like the person. **Learned:** for Tanisha, take 1 came out lighter-skinned with a narrower face and a different nose; with two face close-ups as the first references and her features named ("round face, full cheeks, warm medium-brown skin, do not lighten"), take 2 matched. 2.5 credits a try. **Now:** put every sheet side by side with the real photos before using it, especially for skin tone.
+- **Thought:** a clip made from another clip's last frame starts on that frame. **Learned:** Omni's first frame matched only 0.76 (SSIM) and its room drifted in one 10 s clip (the bookshelf moved up the wall). A 110% punch-in at the join, or the drifted clip's voice over app footage, hides both. **Now:** check the join frames and the background of every clip; plan cuts to the app where a clip drifts.
+- **Thought:** Instagram's 30 s is enough room. **Learned:** clip A whole, a sourced number, two term cards, the chapter list and the call to action came to 29.9 s; the only cuts left were pauses at picture changes. **Now:** a teaching ad has one hook, one number, at most two taught terms and one call to action.
+
 ## Sun 11 Oct, the day (day 10; the first AI ad)
 
 ### Product/Tech
@@ -13,6 +44,10 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 - **Thought:** a copy row per spelling is a cheap alias. **Learned:** 38 of them (a full handbook each, about 190 KB) pushed the cache read on every visit past 16 MB and the site failed for about 12 minutes; the read is 13.4 MB now. **Now:** aliases are redirects; any table read whole on the reader's path gets a size check before a batch lands.
 - **Thought:** 16 picture jobs in parallel finish 16 times faster. **Learned:** Runway runs 3 at a time on our tier; about 80 queued pictures timed out every call at 10 minutes. **Now:** batches go through the one-at-a-time server queue.
 - **Thought:** the Opus fact check makes a handbook safe to ship. **Learned:** a full read still found 134 things to fix in 112 checked chapters: 68 facts (rules that changed in 2025 and 2026: Thai cash, Vietnamese drug law, Australian card surcharges, US customs fines), 41 banned words, 12 quizzes, 12 broken sums. **Now:** a hand-planned batch is read against the web before it goes live, not only checked against its own brief.
+
+### GTM
+- **Thought:** an AI video model reads the script as written. **Learned:** on the first takes of a 15 s ad (Gemini Omni Flash, two 8 s clips), one clip said "sales" for "saved reels" and the other dropped the website name entirely, the one line the ad exists for. Written as separate words with a "say all five words" note ("Try I Get It dot now"), the second take said it; a transcript (whisper) caught both, and watching the frames wouldn't have. **Now:** transcribe every clip before editing; the call to action gets its own beat and is spelled out word by word.
+- **Thought:** AI footage needs an AI-looking product. **Learned:** cutting to real 1080×1920 captures of the live app for 3.4 of 15 s shows the product honestly and covers the parts a video model can't draw (a phone screen). **Now:** every AI ad cuts to real screens for the product beat.
 
 ## Sun 11 Oct, the night (day 10, 05:00 to 13:00; the agent alone, Prateek asleep)
 
@@ -297,3 +332,5 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 - Now: 3-5 hashtags, #IGetIt first; on X, a two-week test (link in the post on odd days, first reply on even days), judged by visitors with utm_source=x.
 
 ## Noted during the day
+
+learned: 13 Oct, D97. Thought a Chrome window resize gives a 390 px check; learned the docked window stayed 1680 wide (innerWidth said so), so the phone proof came from headless Chrome with device metrics (the prove-path harness). Now: read innerWidth before trusting any "phone" screenshot.

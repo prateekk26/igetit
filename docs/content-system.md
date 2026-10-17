@@ -43,7 +43,7 @@ Length 20-40 s. No intro, no "hey guys", no pauses. Speak the hook first, then e
 
 | When | Who | What |
 |---|---|---|
-| By 10 PM the night before | Agent | Tomorrow's script in docs/launch/scripts/<date>.md: hook, the one idea, the app screen to record, payoff, CTA, plus the caption |
+| By 10 PM the night before | Agent | Tomorrow's script in docs/launch/scripts/<date>.md: hook, the one idea, the app screen to record, payoff, CTA, plus the caption. Script and caption both go through the humanizer skill and get read aloud: a stranger must know what the reel is about by 3 s (UD, 13 Oct: "I genuinely feel like I don't understand what he was saying in the script until 15 seconds in. Please don't use AI to write the script.") |
 | Morning, any time before 1 PM | Prateek | Record: 3 takes of the hook alone, then 2 full takes; plus a phone screen recording of the app card the script names (www.igetit.now/?utm_source=internal). AirDrop to the Mac and say "recorded" |
 | By 5 PM | Agent | docs/launch/edit/edit.py: pauses cut, hook, rehook cut to the screen recording, captions checked against the script, end card; the finished reel and its caption, checked frame by frame |
 | 7 PM IST | Prateek | Post (or tell the agent to post it from Chrome); stories with the link sticker; reply to comments for the first hour |

@@ -22,7 +22,24 @@ Entry format:
 Day 1 is Fri 2 Oct (kickoff); Sat 17 Oct is submission.
 
 
+## Fri 16 Oct (day 15)
+
+### Payments were blocked on our own domain for six days
+- **Realised:** 16 Oct (day 15), when Prateek said people were trying to pay and couldn't; Razorpay's payment page said "Payment blocked as website does not match registered website(s)".
+- **Could have known:** 10 Oct (day 9), the day www.igetit.now became the live address (D66). The switch covered our code and Convex settings; nobody listed the outside dashboards that hold our address.
+- **What it cost:** every payment from www.igetit.now since then. Razorpay recorded one blocked ₹199 attempt (16 Oct 17:47), the only attempt since 7 Oct; our own stats counted 0 Pay taps that week, so we can't say how many more gave up before Razorpay. Fix: 24 to 48 hours of Razorpay review.
+- **Now:** an address change gets a list of every outside service that stores it (Razorpay website and webhook, sign-in redirect, analytics, link previews), each checked with one real attempt from the new address.
+- **Post opener:** "We moved to a shiny new domain. Our payment provider quietly refused every rupee for six days."
+
+
 ## Tue 13 Oct (day 12)
+
+### Our posts talked about the build instead of what a reader gets
+- **Realised:** 13 Oct (day 12). UD (GrowthX mentor) reviewed one of our X posts in a DM (x.com/KurkanjiPrateek/status/2109700326127435996): the first line, the most valuable space, said "Day N of building in public", and "people don't care". The numbers line ("78 visitors · 32 handbooks started...") meant nothing to a stranger and was too small to make anyone curious. The post called the AI model "he". The clone story made UD think I Get It might be an AI clone product. And the reel's script didn't make sense until 15 seconds in: "Please don't use AI to write the script."
+- **Could have known:** 6 Oct (day 5), when we fixed the X format as Day N plus live numbers. Every X post since opened with the journey. And from our own reel formula: the point lands in the first 3 seconds.
+- **What it cost:** X has sent 2 visitors in total (1 from x, 1 from t.co) out of 80 tracked, against 52 from GrowthX and 21 from Instagram. That's 8 days of daily X posts.
+- **Now:** every post opens with what the reader will learn and keeps the build story out. Every caption and reel script goes through the humanizer skill (.claude/skills/humanizer, from github.com/blader/humanizer) and gets read aloud before Prateek sees it. x-post, ig-post and docs/content-system.md say so.
+- **Post opener:** "A mentor read my tweet and asked: who is 'he'? It was an AI. I'd been writing like one too."
 
 ### "The next chapter will slow down" was a promise the writer never heard
 - **Realised:** 13 Oct (day 12), redesigning the question after each chapter (D96).
