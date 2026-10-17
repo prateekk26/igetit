@@ -22,6 +22,15 @@ Entry format:
 Day 1 is Fri 2 Oct (kickoff); Sat 17 Oct is submission.
 
 
+## Sat 17 Oct (day 16)
+
+### Backup models were eating almost half the AI bill
+- **Realised:** 17 Oct (day 16), chasing why a book cost ₹70 to ₹75 instead of ₹15 to ₹20.
+- **Could have known:** 9 Oct (day 8), when the call log started marking chapters that "bounced" to Opus and /admin showed it; nobody added it up as money.
+- **What it cost:** in the 7 days to 17 Oct, ₹368 of ₹830 of live AI spend went to backups (Opus chapters ₹194, Claude research ₹92, Opus plans ₹82); 14 of 38 Gemini chapter calls failed. A typed book's median was ₹50. Readers waited too: 212 s median to chapter 1, 405 s for the slowest 5%.
+- **Now:** the release gate fails when a test book's median cost is over ₹14.5, the second Gemini model (which failed the same way) is gone, and backups are a cost line we read, not a safety net we forget.
+- **Post opener:** "Our safety net was costing more than the thing it was catching."
+
 ## Fri 16 Oct (day 15)
 
 ### Payments were blocked on our own domain for six days

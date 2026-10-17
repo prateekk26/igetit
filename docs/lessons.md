@@ -5,6 +5,19 @@ What each day taught us, not what shipped (that's PROGRESS.md). Every build day 
 Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-of-sprint write-up. A message that starts with "learned:" lands under "Noted during the day" at the bottom; fold those into the day before the session ends.
 
 
+## Sat 17 Oct, the day (day 16; the first handbook faster, cheaper, truer)
+
+### Product/Tech
+- **Thought:** plans were rewritten because the writer named pieces differently from the checker. **Learned:** replaying 60 plans showed the picture rule: Gemini's structured output drops any field that isn't in the schema, so the checker asked for a field the writer could never send; 24 of 60 plans were rewritten, 2 of 60 once the two agreed. **Now:** every field a checker reads is in the writer's schema, and a cause is replayed on real data before it's fixed.
+- **Thought:** the expensive part of a book was the writing. **Learned:** 44% of last week's live AI spend (₹368 of ₹830) went to backup models after Gemini failed: an Opus chapter costs about ₹16, a Gemini one about ₹1.60, and an Opus chapter reads fine, so no quality score could see it. **Now:** the gate fails on cost (median ₹ per test book, limit ₹14.5), not only on quality.
+- **Thought:** the cheapest planner was the sensible one. **Learned:** on whole books, Sonnet's plans kept their promises best (4 and 4 of 5, Gemini 2 and 1) for about ₹3 more a book, and it was the fastest planner (12 s). **Now:** compare models on whole books from the same research, not on one chapter.
+- **Thought:** a gate baseline is a fixed truth. **Learned:** ours (outcome 3.22, facts 3.64) came from a run where some plans had quietly fallen to Opus; today's runs swung 0.2 with no change. **Now:** the baseline comes from a run on the settings that ship, and a change under 0.2 is read as noise.
+- **Thought:** a low facts score needs a better model. **Learned:** reading the graders' reasons on the 3 always-low topics showed a pattern (a sum slip, an old expiry day, an old tax rule, plot details from memory); three lines in the fact check moved Nifty options from 2 to 3 per run to 3 to 4, and filing ITR to 4, 4, 4. **Now:** read the reasons before changing a model.
+
+### GTM
+- **Thought:** the wait before chapter 1 was a tech number. **Learned:** it's where we lose readers; research to chapter 1 went from about 190 s to 88 to 98 s on dev with no change a reader can see except the wait. **Now:** chapter 1's wait is watched like a funnel step.
+- **Thought:** the Shelf judge's "rejected" meant a bad book. **Learned:** the inference routing book Prateek liked was rejected at 6 of 12, partly on quiz checks that can't apply to a chapter 1 with no quizzes. A wrong rejection costs the Shelf a book readers would have opened. **Now:** the Shelf review fixes facts first and only keeps out a book still false after fixing; Prateek's Approve still decides.
+
 ## Fri 16 Oct, the day (day 15; payments blocked, the level check)
 
 ### Product/Tech
