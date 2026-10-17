@@ -84,8 +84,9 @@ export const check = z.looseObject({
 
 const versionList = z.array(exercise.and(z.looseObject({ n: z.number().int().min(1) })));
 export const versions = z.looseObject({
-  quiz: z.looseObject({ easier: versionList, harder: versionList }).optional(),
-  recall: z.looseObject({ easier: versionList, harder: versionList }).optional(),
+  // harder is optional since 17 Oct: new chapters get the easier version only (prompts.ts VERSIONS_PROMPT_EASIER).
+  quiz: z.looseObject({ easier: versionList, harder: versionList.optional() }).optional(),
+  recall: z.looseObject({ easier: versionList, harder: versionList.optional() }).optional(),
 });
 
 export const scenes = z.looseObject({

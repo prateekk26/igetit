@@ -172,6 +172,9 @@ export default defineSchema({
   // Explainer figures (15 Oct): Sonnet's decision for one page, by the page's words (figures.ts pageKey); spec null means
   // the page keeps its painting.
   cardFigures: defineTable({ key: v.string(), spec: v.any(), why: v.optional(v.string()), model: v.string(), at: v.number() }).index("by_key", ["key"]),
+  // 17 Oct: who is deciding a chapter's figures right now (figures.ts decideChapter). Opening a chapter and drawing its
+  // pictures both asked Sonnet at the same moment: 13 of 34 live chapters were decided 2 or 3 times, 0 to 8 s apart.
+  figureClaims: defineTable({ key: v.string(), until: v.number() }).index("by_key", ["key"]),
 
   // A page read aloud (15 Oct, Prateek: "a female voice to read out with emotions and intonation"): Gemini's speech,
   // stored once per exact text and voice, so every reader of a shared page plays the same file.

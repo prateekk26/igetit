@@ -464,6 +464,18 @@ Write a version for EVERY quiz listed: if there are 3 quizzes, return 3 easier a
 
 Return JSON only: {"quiz":{"easier":[<one per quiz, with its n>],"harder":[<one per quiz, with its n>]},"recall":{"easier":[<one per recall quiz, with its n>],"harder":[<one per recall quiz, with its n>]}}`;
 
+// One version, not two (17 Oct, Prateek: "for future books can we keep one quiz version"; "easier is fine for now"). On
+// prod, chapters 2 on were read 42 times on the easier version and 23 on the harder one; a reader who got everything
+// right now keeps the standard quizzes, and their next chapter is already written a step harder (readingReport). Books
+// already written keep both. Back to two: VERSIONS_PROMPT in handbooks.ts writeVersions.
+export const VERSIONS_PROMPT_EASIER = edited(VERSIONS_PROMPT, [
+  [`You write two more versions of each quiz`, `You write one more version of each quiz`],
+  [`The app shows the reader one version, chosen by how they did on the previous chapter,`, `The app shows it to a reader who just missed something in the previous chapter,`],
+  [`\n- "harder", for a reader who got everything right: apply the same idea to a new, realistic situation, with wrong options that are closer. Never a trick, and never anything the chapter did not teach.`, ``],
+  [`return 3 easier and 3 harder.`, `return 3 easier.`],
+  [`{"quiz":{"easier":[<one per quiz, with its n>],"harder":[<one per quiz, with its n>]},"recall":{"easier":[<one per recall quiz, with its n>],"harder":[<one per recall quiz, with its n>]}}`,
+    `{"quiz":{"easier":[<one per quiz, with its n>]},"recall":{"easier":[<one per recall quiz, with its n>]}}`],
+]);
 export function versionsUserMessage(topic: string, title: string, cards: any[], quizzes: any[], recall: any[]) {
   const teaching = cards.filter((c) => c?.type !== "exercise").map((c) => `${c.title ? c.title + ": " : ""}${c.body ?? ""}`).join("\n\n");
   const list = (xs: any[]) => xs.map((q, i) => `Quiz ${i + 1}: ${JSON.stringify(q)}`).join("\n");

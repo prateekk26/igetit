@@ -5,7 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { buildsOnLine, WORLD_NAMES, briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V5, CHECK_SCENES_PROMPT_V5, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT, versionsUserMessage } from "./prompts";
+import { buildsOnLine, WORLD_NAMES, briefForChapter, briefForPlan, referenceForCheck, chapterContext, samePiece, PLAN_PROMPT_V9, CHAPTER_PROMPT_V6, CHECK_PROMPT_V5, CHECK_SCENES_PROMPT_V5, CHECK_PROMPT_NOWRONG, CHECK_SCENES_PROMPT_NOWRONG, CHAPTER_PROMPT_SAYBACK, WORDING_PROMPT, promptTrial, MATCH_PROMPT, matchUserMessage, VERSIONS_PROMPT_EASIER, versionsUserMessage } from "./prompts";
 import { addCost, inrOf } from "./costs";
 import { pictureCards } from "./pictureCards";
 import type { Trace } from "./trace";
@@ -368,11 +368,11 @@ export function parseVersions(raw: any, count: number): { easier: any[]; harder:
   const easier = place(raw?.easier), harder = place(raw?.harder);
   return easier.some(Boolean) || harder.some(Boolean) ? { easier, harder } : undefined;
 }
-// The easier and harder versions of a finished chapter's quizzes, from a cheaper model (Sonnet), right after writing.
+// The easier version of a finished chapter's quizzes (17 Oct: the harder one is no longer written), right after writing.
 export async function writeVersions(ctx: any, plan: any, topic: string, title: string, cards: any[], recall: any[], model?: string, trace?: Trace) {
   const quizzes = cards.filter((c) => c?.type === "exercise");
   if (noQuizzes(plan) || (!quizzes.length && !recall.length)) return { qv: undefined, rv: undefined };
-  const r = await ctx.runAction(internal.ai.generate, { kind: "versions", system: VERSIONS_PROMPT, user: versionsUserMessage(topic, title, cards, quizzes, recall), model, trace });
+  const r = await ctx.runAction(internal.ai.generate, { kind: "versions", system: VERSIONS_PROMPT_EASIER, user: versionsUserMessage(topic, title, cards, quizzes, recall), model, trace });
   return { qv: r.ok ? parseVersions(r.json?.quiz, quizzes.length) : undefined, rv: r.ok ? parseVersions(r.json?.recall, recall.length) : undefined };
 }
 // One fact check for the chapter, its recall quizzes and every quiz version; then each goes back in its place.
@@ -1187,7 +1187,8 @@ export const generateChapter = internalAction({
     if (shareable && n > 1 && !h.test) await ctx.runMutation(internal.library.saveChapter, { handbookId, n });
     // D72 (11 Oct): every chapter is scored on the rubric in the background (convex/rubric.ts), a minute later so a
     // showcase build's Try it repair lands first. A reader never waits on it.
-    await ctx.scheduler.runAfter(60000, internal.rubric.scoreChapter, { handbookId, n });
+    // 17 Oct: not on a test book; the eval runner grades its chapter 1 itself, so the background score was paid twice.
+    if (!(h as any).test) await ctx.scheduler.runAfter(60000, internal.rubric.scoreChapter, { handbookId, n });
     // Pictures come after the words. Chapter 1 is drawn now (it opens at once and gives the cover); later chapters are
     // drawn when the reader first opens them (openChapter), so a chapter written but never opened costs no pictures (7 Oct).
     if (n === 1) await ctx.scheduler.runAfter(0, internal.images.forChapter, { handbookId, n });

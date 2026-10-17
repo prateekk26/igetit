@@ -96,13 +96,38 @@ export const store = internalMutation({
   },
 });
 
+// One caller at a time decides a set of pages (17 Oct). The claim lapses after CLAIM_MS, so a caller that died never
+// blocks the pages for good; the one that finishes removes it.
+const CLAIM_MS = 120_000;
+export const claim = internalMutation({
+  args: { key: v.string() },
+  handler: async (ctx, { key }) => {
+    const now = Date.now(), row = await ctx.db.query("figureClaims").withIndex("by_key", (q) => q.eq("key", key)).first();
+    if (row && row.until > now) return false;
+    if (row) await ctx.db.patch(row._id, { until: now + CLAIM_MS }); else await ctx.db.insert("figureClaims", { key, until: now + CLAIM_MS });
+    return true;
+  },
+});
+export const release = internalMutation({
+  args: { key: v.string() },
+  handler: async (ctx, { key }) => { for (const row of await ctx.db.query("figureClaims").withIndex("by_key", (q) => q.eq("key", key)).collect()) await ctx.db.delete(row._id); },
+});
+
 // Decide one chapter's pages (only those not decided yet). Returns the card indexes that have a figure.
 export async function decideChapter(ctx: any, topic: string, cards: any[], trace?: { handbookId?: Id<"handbooks">; chapter?: number }): Promise<number[]> {
   const pages = figurePages(cards);
   if (!pages.length) return [];
   const keys = pages.map(({ c }) => pageKey(c));
-  const known: Record<string, boolean> = await ctx.runQuery(internal.figures.decided, { keys });
-  if (pages.some(({ c }) => known[pageKey(c)] === undefined)) {
+  let known: Record<string, boolean> = await ctx.runQuery(internal.figures.decided, { keys });
+  // 17 Oct: another caller deciding the same pages (a chapter opened while its pictures start) is waited for, not repeated.
+  const open = () => keys.filter((k) => known[k] === undefined);
+  const claimKey = open().join(".");
+  if (claimKey && !(await ctx.runMutation(internal.figures.claim, { key: claimKey }))) {
+    for (let t = 0; t < CLAIM_MS / 3000 && open().length; t++) { await new Promise((r) => setTimeout(r, 3000)); known = await ctx.runQuery(internal.figures.decided, { keys }); }
+    if (!open().length) return pages.filter(({ c }) => known[pageKey(c)]).map(({ i }) => i);
+    if (!(await ctx.runMutation(internal.figures.claim, { key: claimKey }))) return pages.filter(({ c }) => known[pageKey(c)]).map(({ i }) => i);
+  }
+  try { if (pages.some(({ c }) => known[pageKey(c)] === undefined)) {
     const user = `Handbook: ${topic}\n\n` + pages.map(({ c, i }) => `Page ${i} (${c.type}${c.title ? `, "${c.title}"` : ""}):\n${c.body}`).join("\n\n");
     const r: any = await ctx.runAction(internal.ai.generate, { kind: "figures", system: FIGURE_PROMPT, user, ...(trace ? { trace } : {}), logAs: "figures" });
     if (!r.ok) return pages.filter(({ c }) => known[pageKey(c)]).map(({ i }) => i);
@@ -115,7 +140,7 @@ export async function decideChapter(ctx: any, topic: string, cards: any[], trace
     const rows = pages.filter(({ c }) => known[pageKey(c)] === undefined).map(({ c, i }) => ({ key: pageKey(c), spec: byCard.get(i)?.spec ?? null, why: byCard.get(i)?.why }));
     await ctx.runMutation(internal.figures.store, { rows, model: r.model ?? "sonnet" });
     for (const row of rows) known[row.key] = !!row.spec;
-  }
+  } } finally { if (claimKey) await ctx.runMutation(internal.figures.release, { key: claimKey }); }
   return pages.filter(({ c }) => known[pageKey(c)]).map(({ i }) => i);
 }
 

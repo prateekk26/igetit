@@ -87,7 +87,11 @@ export const scoreChapter = internalAction({
     const inp: any = await ctx.runQuery(internal.rubric.inputs, { handbookId, n });
     if (!inp) return {};
     const out: Record<string, number | null> = {};
-    for (const lever of (levers ?? Object.keys(LEVERS)) as Lever[]) {
+    // 17 Oct: "Teaches before it tests" has nothing to read on a chapter with no quiz (chapter 1, quick and story books):
+    // the scorer always answered "can't tell", for about ₹0.65 a chapter. The background scorer skips it there; an
+    // explicit list (the eval gate) is scored as asked.
+    const noQuiz = !(inp.cards as any[]).some((c) => c?.type === "exercise");
+    for (const lever of (levers ?? Object.keys(LEVERS).filter((l) => !(l === "taught" && noQuiz))) as Lever[]) {
       if (!(lever in LEVERS)) continue;
       const r: any = await ctx.runAction(internal.ai.generate, { kind: "score", system: SYSTEM, user: scorerUser(lever, inp.plan, n, inp.cards, inp.facts), trace: { handbookId, chapter: n } });
       if (!r.ok || !r.json) continue;
