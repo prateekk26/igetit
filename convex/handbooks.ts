@@ -29,6 +29,12 @@ export const LONGEST = 28;
 export function noQuizzes(plan: any) {
   return plan?.format === "quick" || plan?.mode === "story";
 }
+// No quizzes inside chapters (17 Oct, Prateek: "I want no in chapter quizzes at all"; "just 1 question at the start of
+// the next chapter"). Books made from this deploy on: chapters are reading and doing only, and each chapter but the last
+// leaves one recall question that opens the next. Books made before keep their quizzes. With no quiz inside a chapter,
+// the easier and harder versions could never be picked (tierOf reads the previous chapter's answers), so none are written.
+export const QUIZ_FREE_FROM = Date.parse("2026-10-17T18:10:00Z");
+export const quizFree = (h: any) => (h?._creationTime ?? 0) >= QUIZ_FREE_FROM;
 export function totalOf(h: Doc<"handbooks"> | null | undefined) {
   const n = Array.isArray((h?.plan as any)?.chapters) ? (h!.plan as any).chapters.length : 0;
   return n >= 1 && n <= LONGEST ? n : CHAPTERS;
@@ -615,6 +621,9 @@ export const matchOrIntents = internalAction({
   handler: async (ctx, { handbookId }) => {
     const h = await ctx.runQuery(internal.handbooks.readHandbook, { handbookId });
     if (!h || h.status !== "intent") return;
+    // 17 Oct (Prateek: "do 2"): the Shelf match and the goal question run side by side; the goals came about 2 s after
+    // the match finished. A match is only a suggestion on the goal screen (setSuggested keeps it while the screen is up).
+    const match = async () => {
     const options: { kind: string; title: string; topic: string; libraryId?: any }[] = await ctx.runQuery(internal.handbooks.shelfOptions, { level: h.level });
     if (options.length) {
       const r = await ctx.runAction(internal.ai.generate, { kind: "match", system: MATCH_PROMPT, user: matchUserMessage(h.topic, options.map((o) => o.title)), trace: { handbookId } });
@@ -625,10 +634,11 @@ export const matchOrIntents = internalAction({
       // line stays the handbook; one tap opens the ready one instead.
       if (pick) await ctx.runMutation(internal.handbooks.setSuggested, { handbookId, suggested: { kind: pick.kind, topic: pick.topic, title: pick.title, libraryId: pick.libraryId } });
     }
+    };
     // Research runs after the goal (8 Oct, Tanisha; Prateek 8 Oct night: "hers"): started here, it never saw the goal, so
     // a typed goal got generic facts. It costs the reader's pick time (about 16 s typical) and saves research for readers
     // who leave or get a shared copy.
-    await ctx.runAction(internal.handbooks.generateIntents, { handbookId });
+    await Promise.all([match().catch((e) => console.log("shelf match failed", String(e).slice(0, 200))), ctx.runAction(internal.handbooks.generateIntents, { handbookId })]);
   },
 });
 export const shelfOptions = internalQuery({
@@ -1119,7 +1129,9 @@ export const generateChapter = internalAction({
     const ledgers = await ctx.runQuery(internal.handbooks.readLedgers, { handbookId });
     // "I want to learn more" handbooks add the names line to the Reader line (13 Oct).
     const readerLine = [shareable ? "" : prof.line, h.buildsOn ? WORLD_NAMES : "", asked].filter(Boolean).join(" ") || undefined;
-    const user = chapterUserMessage(h.plan, h.level, h.language, h.voice ?? "friend", n, readerLine, howTheyDid ?? undefined) + chapterContext((h as any).brief, h.plan, n, ledgers) + briefForChapter((h as any).brief, pieces);
+    const lastChapter = n >= totalOf(h);
+    const quizLine = quizFree(h) ? `\n\nQuizzes: this handbook has NO exercise cards in any chapter. Write none, even where the plan's blocks or proof name one: deliver that part as a teach, example, try or doit card instead. "recallQuizzes": ${lastChapter ? "[] (this is the last chapter)" : "exactly 1"}.` : "";
+    const user = chapterUserMessage(h.plan, h.level, h.language, h.voice ?? "friend", n, readerLine, howTheyDid ?? undefined) + chapterContext((h as any).brief, h.plan, n, ledgers) + briefForChapter((h as any).brief, pieces) + quizLine;
     let r = await ctx.runAction(internal.ai.generate, { kind: "chapter", system: chapterLive(), user, model: pinned ?? CHAPTER_MODEL, trace });
     // Why a chapter left Flash, for the call log: "budget" (Gemini's time ran out), "error" (any other failure), "floor" (too short twice).
     let bounce: string | undefined;
@@ -1147,14 +1159,15 @@ export const generateChapter = internalAction({
 
     // The chapter comes first (8 Oct, Tanisha: "the quiz is an addition, it cannot be a holdup"). A quiz is kept only when
     // it is sound (goodQuiz); a bad one is dropped, never failing the chapter. Chapter 1, quick and story chapters keep none.
-    const quizzesWanted = n !== 1 && !noQuizzes(h.plan);
+    const quizzesWanted = n !== 1 && !noQuizzes(h.plan) && !quizFree(h);
     const raw: any[] = Array.isArray(ch.cards) ? ch.cards : [];
     const kept = raw.filter((c) => c?.type !== "exercise" || (quizzesWanted && goodQuiz(c)));
     const dropped = raw.length - kept.length;
     if (kept.filter((c) => c?.type !== "exercise").length < 4) { await ctx.runMutation(internal.handbooks.setChapterFailed, { handbookId, n, error: "chapter failed the shape check" }); return; }
     const title = String(ch.title ?? h.plan.chapters[n - 1]?.title ?? `Chapter ${n}`);
     // Fresh recall quizzes (new examples) are checked in the same pass, then split off.
-    const recall = quizzesWanted || n === 1 ? (Array.isArray(ch.recallQuizzes) ? ch.recallQuizzes : []).filter((e: any) => goodQuiz(e)).slice(0, 2) : [];
+    const recallWanted = quizFree(h) ? !lastChapter && (n === 1 || !noQuizzes(h.plan)) : quizzesWanted || n === 1;
+    const recall = recallWanted ? (Array.isArray(ch.recallQuizzes) ? ch.recallQuizzes : []).filter((e: any) => goodQuiz(e)).slice(0, quizFree(h) ? 1 : 2) : [];
     // One call checks the facts of the cards and the recall quizzes, and writes the picture scenes for this chapter.
     const pictures = { cards: pictureCards(kept).map((x) => x.i), analogy: h.plan?.mode === "story" ? "" : String(h.plan?.picture?.line ?? h.plan?.picture?.name ?? "") };
     // 9 Oct (outside reviews): the check reads the research facts and sources, so it no longer overwrites them with memory.
@@ -1165,7 +1178,6 @@ export const generateChapter = internalAction({
     const checked = await factCheck(ctx, h.plan?.topic ?? h.topic, h.level, title, [...kept, ...recall], { ...(h.writer ? { model: h.writer } : {}), trace, pictures, mainCount: kept.length, ...(reference ? { reference } : {}), ...(delivery ? { delivery } : {}) });
     const cards = checked.cards.slice(0, kept.length + checked.added), recallCards = checked.cards.slice(kept.length + checked.added);
     const report = dropped ? { ...checked.report, notes: [...checked.report.notes, `${dropped} quiz${dropped === 1 ? "" : "zes"} dropped (malformed, or not wanted in this chapter)`] } : checked.report;
-    await drawMoves(ctx, h.plan?.topic ?? h.topic, title, cards, trace);
     // The ledger is the writer's own record of what it taught; when the fact check corrected a claim, the ledger still
     // carried the old one and the next chapter's writer was told it had been taught (11 Oct night, read-and-count).
     // The corrections ride along, so later chapters build on the fixed version. No extra model call.
@@ -1179,11 +1191,19 @@ export const generateChapter = internalAction({
       await ctx.runMutation(internal.handbooks.startChapter, { handbookId, n: n + 1 });
       await ctx.scheduler.runAfter(0, internal.handbooks.generateChapter, { handbookId, n: n + 1 });
     }
+    // 17 Oct (Prateek: "do 4"): move figures and Try it pages are drawn after the chapter is saved, not before; a reader
+    // opens the chapter about 14 s sooner and the drawing lands on its card when ready (until then the cues show alone).
+    if (cards.some((c: any) => (c?.type === "move" || c?.type === "tryit") && !c.html)) {
+      const drawn = cards.map((c: any) => ({ ...c }));
+      await drawMoves(ctx, h.plan?.topic ?? h.topic, title, drawn, trace);
+      const html = drawn.map((c: any, i: number) => (c.html && !cards[i].html ? { i, html: c.html } : null)).filter(Boolean) as { i: number; html: string }[];
+      if (html.length) await ctx.runMutation(internal.handbooks.setCardHtml, { handbookId, n, cardsCount: cards.length, html });
+    }
     // The easier and harder quiz versions come after, in the background: the reader can open the chapter meanwhile, and
     // gets the standard quizzes until they land (or if they never do).
     // A benchmark handbook marked noVersions (evalShape, 9 Oct) skips the easier/harder quiz versions: they cost about
     // ₹6 a chapter and a review does not read them.
-    if (!(h as any).test?.noVersions && (cards.some((c: any) => c?.type === "exercise") || recallCards.length)) await ctx.scheduler.runAfter(0, internal.handbooks.addQuizVersions, { handbookId, n, shareable });
+    if (!(h as any).test?.noVersions && !quizFree(h) && (cards.some((c: any) => c?.type === "exercise") || recallCards.length)) await ctx.scheduler.runAfter(0, internal.handbooks.addQuizVersions, { handbookId, n, shareable });
     if (shareable && n > 1 && !h.test) await ctx.runMutation(internal.library.saveChapter, { handbookId, n });
     // D72 (11 Oct): every chapter is scored on the rubric in the background (convex/rubric.ts), a minute later so a
     // showcase build's Try it repair lands first. A reader never waits on it.
@@ -1236,6 +1256,17 @@ export const addQuizVersions = internalAction({
     const [qe, qh, re, rh] = lists.map((l) => l.map((x: any) => (x ? checked.cards[at++] : null)));
     await ctx.runMutation(internal.handbooks.setQuizTiers, { handbookId, n, cardsCount: ch.cards.length, quizTiers: qv ? { easier: qe, harder: qh } : undefined, recallTiers: rv ? { easier: re, harder: rh } : undefined });
     if (shareable && n > 1 && !h.test) await ctx.runMutation(internal.library.saveChapter, { handbookId, n, tiersOnly: true });
+  },
+});
+// A drawing made after the chapter was saved (17 Oct): put each one on its card, unless the chapter changed meanwhile.
+export const setCardHtml = internalMutation({
+  args: { handbookId: v.id("handbooks"), n: v.number(), cardsCount: v.number(), html: v.array(v.object({ i: v.number(), html: v.string() })) },
+  handler: async (ctx, { handbookId, n, cardsCount, html }) => {
+    const ch = await ctx.db.query("chapters").withIndex("by_handbook_n", (q) => q.eq("handbookId", handbookId).eq("n", n)).unique();
+    const cards = (ch?.cards as any[] | undefined) ?? [];
+    if (!ch || ch.status !== "ready" || cards.length !== cardsCount) return;
+    const next = cards.map((c: any, i: number) => { const d = html.find((x) => x.i === i); return d && (c?.type === "move" || c?.type === "tryit") && !c.html ? { ...c, html: d.html } : c; });
+    await ctx.db.patch(ch._id, { cards: next });
   },
 });
 export const setQuizTiers = internalMutation({
