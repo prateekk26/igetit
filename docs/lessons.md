@@ -38,6 +38,21 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 ### GTM
 - **Thought:** the boards are the whole spec. **Learned:** working features the boards don't draw (C2's "Ready now" card, Done's reminder link, the pace question) need a yes or no from Prateek, not a quiet removal or a quiet keep. **Now:** each one is listed on the side-by-side page as "your call".
 
+## Tue 13 Oct, the day (day 12; "I want to learn more" and the question after each chapter)
+
+### Product/Tech
+- **Thought:** the "Last time" quiz reviews the chapter before. **Learned:** it walked back to the last chapter that had any quizzes; since D62 (10 Oct) quick handbooks have none after chapter 1, so chapters 2 to 5 all asked chapter 1's question, for 3 days, on a shape 203 dev handbooks have. **Now:** review questions come only from the chapter just finished; when a change removes data, check every lookup that fell back to it.
+- **Thought:** "Lost me" and "Too easy" reshape the next chapter. **Learned:** since 7 Oct, readers with no profile share one copy of each chapter, and a shared copy never gets the reading report; each rating paid for a rewrite (about ₹13) that never saw it. **Now:** only members' answers rewrite a chapter (D96); free answers are saved and change nothing.
+- **Thought:** a member's note goes in the reading report with the missed quizzes. **Learned:** the writer only acts on what its instructions name there; "use examples from cricket commentary" got 0 mentions in 536 words. Moved into the Reader line, the next rewrite built an example around cricket commentators. **Now:** a new reader signal goes in the Reader line first; the prompt changes only if the line is ignored.
+- **Thought:** a rewritten chapter keeps its pictures. **Learned:** a rewrite of a ready-topic copy kept the shelf's pictures, drawn for the old text, and a rewrite before they were copied left none. **Now:** any rewrite of a chapter that already had cards redraws its pictures.
+- **Thought:** "more advanced" needs a new prompt. **Learned:** passing what the first handbook taught (each chapter's title and outcome line, at most 1,500 characters) was enough: the income tax follow-on went straight to capital gains, carry-forward losses, advance tax and ITR-U, and one line on names gave Elena and Mateo instead of Indian names. **Now:** a follow-on handbook gets the "Already learned" line, not a new prompt.
+- **Thought:** resizing the Chrome window gives a 390 px check (D97). **Learned:** the docked window stayed 1,680 wide (innerWidth said so); the phone proof came from headless Chrome with device metrics. **Now:** read innerWidth before trusting any "phone" screenshot.
+
+### GTM
+- **Thought:** the 9:30 X draft would be waiting. **Learned:** it hadn't run on 10 or 11 Oct, and nothing said so; "Is my X post ready?" found only a cover image. **Now:** look for the draft in the morning, before posting time.
+- **Thought:** posts need an idea each day. **Learned:** the "learned too late" entries were already posts: the analytics one ("269 people visited my app in 9 days. Officially, zero did.") became the day's 274-character X post in minutes. **Now:** late moments go into docs/learning.md as they happen, with a draft opener.
+- **Thought:** a free reader's answer has to change something to be worth asking for. **Learned:** saying what members would get ("Members get chapter N+1 rewritten around this") at the moment they asked for it is the nudge, with no pop-up. No numbers yet on whether it moves anyone. **Now:** check "See membership" taps from that line once there's a week of data.
+
 ## Mon 12 Oct, the day (day 11; the teaching ads)
 
 ### Product/Tech
@@ -346,4 +361,3 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 
 ## Noted during the day
 
-learned: 13 Oct, D97. Thought a Chrome window resize gives a 390 px check; learned the docked window stayed 1680 wide (innerWidth said so), so the phone proof came from headless Chrome with device metrics (the prove-path harness). Now: read innerWidth before trusting any "phone" screenshot.
