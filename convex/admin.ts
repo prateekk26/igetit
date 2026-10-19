@@ -128,7 +128,7 @@ async function build(ctx: QueryCtx, days: number) {
     type Row = {
       visitor: string; first: number; source: string; landed: boolean; scrolled: boolean; deepest: string | null; focused: boolean; typed: boolean;
       via: string | null; started: boolean; topic: string | null; ready: boolean | null; plan: boolean; openedCh1: boolean; ch1Card: number | null; ch1Of: number | null;
-      passed: number; startedCh2: boolean; signedUp: boolean; paid: boolean; planWaitS: number | null; ch1WaitS: number | null; events: number; secs: string[];
+      passed: number; startedCh2: boolean; signedUp: boolean; pricing: boolean; paid: boolean; planWaitS: number | null; ch1WaitS: number | null; events: number; secs: string[];
       device: string | null; spentS: number; reason: string; timeline: { t: number; what: string }[];
     };
     const rows: Row[] = [];
@@ -152,7 +152,7 @@ async function build(ctx: QueryCtx, days: number) {
         plan: !!planView || (!!hb?.plan && hb.status !== "planning"), openedCh1,
         ch1Card: p && p.currentChapter === 1 && passed === 0 ? p.currentCard + 1 : null, ch1Of: hb ? ch1.get(String(hb._id)) ?? null : null,
         passed, startedCh2: passed >= 2 || (!!p && p.currentChapter >= 2 && p.currentCard > 0) || has("ch_open", (e) => Number(e.props?.n) === 2),
-        signedUp: !!hb?.userId, paid: payTokens.has(visitor),
+        signedUp: !!hb?.userId, pricing: has("pricing_view"), paid: payTokens.has(visitor),
         planWaitS: hb && planView ? Math.max(0, Math.round((planView.at - hb.createdAt) / 1000)) : null,
         ch1WaitS: planView && open1 ? Math.max(0, Math.round((open1.at - planView.at) / 1000)) : null,
         events: es.length, secs: [...new Set(secs)],
@@ -174,6 +174,8 @@ async function build(ctx: QueryCtx, days: number) {
       { step: "Passed chapter 1", n: count(rows, (r) => r.passed >= 1), tracked: false },
       { step: "Started chapter 2", n: count(rows, (r) => r.startedCh2), tracked: false },
       { step: "Signed up", n: count(rows, (r) => r.signedUp), tracked: false },
+      // 20 Oct (Prateek: "add to admin funnel"): Pricing opened, counted from the visits after this step shipped.
+      { step: "Opened Pricing", n: count(tracked, (r) => r.pricing), of: tracked.length, tracked: true },
       { step: "Tapped Pay", n: count(rows, (r) => r.paid), tracked: false },
     ];
 
@@ -265,6 +267,7 @@ async function journey(ctx: QueryCtx, first: number, es: Doc<"events">[], hb: Do
       e.name === "demo_tap" ? "tapped the demo chapter" :
       e.name === "wait_view" ? "waited while the plan was written" :
       e.name === "plan_view" ? "saw the plan" :
+      e.name === "pricing_view" ? `opened Pricing${pr.via ? ` (from ${pr.via})` : ""}` :
       e.name === "ch_open" ? `opened chapter ${pr.n}` :
       e.name === "card" ? `chapter ${pr.n}, card ${Number(pr.i) + 1}${Number(pr.n) === 1 && ch1Of ? ` of ${ch1Of}` : ""}` :
       e.name === "feedback" ? `rated chapter ${pr.n}: ${pr.v === "too_easy" ? "Too easy" : pr.v === "lost_me" ? "Lost me" : "Just right"}` :

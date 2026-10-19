@@ -179,6 +179,8 @@ export default function App() {
   // Pricing goes back to where it was opened from, never always to the handbook page (UX review 9 Oct).
   const [pricingFrom, setPricingFrom] = useState<View>('auto')
   const goPricing = () => { if (view !== 'pricing') setPricingFrom(view); setView('pricing') }
+  // The /admin funnel's "Opened Pricing" (20 Oct): every time Pricing opens, with the screen it was opened from.
+  useEffect(() => { if (view === 'pricing') track('pricing_view', { via: String(pricingFrom).slice(0, 20) }) }, [view]) // eslint-disable-line react-hooks/exhaustive-deps
   // Month or year survives the sign-in, and the payment sheet opens right after it, as the sign-in screen promises.
   const [payPlan, setPayPlan] = useState<'month' | 'year'>('month')
   const signInToPay = () => { setPayAfterSignIn(true); setSigninReason('Sign in or sign up first (free, just your email); the payment opens right after. Nothing is charged until you approve it there.'); signIn('pricing') }
