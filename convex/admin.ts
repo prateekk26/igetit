@@ -267,7 +267,7 @@ async function journey(ctx: QueryCtx, first: number, es: Doc<"events">[], hb: Do
       e.name === "demo_tap" ? "tapped the demo chapter" :
       e.name === "wait_view" ? "waited while the plan was written" :
       e.name === "plan_view" ? "saw the plan" :
-      e.name === "pricing_view" ? `opened Pricing${pr.via ? ` (from ${pr.via})` : ""}` :
+      e.name === "pricing_view" ? (pr.via === "auto" ? "came straight to /pricing" : `opened Pricing from the ${pr.via === "explore" ? "Shelf" : pr.via} screen`) :
       e.name === "ch_open" ? `opened chapter ${pr.n}` :
       e.name === "card" ? `chapter ${pr.n}, card ${Number(pr.i) + 1}${Number(pr.n) === 1 && ch1Of ? ` of ${ch1Of}` : ""}` :
       e.name === "feedback" ? `rated chapter ${pr.n}: ${pr.v === "too_easy" ? "Too easy" : pr.v === "lost_me" ? "Lost me" : "Just right"}` :
