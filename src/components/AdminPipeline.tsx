@@ -126,7 +126,7 @@ function Journey({ h, traces }: { h: J; traces: string | null }) {
         <span className="adm-j-tag">{h.kind}</span>
         <span className="adm-j-topic">{h.topic}</span>
         {/* 20 Oct (Prateek: "title and cost in one line"): the parts of the wait are in the opened row, not here */}
-        <span className="adm-j-reason">{h.toChapter1 !== null ? `chapter 1 in ${s(h.toChapter1)} · ` : ''}{h.calls} calls{h.failed ? ` · ${h.failed} failed` : ''} · {inr(h.inr)}</span>
+        <span className="adm-j-reason">{h.toChapter1 !== null ? `chapter 1 in ${s(h.toChapter1)} · ` : ''}{h.calls} call{h.calls === 1 ? '' : 's'}{h.failed ? ` · ${h.failed} failed` : ''} · {inr(h.inr)}</span>
       </summary>
       {open && <Timeline h={h} traces={traces} />}
     </details>

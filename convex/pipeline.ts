@@ -126,7 +126,9 @@ export const journeysPage = query({
   args: { days: v.number(), paginationOpts: paginationOptsValidator },
   handler: async (ctx, { days, paginationOpts }) => {
     if (!(await isOwner(ctx)).ok) return null;
-    const since = days ? Date.now() - days * DAY : 0;
+    // The window starts at a fixed moment, midnight India time (days - 1) days back: a page's cursor works only for the
+    // very same query, and "now minus N days" moved between pages, so Older failed with a server error.
+    const since = days ? Math.floor((Date.now() + IST) / DAY) * DAY - IST - (days - 1) * DAY : 0;
     const res = await ctx.db.query("handbooks").withIndex("by_creation_time", (q) => q.gte("_creationTime", since)).order("desc").paginate(paginationOpts);
     const page = [];
     for (const h of res.page) {
