@@ -51,13 +51,14 @@ type Props = {
   chapterOneReady?: boolean
   startedAt?: number   // when the writing started (the goal was picked), for "taking longer than usual"
   goal?: string | null
-  planTitles?: string[]   // the plan's chapter titles once it has landed, shown while a story holds this screen (20 Oct)
+  planChapters?: { title: string; minutes?: number }[]   // the plan's chapters once it has landed, shown while a story holds this screen (20 Oct)
+  planQuick?: boolean   // a quick handbook: no "Tonight" on chapter 1, as on the handbook page
   allowance?: TypedAllowance | null   // the typed-topic allowance, said beside the box (Shaktimaan, 9 Oct night)
   replacingName?: string | null   // "Change what you typed": the unread handbook this line replaces, so it costs nothing
 }
 
 // The first screen, and the empty state of the whole product (DESIGN.md section 4, Start).
-export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, onLevelCheck, typedLevel = 'new', suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onMember, memberPrice, onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal, planTitles, allowance, replacingName}: Props) {
+export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, onLevelCheck, typedLevel = 'new', suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onMember, memberPrice, onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal, planChapters, planQuick, allowance, replacingName}: Props) {
   const declined = status === 'declined'
   // Ready handbook names, to tell a ready suggestion (free) from one that would be written for this reader.
   const keyOf = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
@@ -118,10 +119,23 @@ export default function Start({ onBack, initialTopic = '', status, question, int
   const stage = phase === 'chapter' || readyToOpen ? 3 : phase === 'plan' ? 2 : 1
 
   // The plan landed while a story held this screen (20 Oct, item 3): their own chapters, not just a link to them.
-  const chapterList = planTitles && planTitles.length > 0 ? (
+  // 20 Oct (motion list, item 1): in the handbook page's own rows, each title arriving 0.3 s after the one before, chapter 1
+  // lit. They arrive once: moving to the Ready screen shows them still.
+  const listShown = useRef(false)
+  const arriving = !listShown.current
+  useEffect(() => { if (planChapters?.length) listShown.current = true }, [planChapters?.length])
+  const chapterList = planChapters && planChapters.length > 0 ? (
     <div className="wait-plan">
-      <p className="wait-plan-head">Your {planTitles.length} chapters</p>
-      <ol>{planTitles.map((t, i) => <li key={i}>{t}</li>)}</ol>
+      <p className="wait-plan-head">Your {planChapters.length} chapters</p>
+      <ol className="c3-list">{planChapters.map((c, i) => (
+        <li key={i}>
+          <div className={`c3-row ${i === 0 ? 'now' : 'ahead'}${arriving ? '' : ' still'}`} style={arriving ? { animationDelay: `${i * 0.3}s` } : undefined}>
+            <span className="c3-n" aria-hidden="true">{i + 1}</span>
+            <span className="c3-t"><span className="lp-visually-hidden">Chapter {i + 1}: </span>{c.title}</span>
+            <span className="c3-side">{i === 0 ? (planQuick ? '' : 'Tonight') : c.minutes ? `${c.minutes} min` : ''}</span>
+          </div>
+        </li>
+      ))}</ol>
     </div>
   ) : null
 
@@ -131,11 +145,14 @@ export default function Start({ onBack, initialTopic = '', status, question, int
       <div className="plan-wait" role="status" aria-live="polite">
         {readyToOpen && chapterOneReady ? (
           <>
+            {/* The payoff for the wait (20 Oct, item 2): Ooh hops, the bar fills the last stretch, the button rises in. */}
+            <Ooh face="happy" size={64} className="wait-ooh" />
             <p className="plan-wait-kicker">Ready</p>
             <h1 className="plan-wait-topic">{shown}</h1>
             {chapterList}
             <p className="note">Chapter 1 is written and checked. Finish the story or go now; it waits.</p>
-            <button type="button" className="btn wait-open" onClick={onOpenReady}>Open chapter 1 →</button>
+            <div className="waitbar full" aria-hidden="true"><span /></div>
+            <button type="button" className="btn wait-open wait-rise" onClick={onOpenReady}>Open chapter 1 →</button>
           </>
         ) : (
           <>

@@ -11,6 +11,8 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 - Thought: the wait screen's "about two minutes" was a safe promise. Learned: since the 17 Oct speed-up the real wait is 66 to 96 s (p50: research 43 s, plan 11 s, chapter 33 s, check 9 s), so the screen was overstating it by a third; the second test book still took 120 s. Now: the times live in one place (WaitBar.tsx BOOK_MS, CHAPTER_MS), next to the measurement they came from.
 - Thought: a progress bar is one component. Learned: the wait spans two screens (the wait screen, then the handbook page once the plan lands), and timing each screen on its own made the bar fall from 70% to 7% at the hand-off. Now: chapter 1 of a new book carries the book's clock and a 60% floor onto the handbook page.
 
+- Thought: checking motion needs a real book each time (₹15 to ₹30 on dev). Learned: a throwaway preview page that mounts the wait screen with made-up props plays every stage in 12 s for nothing, and a ready book covers the rest. Now: real books only for what touches the server.
+
 ### GTM
 - Thought: people watch the wait. Learned: nothing called back a reader who switched apps during a 90 s wait, and the push we already had only reaches phones that turned on reminders, which happens after chapter 1. Now: the tab's name says "✓ Chapter 1 is ready"; the push reaches second-book readers. Worth reading: wait_view against chapter 1 opens in PostHog after a week.
 

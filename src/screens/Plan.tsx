@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ActionBar from '../components/ActionBar'
 import { track } from '../lib/track'
 import Ooh, { GoArrow } from '../components/Ooh'
@@ -12,6 +12,7 @@ type Props = {
   onOpenChapter?: (n: number) => void
   nextTopics?: React.ReactNode   // "Jump to next" topics in place of further reading (7 Oct)   // a finished chapter opens again on tap (7 Oct, Prateek); never uses the daily allowance
   topic: string
+  bookId?: string   // for remembering which finished chapters this phone has already seen stamped (20 Oct)
   plan: { outcome7: string; horizon14?: string; horizon28?: string; picture?: { name: string; line: string }; chapters: Chapter[]; sources?: { who: string; what: string; why?: string }[]; pushback?: string | null; framing?: string | null; format?: string; weeks?: Week[] }
   passed: number[]
   current: number
@@ -52,9 +53,21 @@ type Props = {
 // The handbook (14 Oct, the C boards "The plan" and "Tonight"): for a reader coming back, tonight's chapter on a marigold
 // card with its own Start; then the picture, the title, Ooh's line (the outcome) and "What's in it", one numbered row a
 // chapter, each answering a tap as the old path's stops did. A first visit has no card; the bar's button starts chapter 1.
-export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forWhom, plan, passed, current, chapterReady, chapterFailed, chapterWait, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf: _onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext, onBack, more }: Props) {
+export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forWhom, plan, passed, current, chapterReady, chapterFailed, chapterWait, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf: _onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext, onBack, more, bookId }: Props) {
   useEffect(() => { track('plan_view', undefined, 'plan_view:' + topic) }, [topic])
   const first = passed.length === 0 && current === 1   // a reader who came in at chapter 2 from a post is on 2
+  // Motion (20 Oct, Prateek's yes to the list): a new book's rows arrive one after another while chapter 1 is written
+  // (item 1), as on the wait screen; a chapter finished since this phone last saw the page gets its tick stamped on (item
+  // 5); when chapter 1 lands the bar fills the last stretch and the button pops (item 2). Remembered per phone only.
+  const arriving = first && !chapterReady
+  const seenKey = bookId ? `igetit.seenPassed.${bookId}` : null
+  const [stamped] = useState<number[]>(() => {
+    try { const seen = seenKey ? JSON.parse(localStorage.getItem(seenKey) ?? 'null') : null; return Array.isArray(seen) ? passed.filter((n) => !seen.includes(n)) : [] } catch { return [] }
+  })
+  useEffect(() => { try { if (seenKey) localStorage.setItem(seenKey, JSON.stringify(passed)) } catch { /* a convenience only */ } }, [seenKey, passed.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+  const wasReady = useRef(chapterReady)
+  const [justReady, setJustReady] = useState(false)
+  useEffect(() => { if (!wasReady.current && chapterReady) setJustReady(true); wasReady.current = chapterReady }, [chapterReady])
   const resuming = nextUp?.kind === 'resume'
   // "Later, if you keep going: …" under "Later peaks:" read "Later peaks: Later, …" (UX review 9 Oct): the model's own
   // opener is dropped.
@@ -119,11 +132,11 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
             <span className="c3-t"><span className="lp-visually-hidden">Chapter {c.n}: </span>{c.title}</span>
             <span className="c3-side">{side}</span>
           </>)
-          const cls = `c3-row ${done ? 'done' : now ? 'now' : 'ahead'}`
+          const cls = `c3-row ${done ? 'done' : now ? 'now' : 'ahead'}${done && stamped.includes(c.n) ? ' stamp' : ''}`
           // Every row answers a tap (Prateek, 9 Oct: "the chapters in the path don't seem clickable"): finished and skipped
           // chapters open, the next one starts, chapters ahead show a preview; they open one at a time.
           return [head,
-            <li key={c.n}>
+            <li key={c.n} style={arriving ? { ['--rise-delay' as any]: `${(c.n - 1) * 0.25}s` } : undefined}>
               {(done || skipped) && onOpenChapter ? <button type="button" className={cls} onClick={() => onOpenChapter(c.n)}>{inner}</button>
                 : now && chapterReady ? <button type="button" className={cls} onClick={onStart}>{inner}</button>
                 : ahead && onTapChapter ? <button type="button" className={cls} onClick={() => onTapChapter(c.n)} aria-label={`Chapter ${c.n}: ${c.title}. Opens after chapter ${c.n - 1}. Preview`}>{inner}</button>
@@ -167,8 +180,9 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
           </>
         ) : (
           declined && passed.length > 0 && onOpenChapter ? <button className="btn c-go" onClick={() => onOpenChapter(passed[passed.length - 1])}><span>{`Read chapter ${passed[passed.length - 1]} again`}</span><GoArrow /></button>
-          : <button className="btn c-go" onClick={onStart} disabled={!chapterReady}><span>{passed.length >= total ? `Read chapter ${current} again` : needsAccount ? `Start chapter ${current} (free account)` : resuming ? `Continue chapter ${current}` : `Start chapter ${current}`}</span><GoArrow /></button>
+          : <button className={`btn c-go${justReady ? ' ready-pop' : ''}`} onClick={onStart} disabled={!chapterReady}><span>{passed.length >= total ? `Read chapter ${current} again` : needsAccount ? `Start chapter ${current} (free account)` : resuming ? `Continue chapter ${current}` : `Start chapter ${current}`}</span><GoArrow /></button>
         )}
+        {justReady && <div className="waitbar full" aria-hidden="true"><span /></div>}
       </ActionBar>
     </>
   )

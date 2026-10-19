@@ -218,7 +218,9 @@ export default function App() {
   // chapter 1 when it's ready; the plan is one tap away (the chapter's close button). Once per handbook per visit, and
   // only on the way in: a typed topic whose chapter 1 is still being written shows the plan, as before.
   const autoEntered = useRef<string | null>(null)
+  const sawCh1Writing = useRef<string | null>(null)
   const ch1Status = hb?.chapters.find((c) => c.n === 1)?.status
+  if (hb && ch1Status === 'writing') sawCh1Writing.current = String(hb._id)
   // "Holdable": a fresh handbook about to open chapter 1 by itself. The Shelf or the landing page stays up, with the
   // lifted book, through the load and this one render, so the reader never sees the splash or a flash of the plan.
   // (view 'chapter' with no cards yet is the half-second while chapter 1's cards are fetched; the plan would flash there.)
@@ -235,7 +237,12 @@ export default function App() {
     const fresh = passed.length === 0 && currentN === 1 && (progress?.currentCard ?? 0) === 0
     if (!fresh) { autoEntered.current = hb._id; return }   // not a first open: never enter by itself
     if (ch1Status !== 'ready') return                        // still being written: try again when it is (9 Oct, 55's review)
-    autoEntered.current = hb._id; setReadingN(1); setView('chapter')
+    const go = () => { autoEntered.current = hb._id; setReadingN(1); setView('chapter') }
+    // A reader who watched chapter 1 being written sees it land first (20 Oct, motion item 2): the bar fills and the
+    // button pops on the handbook page, then the chapter opens, 0.9 s later. Anyone else goes straight in, as before.
+    if (sawCh1Writing.current !== hb._id || reducedMotion()) { go(); return }
+    const t = window.setTimeout(go, 900)
+    return () => clearTimeout(t)
   }, [hb?._id, hb?.status, ch1Status, view]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // A link from a post (?t=public-speaking&ch=2, 7 Oct) opens that ready topic straight away, at that chapter,
@@ -457,7 +464,8 @@ export default function App() {
         {view === 'start-again' && libRows.length > 0 && !lib?.signedIn && <SignupNudge onSignIn={() => signIn('start-again')} context="second-topic" compact freeChapters={freeChapters} />}
         <Start
           chapterOneReady={ch1Status === 'ready'}
-          planTitles={((hb?.plan as any)?.chapters ?? []).map((c: any) => String(c.title ?? '')).filter(Boolean)}
+          planChapters={((hb?.plan as any)?.chapters ?? []).filter((c: any) => c?.title).map((c: any) => ({ title: String(c.title), minutes: c.minutes }))}
+          planQuick={(hb?.plan as any)?.format === 'quick'}
           phase={(hb as any)?.phase ?? (hb?.status === 'ready' ? 'chapter' : null)}
           startedAt={(hb as any)?.startedAt}
           goal={(hb as any)?.goal ?? null}
@@ -707,6 +715,7 @@ export default function App() {
         nextTopics={<NextTopics topic={name} deviceToken={token} extra={(plan as any)?.next ?? []} onReady={(t) => { openTopic(t).catch((e) => setFlash(limitMessage(e) ?? "Couldn't open that one. Check your connection and tap again.")) }} onTyped={(t) => { openTopic(t).catch((e) => setFlash(limitMessage(e) ?? "Couldn't open that one. Check your connection and tap again.")) }} onShared={async (id) => { const r = await startFromLibrary({ libraryId: id, deviceToken: token }); pin(String(r.handbookId)); setView('auto') }} />}
         onOpenChapter={(n) => { setReadingN(n); setDoneN(null); setView('chapter') }}
         topic={name}
+        bookId={String(hb._id)}
         forWhom={hb.source === 'live' && !(hb as any).fromLibrary ? forWhom((hb as any).level, (hb as any).levelCheck) : undefined}
         plan={plan}
         passed={passed}
@@ -874,3 +883,5 @@ function PlanSkeleton() {
     </div>
   )
 }
+
+const reducedMotion = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false } }

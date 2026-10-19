@@ -1124,3 +1124,36 @@ div.c3-row { cursor: default; }
 .tiers li, .tiers li.open { cursor: default; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; background: none; padding: 10px 2px; }
 .tiers li:last-child { border-bottom: 0; }
 .tiers li.open .tier-who::after { content: " · now"; color: var(--ink); }
+
+/* ---------- Motion, 20 Oct (Prateek's yes to the six-item list; every one is off under reduce motion) ---------- */
+/* 1. Rows arrive one after another: the wait screen sets the delay inline, the handbook page through --rise-delay. */
+.c3-list li > .c3-row { animation-delay: var(--rise-delay, 0s); }
+.c3-row.still { animation: none; }
+.wait-plan .c3-list { margin: 4px 0 0; }
+/* 2. The Ready moment: the bar fills its last stretch then fades, the button rises in, the handbook page's button pops. */
+.waitbar.full { animation: barfade 300ms 900ms ease-in both; }
+.waitbar.full span { width: 100%; animation: barfull 450ms ease-out both; }
+@keyframes barfull { from { width: 86%; } to { width: 100%; } }
+@keyframes barfade { to { opacity: 0; } }
+.wait-rise { animation: c1-rise 420ms 250ms cubic-bezier(0.3, 0.7, 0.3, 1.3) both; }
+.c-go.ready-pop { animation: readypop 520ms cubic-bezier(0.3, 0.7, 0.3, 1.4) both; }
+@keyframes readypop { 0% { transform: scale(0.96); } 55% { transform: scale(1.04); } 100% { transform: none; } }
+/* 3. A finished step's tick pops in. */
+.plan-wait-steps li.done::before { animation: tickpop 380ms cubic-bezier(0.3, 0.7, 0.3, 1.5) both; }
+@keyframes tickpop { 0% { transform: scale(0.2); } 70% { transform: scale(1.25); } 100% { transform: none; } }
+/* 4. A missed pick wobbles once, gently, then the right one glows. */
+.story-opt.missed, .opt.missed { animation: missnudge 460ms ease-in-out both; }
+@keyframes missnudge { 0%, 100% { transform: none; } 20% { transform: translateX(-6px); } 45% { transform: translateX(5px); } 70% { transform: translateX(-3px); } }
+.story-opt.reveal, .opt.reveal { animation: revealglow 1100ms 380ms ease-out both; }
+@keyframes revealglow { 0% { box-shadow: 0 0 0 0 rgba(242, 169, 59, 0.55); } 100% { box-shadow: 0 0 0 14px rgba(242, 169, 59, 0); } }
+/* 5. A chapter finished since this phone last saw the page: its tick is stamped on. */
+.c3-row.stamp .c3-n { animation: stamp 520ms 300ms cubic-bezier(0.3, 0.7, 0.3, 1.4) both; }
+@keyframes stamp { 0% { transform: scale(1.9) rotate(-14deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+/* 6. A chapter row dips under the finger. */
+button.c3-row { transition: transform 120ms ease-out, background-color 120ms ease-out; }
+button.c3-row:active { transform: scale(0.98); background: var(--paper-2); }
+@media (prefers-reduced-motion: reduce) {
+  .c3-row, .waitbar.full, .waitbar.full span, .wait-rise, .c-go.ready-pop, .plan-wait-steps li.done::before, .story-opt.missed, .opt.missed, .story-opt.reveal, .opt.reveal, .c3-row.stamp .c3-n { animation: none !important; }
+  button.c3-row { transition: none; }
+}
+

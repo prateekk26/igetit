@@ -708,7 +708,6 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .plan-wait-steps li.done::before { content: '✓'; background: var(--pass); border-color: var(--pass); color: var(--paper); font: 800 10px/10px var(--sans); text-align: center; }   /* a finished stage is ticked, the current one is lit */
 .wait-plan { margin: 0 0 var(--l); }
 .wait-plan-head { font: 700 var(--small) var(--sans); color: var(--ink-2); margin: 0 0 6px; }
-.wait-plan ol { margin: 0; padding-left: 22px; display: grid; gap: 4px; font: 500 var(--ui) var(--sans); color: var(--ink); }
 .intent-own { display: flex; gap: 8px; align-items: stretch; }
 .intent-own .input { flex: 1; min-width: 0; }
 .intent-own-go { flex: none; min-height: 48px; padding: 0 14px; width: auto; }
@@ -844,6 +843,9 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .cheer { font-variation-settings: 'wdth' 92; }
 
 .adm-journeys { display: grid; gap: 6px; }
+.adm-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.adm-pager button { min-height: 44px; }
+.adm-day { margin: 14px 0 6px; font-size: var(--small); color: var(--ink-2); text-transform: none; }
 .adm-j { border: 1px solid var(--paper-2); border-radius: 12px; }
 .adm-j summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 10px 12px; font-size: var(--small); }
 .adm-j summary::-webkit-details-marker { display: none; }
