@@ -3,7 +3,8 @@
    C's rules here: flat to read (sections lie on paper, split by a rule), round to act (every control a leaf pill or
    circle), marigold only as a fill (the one main button, the waiting count), on and off by a filled dot or a ring. */
 
-.adm { max-width: 1120px; margin: 0 auto; padding: 0 16px 64px; min-height: 100dvh; background: var(--paper); color: var(--ink); font-size: var(--ui); }
+.adm { max-width: 1440px; margin: 0 auto; padding: 0 16px 64px; min-height: 100dvh; background: var(--paper); color: var(--ink); font-size: var(--ui); }   /* 20 Oct (Prateek: "increase width of card"): 1440, was 1120 */
+@media (min-width: 1100px) { .adm { padding-left: 24px; padding-right: 24px; } }
 .adm .note { font-size: var(--small); color: var(--ink-2); line-height: 1.5; max-width: 72ch; margin: 6px 0; }
 .adm .error { font-weight: 700; }
 .adm-status { font-size: var(--small); color: var(--ink-2); margin: 4px 0 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
