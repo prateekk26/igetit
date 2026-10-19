@@ -50,6 +50,29 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   useEffect(() => { if (!pickedRow) { setSlow(false); return } const t = setTimeout(() => setSlow(true), 12000); return () => clearTimeout(t) }, [pickedRow])
   const [error, setError] = useState<string | null>(null)
   const [demoAt, setDemoAt] = useState(0)
+  // "Tonight, in five minutes" (20 Oct, Prateek: "1,2 circle may be scaling in and out so user can feel flow of steps"):
+  // once it is on screen the steps arrive 1, 2, 3 with a dotted line drawn between them, then a soft pulse passes along
+  // them every few seconds. Armed only where motion is allowed, so the steps are plainly there for everyone else.
+  const stepsRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = stepsRef.current
+    if (!el || still() || !('IntersectionObserver' in window)) return
+    el.classList.add('armed')
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { el.classList.add('in'); io.disconnect() } }, { threshold: 0.35 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  // Switching the demo's chapter (20 Oct, Prateek: "slide in slide out… user can feel new topic coming in"): the open one
+  // slides out toward where the reader is heading, the new one slides in from the other side. Straight swap under reduce motion.
+  const [demoOut, setDemoOut] = useState<'l' | 'r' | null>(null)
+  const [demoIn, setDemoIn] = useState<'l' | 'r' | null>(null)
+  const switchDemo = (k: number) => {
+    if (k === demoAt || demoOut) return
+    const dir = k > demoAt ? 'l' : 'r'
+    if (still()) { setDemoAt(k); return }
+    setDemoOut(dir)
+    window.setTimeout(() => { setDemoAt(k); setDemoIn(dir); setDemoOut(null) }, 200)
+  }
   const [scrolled, setScrolled] = useState(false)
   const heroInput = useRef<HTMLInputElement>(null)
   useSnapPage('var(--home-bar-h, 60px)')   // its parts settle under the fixed bar (20 Oct)
@@ -284,16 +307,18 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
             <p className="c-lede">These are real first chapters, exactly as readers get them. Pick one and tap through. In five minutes you'll know something most people don't.</p>
             {demos.length > 1 && (
               <div className="c-demo-pick" role="group" aria-label="Pick a chapter">
-                {demos.map((d, k) => <button key={d.topic} type="button" aria-pressed={k === demoAt} onClick={() => { setDemoAt(k); track('demo_tap', { topic: d.topic }) }}>{d.label}</button>)}
+                {demos.map((d, k) => <button key={d.topic} type="button" aria-pressed={k === demoAt} onClick={() => { switchDemo(k); track('demo_tap', { topic: d.topic }) }}>{d.label}</button>)}
               </div>
             )}
           </div>
-          <Demo key={demo.topic} book={demo} onOpen={() => pick(demo.topic, 'demo')} busy={busy} freeText={freeText} />
+          <div key={demo.topic} className={`demo-swap${demoOut ? ` out-${demoOut}` : demoIn ? ` in-${demoIn}` : ''}`}>
+            <Demo book={demo} onOpen={() => pick(demo.topic, 'demo')} busy={busy} freeText={freeText} />
+          </div>
         </section>
       )}
 
       {/* 3. How tonight goes. */}
-      <section className="lp-steps c-steps">
+      <section className="lp-steps c-steps" ref={stepsRef}>
         <h2>Tonight, in five minutes.</h2>
         <ol>
           <li><span className="c-n">1</span><div><h3>Say what you're wondering about.</h3><p>In your own words. In about a minute and a half you get a short book on it, written for you, and chapter 1 is ready.</p></div></li>
@@ -304,9 +329,13 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
 
       {/* 4. The ask again. */}
       <section className="lp-final c-final">
-        <h2>So, what have you been wondering about?</h2>
-        {box('final')}
-        {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or open one from the Shelf →</button>}
+        <div className="c-final-main">
+          <h2>So, what have you been wondering about?</h2>
+          {box('final')}
+          {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or open one from the Shelf →</button>}
+        </div>
+        {/* The page closes as it opened, with Ooh, here looking at the box (20 Oct; a laptop's empty right half only) */}
+        <div className="c-final-ooh" aria-hidden="true"><Ooh face="curious" size={220} /></div>
       </section>
 
       <footer className="lp-foot c-foot">
