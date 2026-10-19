@@ -1,0 +1,1153 @@
+{
+  "chapters": [
+    "mutual funds",
+    "swimming",
+    "git",
+    "photosynthesis for class 10",
+    "kubernetes",
+    "spanish",
+    "file my own income tax return"
+  ],
+  "partA": [
+    {
+      "topic": "mutual funds",
+      "handbookId": "k971f81884vp1fvt97szk9yr7s8ge8mc",
+      "d1": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": true,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": false,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [],
+          "fix": "Replace 'a large sum' with a number: '₹10,000 a month for 15 years at 12% vs 11% is roughly ₹50 lakh vs ₹46 lakh, about ₹4.5 lakh gone to commissions.'",
+          "score": 4,
+          "weakest_card": 4,
+          "why": "The mistake card should land the chapter's gut-punch, but it ends on the vague 'can add up to a large sum', so the reader never sits up."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 17392,
+        "ok": true,
+        "tokensIn": 1619,
+        "tokensOut": 1519,
+        "via": "direct"
+      },
+      "d2": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": false,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "'Every mutual fund scheme in India comes in two versions' overstates it: ETFs and some other schemes have no Direct/Regular split."
+          ],
+          "fix": "Replace 'a large sum' with a worked figure, e.g. '₹10,000 a month for 15 years at 12% vs 11% after costs is roughly ₹50 lakh vs ₹46 lakh, about ₹4–5 lakh lost to one tap.'",
+          "score": 4,
+          "weakest_card": 4,
+          "why": "The mistake card is the chapter's emotional payoff, but it fizzles into 'can add up to a large sum' instead of a number that would make a reader sit up."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 17846,
+        "ok": true,
+        "tokensIn": 1619,
+        "tokensOut": 1756,
+        "via": "direct"
+      },
+      "ci": {
+        "ci": {
+          "cache": "miss",
+          "requestId": "ce1c36ba-8430-4a50-aac0-15844d6e8efd",
+          "savedUsd": null,
+          "techniques": "",
+          "tokensSaved": "0"
+        },
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": true,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": false,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [],
+          "fix": "Rewrite card 2 around a fixed ₹500 note buying 5 kg of onions at ₹100/kg one month and 10 kg when they crash to ₹50/kg, then name that rupee-cost averaging.",
+          "score": 5,
+          "weakest_card": 2,
+          "why": "The core teach card explains rupee-cost averaging in pure abstraction, with no concrete image, so the chapter's main mechanism never sticks."
+        },
+        "model": "claude-opus-5.5",
+        "ms": 13125,
+        "ok": true,
+        "sentFallback": true,
+        "stop": "end_turn",
+        "thinkingBlocks": 0,
+        "tokensIn": 1619,
+        "tokensOut": 1116,
+        "via": "ci"
+      },
+      "agree_d1_d2": 10,
+      "agree_d1_ci": 11,
+      "agree_d2_ci": 11
+    },
+    {
+      "topic": "swimming",
+      "handbookId": "k97dy9xh0c7gtgmbvp4qrwabnd8geb34",
+      "d1": {
+        "json": {
+          "checks": {
+            "answerable": true,
+            "concrete_images": true,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": false,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "Blowing bubbles continuously 'keeps your heart calm' is an overstated physiological claim.",
+            "A continuous stream of bubbles keeps chest and shoulders 'completely loose' overclaims; exhaling helps relaxation but does not guarantee it.",
+            "Card 1 says 'exhale steadily through your nose or mouth' but card 4 and the outcome imply only bubbles; the guidance is inconsistent, though not false."
+          ],
+          "fix": "Open card 1 with a sharp line like 'That panic underwater isn't from running out of air; it's from the air you refuse to let go,' and move the goggle setup into a one-line cue on the move card.",
+          "score": 5,
+          "weakest_card": 1,
+          "why": "It opens with a dry textbook sentence about CO2, then drifts into goggle-strap instructions, so the hook is flat and the chapter's single idea (exhale underwater) gets diluted."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 13577,
+        "ok": true,
+        "tokensIn": 1377,
+        "tokensOut": 1356,
+        "via": "direct"
+      },
+      "d2": {
+        "json": {
+          "checks": {
+            "answerable": true,
+            "concrete_images": true,
+            "facts_ok": true,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": false,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "'a continuous stream of bubbles keeps your chest and shoulders completely loose' is an overclaim",
+            "'keeps your heart calm' is a vague physiological claim with no support",
+            "no multiple-choice exercises or wrong-option feedback exist, so one_idea and feedback_names_confusion cannot be verified and were failed"
+          ],
+          "fix": "Open card 1 with 'You don't panic underwater because you're out of air; you panic because you're full of it.' Cut the goggle paragraph to one line or move it to a setup card.",
+          "score": 6,
+          "weakest_card": 1,
+          "why": "It opens with a dry physiology statement and then drifts into goggle-strap setup, which splits the chapter's one idea (exhale underwater) before it starts."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 17370,
+        "ok": true,
+        "tokensIn": 1377,
+        "tokensOut": 1487,
+        "via": "direct"
+      },
+      "ci": {
+        "ci": {
+          "cache": "miss",
+          "requestId": "6094ae1e-3909-42ec-89a1-78bb52e741c9",
+          "savedUsd": null,
+          "techniques": "",
+          "tokensSaved": "0"
+        },
+        "json": {
+          "checks": {
+            "answerable": true,
+            "concrete_images": true,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": false,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "'Emptying stale air continuously keeps your heart calm' is an unsupported physiological claim.",
+            "'A continuous stream of bubbles keeps your chest and shoulders completely loose' overstates the effect.",
+            "Only one exercise exists, and there is no wrong-option feedback, so the three-angle and feedback checks cannot be met."
+          ],
+          "fix": "Cut the goggles paragraph and open with the sharp version of the fact: 'That panicky gasp underwater isn't you running out of oxygen; it's the air you refuse to let go of.'",
+          "score": 5,
+          "weakest_card": 1,
+          "why": "It opens with a dry textbook sentence that undersells its surprising fact, then drifts into a goggle-fitting tangent that splits the chapter's single idea (breathing out underwater)."
+        },
+        "model": "claude-opus-5.5",
+        "ms": 14797,
+        "ok": true,
+        "sentFallback": true,
+        "stop": "end_turn",
+        "thinkingBlocks": 0,
+        "tokensIn": 1377,
+        "tokensOut": 1341,
+        "via": "ci"
+      },
+      "agree_d1_d2": 11,
+      "agree_d1_ci": 12,
+      "agree_d2_ci": 11
+    },
+    {
+      "topic": "git",
+      "handbookId": "k97e3weezmmceka5taas4b1wqx8gezqb",
+      "d1": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "Card 4 implies edited files show up as 'untracked'; edited tracked files appear as 'modified', and only new files are untracked.",
+            "Card 2 merges git status output into one line ('On branch main: nothing to commit'); real output puts these on separate lines and usually adds 'Your branch is up to date with 'origin/main'.'",
+            "The chapter has no exercises or feedback, so the one_idea, answerable and feedback checks cannot pass."
+          ],
+          "fix": "Replace the bullets with real git status output after Priya edits README.md and adds notes.txt, labeling 'modified' and 'untracked' separately.",
+          "score": 4,
+          "weakest_card": 4,
+          "why": "The 'compass' card is an abstract bullet list with no concrete moment or real output, and it wrongly lumps edited files in with untracked ones."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 12473,
+        "ok": true,
+        "tokensIn": 1431,
+        "tokensOut": 1202,
+        "via": "direct"
+      },
+      "d2": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "git status output shown as 'On branch main: nothing to commit, working tree clean' merges lines and drops 'Your branch is up to date with origin/main'; real output differs",
+            "'Cloning into payments... done.' compresses multi-line clone output into a single line that Git does not print verbatim"
+          ],
+          "fix": "Replace card 5 with three exercises showing raw git status outputs (clean, untracked file, staged file), each asking what state the repo is in, with feedback naming the confused state.",
+          "score": 4,
+          "weakest_card": 5,
+          "why": "Pure abstract recap of what was just read, with no image, no stakes and no check of understanding, in a chapter that has zero exercises."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 13857,
+        "ok": true,
+        "tokensIn": 1431,
+        "tokensOut": 1169,
+        "via": "direct"
+      },
+      "ci": {
+        "ci": {
+          "cache": "miss",
+          "requestId": "95f7d847-346c-4a09-9c85-57d4184b1460",
+          "savedUsd": null,
+          "techniques": "",
+          "tokensSaved": "0"
+        },
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": true,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "The git status output is condensed: real Git prints 'On branch main', then 'Your branch is up to date with 'origin/main'.', then 'nothing to commit, working tree clean' on separate lines, not joined with a colon.",
+            "The git clone output is simplified: real output includes object counting, compression and receiving progress lines."
+          ],
+          "fix": "Replace the recap with a moment, such as Priya's first commit showing up as 'root@laptop' in the team log because she skipped git config. Then add three exercises on that one idea: configuring your identity before you work.",
+          "score": 5,
+          "weakest_card": 5,
+          "why": "The recap card is pure abstraction that only restates cards 1–4, and the chapter has no exercises, so three checks fail outright."
+        },
+        "model": "claude-opus-5.5",
+        "ms": 16835,
+        "ok": true,
+        "sentFallback": true,
+        "stop": "end_turn",
+        "thinkingBlocks": 0,
+        "tokensIn": 1431,
+        "tokensOut": 1067,
+        "via": "ci"
+      },
+      "agree_d1_d2": 12,
+      "agree_d1_ci": 11,
+      "agree_d2_ci": 11
+    },
+    {
+      "topic": "photosynthesis for class 10",
+      "handbookId": "k97cg232rs4t0e81pmxev7k76n8gewds",
+      "d1": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": true,
+            "facts_ok": true,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": true,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [],
+          "fix": "Rebuild card 3 around one image, a leaf peel under a school microscope showing green chloroplast dots, and keep the metaphor fixed: sunlight is the stove, chlorophyll is the pan that catches its heat.",
+          "score": 8,
+          "weakest_card": 3,
+          "why": "Card 3 piles up site, chloroplast, pigment, energy conversion and glucose with little imagery, and it blurs the metaphor by making sunlight and chlorophyll 'the stove and the pot'. The chapter also includes no exercises or feedback, so checks 4–6 cannot pass."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 17955,
+        "ok": true,
+        "tokensIn": 1996,
+        "tokensOut": 1758,
+        "via": "direct"
+      },
+      "d2": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": true,
+            "facts_ok": true,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": true,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [],
+          "fix": "Shrink card 6's recap to one line and add three exercises (spot Rohan's error, count the oxygen atoms on each side, name the site), each wrong-option feedback naming its confusion (e.g. 'that's a condition, not a raw material').",
+          "score": 8,
+          "weakest_card": 6,
+          "why": "Card 6 re-lists the definition, site and equation already taught, and the chapter has no exercises, so the one-idea, answerable and feedback checks cannot pass."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 17584,
+        "ok": true,
+        "tokensIn": 1996,
+        "tokensOut": 1682,
+        "via": "direct"
+      },
+      "ci": {
+        "ci": {
+          "cache": "miss",
+          "requestId": "e4ecafc3-133d-4beb-a638-cb65ec6b6c50",
+          "savedUsd": null,
+          "techniques": "",
+          "tokensSaved": "0"
+        },
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": true,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": true,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [],
+          "fix": "Rewrite card 6's summary around the kitchen image (e.g., 'the leaf took in air and water, the stove stayed on the stovetop, and out came sugar plus a puff of oxygen through the stomata'), and add three exercises with wrong-option feedback that names each confusion.",
+          "score": 7,
+          "weakest_card": 6,
+          "why": "Card 6 is a teach card with no concrete image, just the definition and equation restated; the chapter also has no exercises, so the exercise and feedback checks cannot pass."
+        },
+        "model": "claude-opus-5.5",
+        "ms": 17371,
+        "ok": true,
+        "sentFallback": true,
+        "stop": "end_turn",
+        "thinkingBlocks": 0,
+        "tokensIn": 1996,
+        "tokensOut": 1615,
+        "via": "ci"
+      },
+      "agree_d1_d2": 12,
+      "agree_d1_ci": 11,
+      "agree_d2_ci": 11
+    },
+    {
+      "topic": "kubernetes",
+      "handbookId": "k977sqd0d0y9ckapga9rkpm0ah8gerhs",
+      "d1": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": true,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "Card 2's manifest as written is not valid: `containers` must be a list and each container needs a `name`, and selector/template must sit under spec",
+            "Card 3 says 'Save the full manifest', but no complete, valid manifest is ever shown",
+            "No exercises or feedback exist in the chapter, so the exercise-based checks cannot pass",
+            "The chapter teaches two ideas (targeting cluster/namespace and writing a Deployment), not one",
+            "Card 6 (teach) is pure recap with no concrete image"
+          ],
+          "fix": "Replace the one-liners with a properly indented YAML block that nests selector and template under spec and lists containers as `- name: orders-api` / `image: myregistry/orders-api:1.4`.",
+          "score": 6,
+          "weakest_card": 2,
+          "why": "The manifest is squashed into one-liners that lose YAML nesting and omit the required container name, so the 'full manifest' that card 3 says to save would fail on apply."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 17183,
+        "ok": true,
+        "tokensIn": 1843,
+        "tokensOut": 1345,
+        "via": "direct"
+      },
+      "d2": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": true,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "The manifest as shown is presented as deployable, but `containers` lacks the required `name` field and list syntax, and the flattened `metadata: name: orders-api` lines are not valid YAML."
+          ],
+          "fix": "Show the manifest as one properly indented YAML block, with containers as a list item that includes `- name: orders-api` above `image:`.",
+          "score": 6,
+          "weakest_card": 2,
+          "why": "The manifest is squashed into one-line fragments that are not valid YAML and omit the required container name, so a reader who copies it for step 2 will get an error."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 16298,
+        "ok": true,
+        "tokensIn": 1843,
+        "tokensOut": 1207,
+        "via": "direct"
+      },
+      "ci": {
+        "ci": {
+          "cache": "miss",
+          "requestId": "ad58f171-d50f-4ea6-9165-42ebed4bb0b8",
+          "savedUsd": null,
+          "techniques": "",
+          "tokensSaved": "0"
+        },
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "Card 2 presented as a complete applyable manifest: the container entry lacks the required `name` field and the flattened lines lose YAML nesting, so `kubectl apply` would reject it",
+            "Card 1 says kubectl 'has to be configured for your team's cluster first' but never says how (kubeconfig), so step 1 can't be completed from the chapter alone",
+            "No exercises or option feedback are present, so the one_idea, answerable and feedback checks cannot pass"
+          ],
+          "fix": "Replace the fragments with one properly indented YAML code block whose containers list reads `- name: orders-api` with `image: myregistry/orders-api:1.4`.",
+          "score": 5,
+          "weakest_card": 2,
+          "why": "The manifest is flattened into one-line backtick fragments, so it isn't valid YAML. It also omits the required container `name`, yet card 3 tells readers to save it as the full manifest and apply it."
+        },
+        "model": "claude-opus-5.5",
+        "ms": 14356,
+        "ok": true,
+        "sentFallback": true,
+        "stop": "end_turn",
+        "thinkingBlocks": 0,
+        "tokensIn": 1843,
+        "tokensOut": 1171,
+        "via": "ci"
+      },
+      "agree_d1_d2": 12,
+      "agree_d1_ci": 11,
+      "agree_d2_ci": 11
+    },
+    {
+      "topic": "spanish",
+      "handbookId": "k97cdcj8zq2p2w7h1n83brv6vd8geeqg",
+      "d1": {
+        "json": {
+          "checks": {
+            "answerable": true,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": true
+          },
+          "dubious_claims": [
+            "outcomeLine says you can 'read any Spanish word aloud', but c/z, soft g, qu/gu, v/b and x are never taught",
+            "Try-it message 'Every letter you see makes its sound' is false: the u in que/guerra is silent",
+            "gracias as 'GRAH-see-as' is Latin American seseo, while a Madrid waiter would typically say 'GRAH-thee-as'; this is unflagged in a Madrid scene",
+            "Chapter teaches pronunciation, greetings and introductions, three ideas, with only one exercise and no wrong-option feedback at all"
+          ],
+          "fix": "Open card 1 with a scene and a question, e.g. 'Hand a Spanish 8-year-old a word they've never seen and they'll read it right. Hand an English one *though*, *through*, *tough*… how does Spanish pull that off?'",
+          "score": 6,
+          "weakest_card": 1,
+          "why": "Card 1 opens with a flat textbook claim and holds only a vowel chart with sound-alike words, no real image."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 22186,
+        "ok": true,
+        "tokensIn": 3390,
+        "tokensOut": 1930,
+        "via": "direct"
+      },
+      "d2": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "'Gracias' is given as GRAH-see-as in a Madrid scene, but in Madrid the c before i is usually 'th' (GRAH-thee-as).",
+            "The outcomeLine says 'read any Spanish word aloud', which overclaims: the chapter never covers c/g before e/i, qu, or gu.",
+            "The chapter has no exercises and no feedback, so checks 4-6 cannot pass.",
+            "The chapter mixes pronunciation, greetings and introductions, which is more than one idea."
+          ],
+          "fix": "Open card 1 with a café moment, such as Kabir reading 'jamón' off a Madrid menu and saying it right on the first try, then show the though/through/tough contrast.",
+          "score": 4,
+          "weakest_card": 1,
+          "why": "The opener is a flat textbook claim, and the card is a list of sound comparisons with no scene, so a reader with no interest scrolls past before Kabir appears."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 17580,
+        "ok": true,
+        "tokensIn": 3390,
+        "tokensOut": 1540,
+        "via": "direct"
+      },
+      "ci": {
+        "ci": {
+          "cache": "miss",
+          "requestId": "65d9958c-92b3-45a5-846c-7043a990ddf6",
+          "savedUsd": null,
+          "techniques": "",
+          "tokensSaved": "0"
+        },
+        "json": {
+          "checks": {
+            "answerable": true,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": false,
+            "laugh_or_sit_up": false,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "Outcome line and card 1 say you can read any or nearly any word, but c, z, g, qu, v/b, y and single r are never taught, so 'any' is an overclaim.",
+            "'Gracias' as GRAH-see-as is the Latin American pronunciation; in Madrid, where Kabir is, c before i is usually 'th' (GRAH-thee-as).",
+            "Title 'Ten sounds' does not match the material: the chapter teaches five vowels plus five letter rules, and 'ten sounds' is not enough to read any word."
+          ],
+          "fix": "Open with a concrete moment, e.g. 'In Madrid you can read a menu aloud on day one; in London, \"though\", \"through\" and \"tough\" still trip up natives.' Retitle the card to drop the 'any word' promise.",
+          "score": 5,
+          "weakest_card": 1,
+          "why": "It opens with a flat textbook statement, uses word examples instead of a real image, and promises ten sounds for any word, which the chapter can't deliver."
+        },
+        "model": "claude-opus-5.5",
+        "ms": 15076,
+        "ok": true,
+        "sentFallback": true,
+        "stop": "end_turn",
+        "thinkingBlocks": 0,
+        "tokensIn": 3390,
+        "tokensOut": 1190,
+        "via": "ci"
+      },
+      "agree_d1_d2": 10,
+      "agree_d1_ci": 11,
+      "agree_d2_ci": 11
+    },
+    {
+      "topic": "file my own income tax return",
+      "handbookId": "k976zx8cj46t407511hrm4rzth8gfm12",
+      "d1": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": true,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "Due date of 31 August 2026 for business owners (non-audit) for AY 2026-27 is uncertain.",
+            "Belated-return deadline of 31 December 2026 for AY 2026-27 may have been changed by Budget 2026 proposals.",
+            "'For AY 2026-27, no extension was announced' cannot be verified."
+          ],
+          "fix": "Cut the tax-audit sentence from card 3, add a concrete moment such as the portal stamping 'Belated – 139(4)' on the filing screen, and add three exercises with feedback that names each confusion.",
+          "score": 6,
+          "weakest_card": 3,
+          "why": "Card 3 is the most abstract: a stack of dates and a section number with no concrete image, plus a tax-audit aside that serves only readers who aren't salaried. The chapter also has no exercises, so the three exercise-based checks fail."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 13727,
+        "ok": true,
+        "tokensIn": 1799,
+        "tokensOut": 1347,
+        "via": "direct"
+      },
+      "d2": {
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": true,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "Non-audit business owners' due date of 31 August for AY 2026-27 depends on a Budget 2026 change; I can't verify it.",
+            "'For AY 2026-27, no extension was announced' is time-sensitive and unverifiable.",
+            "The 31 December 2026 belated deadline under Section 139(4) may have been altered by the Finance Act 2026 or the new Income-tax Act 2025. This needs confirmation."
+          ],
+          "fix": "Cut the tax-audit paragraph and replace it with one image, such as the portal's 'Filed u/s 139(4)' tag on the acknowledgement PDF. Then add the three missing exercises with feedback that names the confusion.",
+          "score": 6,
+          "weakest_card": 3,
+          "why": "Card 3 has four dates, a section number and an audit tangent most readers don't need, with no concrete image to hold onto."
+        },
+        "model": "claude-opus-5-5",
+        "ms": 17874,
+        "ok": true,
+        "tokensIn": 1799,
+        "tokensOut": 1687,
+        "via": "direct"
+      },
+      "ci": {
+        "ci": {
+          "cache": "miss",
+          "requestId": "a1ef2062-94e2-4d7f-9fd2-efe150ea5b6d",
+          "savedUsd": null,
+          "techniques": "",
+          "tokensSaved": "0"
+        },
+        "json": {
+          "checks": {
+            "answerable": false,
+            "concrete_images": false,
+            "facts_ok": false,
+            "feedback_names_confusion": false,
+            "hook": true,
+            "laugh_or_sit_up": true,
+            "no_cliche": true,
+            "one_idea": false,
+            "open_loop": true,
+            "short_cards": true,
+            "topic_specific": true,
+            "would_keep_reading": false
+          },
+          "dubious_claims": [
+            "Non-audit business owners had until 31 August 2026 for AY 2026-27; the traditional due date was 31 July, and any change to 31 August needs a source.",
+            "No extension was announced for AY 2026-27; this cannot be verified and may change.",
+            "Any refund is still paid; true in principle, but it omits the reduced interest on refunds for belated returns."
+          ],
+          "fix": "Swap card 3's date list for one picture, such as a 1 August login screen stamping the return 'belated u/s 139(4)'. Keep only the salaried date, and then add the three missing exercises with feedback that names each confusion.",
+          "score": 6,
+          "weakest_card": 3,
+          "why": "Card 3 is a pile of dates and section numbers with no concrete image. It also states a 31 August business due date that may not hold for AY 2026-27."
+        },
+        "model": "claude-opus-5.5",
+        "ms": 13529,
+        "ok": true,
+        "sentFallback": true,
+        "stop": "end_turn",
+        "thinkingBlocks": 0,
+        "tokensIn": 1799,
+        "tokensOut": 1252,
+        "via": "ci"
+      },
+      "agree_d1_d2": 12,
+      "agree_d1_ci": 12,
+      "agree_d2_ci": 12
+    }
+  ],
+  "partB": [
+    {
+      "via": "direct",
+      "ok": true,
+      "ms": 27404,
+      "score": 6,
+      "dubious": 13,
+      "tokensIn": 2000,
+      "tokensOut": 2492,
+      "model": "claude-opus-5-5",
+      "caught": 12,
+      "caughtWhich": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "dubious_claims": [
+        "Card 1: prices change 'only once a minute'. They can change many times per second.",
+        "Card 2: 'Big Indian companies are cut into exactly 1,000 pieces'. Share counts vary and usually run into millions or billions.",
+        "Card 2: 'guaranteed share of the profits every month'. Dividends are neither guaranteed nor monthly.",
+        "Card 2: T+2 settlement. India moved to T+1 by January 2023.",
+        "Card 2: 'you usually buy your slice directly from the company'. This contradicts card 6; you buy from other owners.",
+        "Card 3: '400 left over'. 300 buyers minus 100 sellers leaves 200.",
+        "Card 3: ₹500 to ₹503 is 'up 6%'. It is 0.6%.",
+        "Card 3: '₹3 rise on 300 shares adds up to ₹9,000'. It is ₹900, and the framing is muddled anyway.",
+        "Card 4: 'Benjamin Graham, who was taught by Warren Buffett'. It is reversed; Graham taught Buffett.",
+        "Card 5: Priya buys at 8:40 am. NSE/BSE normal trading opens at 9:15 am, with pre-open from 9:00.",
+        "Card 6: '40 hands up, 4 slices left, and the price falls'. Excess demand makes the price rise.",
+        "Card 7: answer key is 'a' (company raises it). Per the chapter the correct answer is 'b', and the whyNot for b wrongly says the company sets the price.",
+        "Card 8: Bombay Stock Exchange 'opened in 1995'. BSE dates from 1875; it is NSE that began trading in 1994."
+      ],
+      "facts_ok": false
+    },
+    {
+      "via": "direct",
+      "ok": true,
+      "ms": 24481,
+      "score": 6,
+      "dubious": 11,
+      "tokensIn": 2000,
+      "tokensOut": 2160,
+      "model": "claude-opus-5-5",
+      "caught": 11,
+      "caughtWhich": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        12,
+        13
+      ],
+      "dubious_claims": [
+        "A share's price can change only once a minute (prices can change many times a second)",
+        "Big Indian companies are cut into exactly 1,000 shares (share counts vary widely, often in crores)",
+        "Shareholders get a guaranteed share of profits every month (dividends are neither guaranteed nor monthly)",
+        "T+2 settlement in India (India moved to T+1 in 2023)",
+        "You usually buy shares directly from the company (on the secondary market you buy from another owner; the chapter contradicts itself here)",
+        "₹500 to ₹503 is up 6% (it is 0.6%)",
+        "₹3 rise on 300 shares adds up to ₹9,000 (it is ₹900)",
+        "Benjamin Graham was taught by Warren Buffett (it is the reverse: Graham taught Buffett)",
+        "40 hands up, 4 slices left, and the price falls (excess demand pushes the price up)",
+        "Bombay Stock Exchange opened in 1995 (BSE dates to 1875)",
+        "Exercise answer key 'a' and whyNot 'the company does' contradict the chapter; the correct answer is b"
+      ],
+      "facts_ok": false
+    },
+    {
+      "via": "ci",
+      "ok": true,
+      "ms": 18690,
+      "score": 7,
+      "dubious": 12,
+      "tokensIn": 2000,
+      "tokensOut": 1804,
+      "model": "claude-opus-5.5",
+      "caught": 12,
+      "caughtWhich": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "dubious_claims": [
+        "Share prices change only once a minute (they can change many times per second)",
+        "Big Indian companies are cut into exactly 1,000 shares (share counts vary and usually run to crores)",
+        "Settlement is T+2 (India moved to T+1 in 2023)",
+        "Shareholders get a guaranteed share of profits every month (dividends are not guaranteed and are rarely monthly)",
+        "After listing you usually buy directly from the company (this contradicts the chapter's own point: you buy from another owner)",
+        "Benjamin Graham was taught by Warren Buffett (it is the reverse)",
+        "Bombay Stock Exchange opened in 1995 (BSE dates to 1875)",
+        "₹500 to ₹503 is up 6% (it is 0.6%)",
+        "300 buyers minus 100 sellers leaves 400 (it leaves 200)",
+        "₹3 on 300 shares is ₹9,000 (it is ₹900)",
+        "Jalebi example says the price falls in both cases (40 hands up for 4 slices should rise)",
+        "Google's displayed price comes from BSE (it often shows NSE)"
+      ],
+      "facts_ok": false
+    },
+    {
+      "via": "ci",
+      "ok": true,
+      "ms": 20233,
+      "score": 7,
+      "dubious": 12,
+      "tokensIn": 2000,
+      "tokensOut": 1867,
+      "model": "claude-opus-5.5",
+      "caught": 11,
+      "caughtWhich": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        12,
+        13
+      ],
+      "dubious_claims": [
+        "Share prices can change only once a minute (they change continuously during trading hours)",
+        "Big Indian companies are cut into exactly 1,000 shares (share counts vary and usually run to millions or billions)",
+        "Shareholders get a guaranteed share of profits every month (dividends are neither guaranteed nor monthly)",
+        "T+2 settlement in India (India moved to T+1 in 2023)",
+        "After listing, you usually buy directly from the company (card 2 contradicts itself and card 6: you buy from another owner)",
+        "₹500 to ₹503 is up 6% (it is 0.6%)",
+        "₹3 rise on 300 shares adds up to ₹9,000 (it is ₹900, and the figure is not meaningful anyway)",
+        "Benjamin Graham was taught by Warren Buffett (it was the reverse: Graham taught Buffett)",
+        "Priya buys at 8:40 am (Indian markets open at 9:15 am)",
+        "40 hands up, 4 slices left, and the price falls (it should rise)",
+        "Bombay Stock Exchange opened in 1995 (it dates to 1875; 1994 is NSE's trading start)",
+        "The prices shown by a Google search come from the BSE (Google often shows NSE prices)"
+      ],
+      "facts_ok": false
+    }
+  ],
+  "rawB": [
+    {
+      "json": {
+        "checks": {
+          "answerable": false,
+          "concrete_images": true,
+          "facts_ok": false,
+          "feedback_names_confusion": false,
+          "hook": true,
+          "laugh_or_sit_up": true,
+          "no_cliche": true,
+          "one_idea": false,
+          "open_loop": true,
+          "short_cards": false,
+          "topic_specific": true,
+          "would_keep_reading": false
+        },
+        "dubious_claims": [
+          "Card 1: prices change 'only once a minute'. They can change many times per second.",
+          "Card 2: 'Big Indian companies are cut into exactly 1,000 pieces'. Share counts vary and usually run into millions or billions.",
+          "Card 2: 'guaranteed share of the profits every month'. Dividends are neither guaranteed nor monthly.",
+          "Card 2: T+2 settlement. India moved to T+1 by January 2023.",
+          "Card 2: 'you usually buy your slice directly from the company'. This contradicts card 6; you buy from other owners.",
+          "Card 3: '400 left over'. 300 buyers minus 100 sellers leaves 200.",
+          "Card 3: ₹500 to ₹503 is 'up 6%'. It is 0.6%.",
+          "Card 3: '₹3 rise on 300 shares adds up to ₹9,000'. It is ₹900, and the framing is muddled anyway.",
+          "Card 4: 'Benjamin Graham, who was taught by Warren Buffett'. It is reversed; Graham taught Buffett.",
+          "Card 5: Priya buys at 8:40 am. NSE/BSE normal trading opens at 9:15 am, with pre-open from 9:00.",
+          "Card 6: '40 hands up, 4 slices left, and the price falls'. Excess demand makes the price rise.",
+          "Card 7: answer key is 'a' (company raises it). Per the chapter the correct answer is 'b', and the whyNot for b wrongly says the company sets the price.",
+          "Card 8: Bombay Stock Exchange 'opened in 1995'. BSE dates from 1875; it is NSE that began trading in 1994."
+        ],
+        "fix": "Cut card 2 under 120 words. Change it to 'you usually buy your slice from another owner, not the company'. Drop the fixed 1,000 pieces, the guaranteed monthly profits and T+2 (India settles T+1 now).",
+        "score": 6,
+        "weakest_card": 2,
+        "why": "The core teach card runs about 126 words and packs in four false claims, including 'you buy directly from the company', which contradicts the chapter's own thesis."
+      },
+      "model": "claude-opus-5-5",
+      "ms": 27404,
+      "ok": true,
+      "tokensIn": 2000,
+      "tokensOut": 2492,
+      "via": "direct"
+    },
+    {
+      "json": {
+        "checks": {
+          "answerable": false,
+          "concrete_images": true,
+          "facts_ok": false,
+          "feedback_names_confusion": false,
+          "hook": true,
+          "laugh_or_sit_up": true,
+          "no_cliche": true,
+          "one_idea": false,
+          "open_loop": true,
+          "short_cards": false,
+          "topic_specific": true,
+          "would_keep_reading": false
+        },
+        "dubious_claims": [
+          "A share's price can change only once a minute (prices can change many times a second)",
+          "Big Indian companies are cut into exactly 1,000 shares (share counts vary widely, often in crores)",
+          "Shareholders get a guaranteed share of profits every month (dividends are neither guaranteed nor monthly)",
+          "T+2 settlement in India (India moved to T+1 in 2023)",
+          "You usually buy shares directly from the company (on the secondary market you buy from another owner; the chapter contradicts itself here)",
+          "₹500 to ₹503 is up 6% (it is 0.6%)",
+          "₹3 rise on 300 shares adds up to ₹9,000 (it is ₹900)",
+          "Benjamin Graham was taught by Warren Buffett (it is the reverse: Graham taught Buffett)",
+          "40 hands up, 4 slices left, and the price falls (excess demand pushes the price up)",
+          "Bombay Stock Exchange opened in 1995 (BSE dates to 1875)",
+          "Exercise answer key 'a' and whyNot 'the company does' contradict the chapter; the correct answer is b"
+        ],
+        "fix": "Change 'buy your slice directly from the company, not from another owner' to 'buy your slice from another owner, not from the company', and delete the 1,000-pieces and guaranteed-profits claims to bring the card under 120 words.",
+        "score": 6,
+        "weakest_card": 2,
+        "why": "Card 2 runs past 120 words, invents facts (exactly 1,000 shares, guaranteed monthly profits, T+2), and says you buy from the company, which contradicts the chapter's core idea."
+      },
+      "model": "claude-opus-5-5",
+      "ms": 24481,
+      "ok": true,
+      "tokensIn": 2000,
+      "tokensOut": 2160,
+      "via": "direct"
+    },
+    {
+      "ci": {
+        "cache": "miss",
+        "requestId": "feb73aa4-e8b6-4c7c-b988-cd676a1469e7",
+        "savedUsd": null,
+        "techniques": "",
+        "tokensSaved": "0"
+      },
+      "json": {
+        "checks": {
+          "answerable": true,
+          "concrete_images": true,
+          "facts_ok": false,
+          "feedback_names_confusion": false,
+          "hook": true,
+          "laugh_or_sit_up": true,
+          "no_cliche": true,
+          "one_idea": false,
+          "open_loop": true,
+          "short_cards": false,
+          "topic_specific": true,
+          "would_keep_reading": false
+        },
+        "dubious_claims": [
+          "Share prices change only once a minute (they can change many times per second)",
+          "Big Indian companies are cut into exactly 1,000 shares (share counts vary and usually run to crores)",
+          "Settlement is T+2 (India moved to T+1 in 2023)",
+          "Shareholders get a guaranteed share of profits every month (dividends are not guaranteed and are rarely monthly)",
+          "After listing you usually buy directly from the company (this contradicts the chapter's own point: you buy from another owner)",
+          "Benjamin Graham was taught by Warren Buffett (it is the reverse)",
+          "Bombay Stock Exchange opened in 1995 (BSE dates to 1875)",
+          "₹500 to ₹503 is up 6% (it is 0.6%)",
+          "300 buyers minus 100 sellers leaves 400 (it leaves 200)",
+          "₹3 on 300 shares is ₹9,000 (it is ₹900)",
+          "Jalebi example says the price falls in both cases (40 hands up for 4 slices should rise)",
+          "Google's displayed price comes from BSE (it often shows NSE)"
+        ],
+        "fix": "Set answer to 'b', and rewrite whyNot so a = 'Confuses the company with the crowd: after listing, the company doesn't set the price' and c = 'Confuses opening the market with setting prices: the exchange only matches buyers and sellers'.",
+        "score": 7,
+        "weakest_card": 7,
+        "why": "The only exercise marks the misconception ('company raises it') as correct, and its feedback teaches the opposite of the chapter."
+      },
+      "model": "claude-opus-5.5",
+      "ms": 18690,
+      "ok": true,
+      "sentFallback": true,
+      "stop": "end_turn",
+      "thinkingBlocks": 0,
+      "tokensIn": 2000,
+      "tokensOut": 1804,
+      "via": "ci"
+    },
+    {
+      "ci": {
+        "cache": "miss",
+        "requestId": "37b381ce-7df5-43cd-8ae4-bd651e75094e",
+        "savedUsd": null,
+        "techniques": "",
+        "tokensSaved": "0"
+      },
+      "json": {
+        "checks": {
+          "answerable": true,
+          "concrete_images": true,
+          "facts_ok": false,
+          "feedback_names_confusion": false,
+          "hook": true,
+          "laugh_or_sit_up": true,
+          "no_cliche": true,
+          "one_idea": false,
+          "open_loop": true,
+          "short_cards": false,
+          "topic_specific": true,
+          "would_keep_reading": false
+        },
+        "dubious_claims": [
+          "Share prices can change only once a minute (they change continuously during trading hours)",
+          "Big Indian companies are cut into exactly 1,000 shares (share counts vary and usually run to millions or billions)",
+          "Shareholders get a guaranteed share of profits every month (dividends are neither guaranteed nor monthly)",
+          "T+2 settlement in India (India moved to T+1 in 2023)",
+          "After listing, you usually buy directly from the company (card 2 contradicts itself and card 6: you buy from another owner)",
+          "₹500 to ₹503 is up 6% (it is 0.6%)",
+          "₹3 rise on 300 shares adds up to ₹9,000 (it is ₹900, and the figure is not meaningful anyway)",
+          "Benjamin Graham was taught by Warren Buffett (it was the reverse: Graham taught Buffett)",
+          "Priya buys at 8:40 am (Indian markets open at 9:15 am)",
+          "40 hands up, 4 slices left, and the price falls (it should rise)",
+          "Bombay Stock Exchange opened in 1995 (it dates to 1875; 1994 is NSE's trading start)",
+          "The prices shown by a Google search come from the BSE (Google often shows NSE prices)"
+        ],
+        "fix": "Set answer to \"b\" and rewrite whyNot: a = \"confuses news with the crowd: good news only moves price if it changes how many want to buy\"; c = \"confuses opening the market with setting prices: the exchange only matches deals\"; then add two more exercises on the same idea from different angles.",
+        "score": 7,
+        "weakest_card": 7,
+        "why": "The only exercise marks the wrong answer correct (a), and its feedback claims the company sets the price, which reverses the chapter's core lesson."
+      },
+      "model": "claude-opus-5.5",
+      "ms": 20233,
+      "ok": true,
+      "sentFallback": true,
+      "stop": "end_turn",
+      "thinkingBlocks": 0,
+      "tokensIn": 2000,
+      "tokensOut": 1867,
+      "via": "ci"
+    }
+  ]
+}

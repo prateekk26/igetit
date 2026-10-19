@@ -78,6 +78,10 @@ const JOB: Record<Kind, { model: string; effort?: Effort; maxTokens: number }> =
 
 let anthropic: Anthropic | null = null;
 function client() { return (anthropic ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })); }
+// Cheaper Inference's Anthropic-style endpoint (19 Oct, D138): the same Claude request, billed to CHEAPER_INFERENCE_API_KEY at
+// about 35% off. Used when a call names "cia:<their model id>" (the Shelf judge). Their ids use a dot: claude-opus-5.5.
+let cheaper: Anthropic | null = null;
+function cheaperClient() { return (cheaper ??= new Anthropic({ apiKey: process.env.CHEAPER_INFERENCE_API_KEY, baseURL: "https://api.cheaperinference.com" })); }
 
 // Claude prompt caching (8 Oct, Tanisha): off for now. A cache write costs 1.25x normal input and a hit 0.1x, and the cache
 // lives 5 minutes, so it saves money only when the same system prompt is sent again within 5 minutes in more than about
@@ -85,7 +89,7 @@ function client() { return (anthropic ??= new Anthropic({ apiKey: process.env.AN
 // reports cache_read_input_tokens in every reply, so the hit rate can be checked first. (Gemini caches by itself.)
 const CACHE_PROMPTS = false;
 
-async function callAnthropic(kind: Kind, system: string, user: string, modelOverride?: string, effortOverride?: Effort): Promise<{ text: string; tokensIn?: number; tokensOut?: number; cachedIn?: number; model: string }> {
+async function callAnthropic(kind: Kind, system: string, user: string, modelOverride?: string, effortOverride?: Effort, via?: Anthropic): Promise<{ text: string; tokensIn?: number; tokensOut?: number; cachedIn?: number; model: string }> {
   const job = JOB[kind];
   const model = modelOverride ?? process.env.ANTHROPIC_MODEL ?? job.model;
   const isHaiku = model.startsWith("claude-haiku");
@@ -104,11 +108,12 @@ async function callAnthropic(kind: Kind, system: string, user: string, modelOver
     ...(isHaiku ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
   };
   // Large caps (max effort) stream, so a long think doesn't hit the HTTP timeout.
-  const res = maxTokens > 16000 ? await client().beta.messages.stream(params as any).finalMessage() : await client().beta.messages.create(params as any);
+  const c = via ?? client();
+  const res = maxTokens > 16000 ? await c.beta.messages.stream(params as any).finalMessage() : await c.beta.messages.create(params as any);
   if (res.stop_reason === "refusal") throw new Error(`declined (${res.stop_details?.category ?? "no category"})`);
   if (res.stop_reason === "max_tokens") throw new Error("reply cut off at the token limit");
   const text = res.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text").map((b) => b.text).join("");
-  return { text, tokensIn: res.usage.input_tokens, tokensOut: res.usage.output_tokens, cachedIn: (res.usage as any).cache_read_input_tokens || undefined, model: res.model };
+  return { text, tokensIn: res.usage.input_tokens, tokensOut: res.usage.output_tokens, cachedIn: (res.usage as any).cache_read_input_tokens || undefined, model: via ? `ci:${res.model}` : res.model };
 }
 
 // GLM (Zhipu / Z.ai), OpenAI-style chat API. Key in the Convex env variable CHEAPER_INFERENCE_API_KEY (Prateek's credits).
@@ -267,12 +272,13 @@ async function runGenerate(ctx: any, { kind, system, user, model, effort, trace,
       const viaGLM = !!model?.startsWith("glm-");
       // "ci:<model>" (8 Oct): any model on the Cheaper Inference marketplace (Prateek's credits), thinking on where Claude thinks.
       const viaCheaper = !!model?.startsWith("ci:");
+      const viaCheaperClaude = !!model?.startsWith("cia:");   // 19 Oct: Claude through Cheaper Inference, same request shape
       const viaGemini = !!model?.startsWith("gemini-");
       // 9 Oct (dc, D27 follow-up): every try gets its own clock (150 s for a chapter), inside a step budget of twice that,
       // so a retry never inherits a spent deadline and a long chapter is not bounced to Opus on time alone.
       const perTry = GEMINI_BUDGET[kind] ?? GEMINI_STEP_BUDGET;
       const stepDeadline = started + 2 * perTry;
-      const callWith = (u: string) => viaGemini ? callGemini(kind, system, u, model!, JOB[kind].maxTokens, Math.min(Date.now() + perTry, stepDeadline)) : viaInference ? callInference(kind, system, u, JOB[kind].maxTokens, model?.startsWith("tic:") && model.length > 4 ? model.slice(4) : undefined) : viaCheaper ? callGLM(system, u, model!.slice(3), JOB[kind].maxTokens, effort ?? JOB[kind].effort, kind) : viaGLM ? callGLM(system, u, model!, JOB[kind].maxTokens, effort) : provider === "anthropic" ? callAnthropic(kind, system, u, model, effort) : callOpenAI(system, u, maxOut);
+      const callWith = (u: string) => viaGemini ? callGemini(kind, system, u, model!, JOB[kind].maxTokens, Math.min(Date.now() + perTry, stepDeadline)) : viaInference ? callInference(kind, system, u, JOB[kind].maxTokens, model?.startsWith("tic:") && model.length > 4 ? model.slice(4) : undefined) : viaCheaperClaude ? callAnthropic(kind, system, u, model!.slice(4), effort, cheaperClient()) : viaCheaper ? callGLM(system, u, model!.slice(3), JOB[kind].maxTokens, effort ?? JOB[kind].effort, kind) : viaGLM ? callGLM(system, u, model!, JOB[kind].maxTokens, effort) : provider === "anthropic" ? callAnthropic(kind, system, u, model, effort) : callOpenAI(system, u, maxOut);
       const call = () => callWith(user);
       // A marketplace call that times out or drops gets one more try (8 Oct); provider errors on Claude are left as before.
       let r = await call().catch(async (e: any) => {
@@ -307,7 +313,7 @@ async function runGenerate(ctx: any, { kind, system, user, model, effort, trace,
       const error = String(e?.message ?? e).slice(0, 500);
       // A failed call is logged under the model it asked for when it named one (8 Oct: so a failed Gemini plan shows
       // as Gemini in the cost and latency reports, not as "anthropic").
-      const failedModel = model && !model.startsWith("tic:") ? model.replace(/^ci:/, "") : provider;
+      const failedModel = model && !model.startsWith("tic:") ? (model.startsWith("cia:") ? `ci:${model.slice(4)}` : model.replace(/^ci:/, "")) : provider;
       await ctx.runMutation(internal.handbooks.logAiCall, { ...trace, attempts, kind: logAs ?? kind, model: failedModel, input: user.slice(0, 2000), output: "", ms: Date.now() - started, ok: false, error });
       return { ok: false, error, model: failedModel };
     }

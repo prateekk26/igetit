@@ -47,7 +47,8 @@ export function pictureCards(cards: any[]) {
 }
 const AT_ONCE = 3;                // Runway queues ("THROTTLED") past its concurrency limit; more at once just waits longer
 
-async function drawOne(ctx: ActionCtx, prompt: string, model = MODEL, ratio = RATIO, seed?: number, extra: Record<string, unknown> = {}): Promise<{ ok: true; storageId: Id<"_storage">; ms: number } | { ok: false; error: string; ms: number }> {
+// trace (19 Oct): the handbook and chapter the picture is for, so its Runway cost counts in that book on /admin.
+async function drawOne(ctx: ActionCtx, prompt: string, model = MODEL, ratio = RATIO, seed?: number, extra: Record<string, unknown> = {}, trace?: { handbookId?: any; chapter?: number }): Promise<{ ok: true; storageId: Id<"_storage">; ms: number } | { ok: false; error: string; ms: number }> {
   const t0 = Date.now();
   try {
     const task = await runway("/text_to_image", { method: "POST", body: JSON.stringify({ model, promptText: prompt, ratio, ...(seed !== undefined ? { seed } : {}), ...extra }) });
@@ -66,11 +67,11 @@ async function drawOne(ctx: ActionCtx, prompt: string, model = MODEL, ratio = RA
     try { const small = await shrink(raw, mime); blob = new Blob([small.bytes as BlobPart], { type: "image/jpeg" }); }
     catch (e: any) { console.log("shrink failed, storing the original", String(e?.message ?? e).slice(0, 120)); blob = new Blob([raw as BlobPart], { type: mime }); }
     const storageId = await ctx.storage.store(blob);
-    await ctx.runMutation(internal.handbooks.logAiCall, { kind: "picture", model, input: prompt.slice(0, 2000), output: String(storageId), ms: Date.now() - t0, ok: true });
+    await ctx.runMutation(internal.handbooks.logAiCall, { ...trace, kind: "picture", model, input: prompt.slice(0, 2000), output: String(storageId), ms: Date.now() - t0, ok: true });
     return { ok: true, storageId, ms: Date.now() - t0 };
   } catch (e: any) {
     const error = String(e?.message ?? e).slice(0, 300);
-    await ctx.runMutation(internal.handbooks.logAiCall, { kind: "picture", model, input: prompt.slice(0, 2000), output: "", ms: Date.now() - t0, ok: false, error });
+    await ctx.runMutation(internal.handbooks.logAiCall, { ...trace, kind: "picture", model, input: prompt.slice(0, 2000), output: "", ms: Date.now() - t0, ok: false, error });
     return { ok: false, error, ms: Date.now() - t0 };
   }
 }
@@ -134,7 +135,7 @@ async function picturesFor(ctx: ActionCtx, topic: string, plan: any, title: stri
   const toDraw = scenes.map((_, k) => k).filter((k) => !photos[k]);
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(AT_ONCE, toDraw.length) }, async () => {
-    while (next < toDraw.length) { const k = toDraw[next++]; drawn[k] = await drawOne(ctx, `${PICTURE_ANCHOR} Subject: ${scenes[k].scene} ${PICTURE_NEVER}`); }
+    while (next < toDraw.length) { const k = toDraw[next++]; drawn[k] = await drawOne(ctx, `${PICTURE_ANCHOR} Subject: ${scenes[k].scene} ${PICTURE_NEVER}`, MODEL, RATIO, undefined, {}, trace); }
   }));
   // Every card without a photo or a drawing (and a cover Runway refused) gets a free, openly licensed Wikimedia photo
   // found from the card's title and the topic. No photo is used twice in one chapter.

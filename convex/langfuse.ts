@@ -8,11 +8,10 @@
 import { createHash } from "node:crypto";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { inrOf } from "./costs";
+import { inrOf, USD_INR as INR_PER_USD } from "./costs";
 
 const BATCH = 100;              // calls per run; well under Langfuse's request size even with text
 const TEXT_CAP = 4000;          // characters of prompt or reply per call, when text is sent
-const INR_PER_USD = 84;         // as in costs.ts
 
 const hex = (s: string, n: number) => createHash("sha256").update(s).digest("hex").slice(0, n);
 const nanos = (ms: number) => `${Math.round(ms)}000000`;

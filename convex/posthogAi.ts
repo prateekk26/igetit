@@ -8,14 +8,13 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { inrOf } from "./costs";
+import { inrOf, USD_INR as INR_PER_USD } from "./costs";
 import type { Row, Info } from "./langfuse";
 
 const KEY = "posthogAi.exportedUntil";
 const FIRST_FROM = Date.parse("2026-10-02T00:00:00+05:30");   // the first run sends the sprint's history (kickoff, 2 Oct)
 const BATCH = 200;          // calls per request
 const ROUNDS = 5;           // requests per run, so the history catches up in a few runs
-const INR_PER_USD = 84;     // as in costs.ts
 
 export const cursor = internalQuery({
   args: {},

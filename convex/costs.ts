@@ -6,23 +6,33 @@ import { isOwner } from "./admin";
 // What the app spends, per day, per provider and model, and per job inside a model (7 Oct, Prateek: "per day cost by
 // all models, and in a model see what's costing"). Every call already goes through handbooks.logAiCall; it adds its
 // estimated cost here, so /admin reads one small row per day, model and job instead of the full call log.
-// Estimates in rupees at ₹84 a dollar, from list prices; a provider's bill is the truth.
+// Estimates in rupees from list prices in dollars; a provider's bill is the truth.
+// 19 Oct (Prateek: "the real prices for all models", "correct conversion as of today"): prices checked that day on each
+// provider's page; the rate is Google Finance's at 19 Oct 16:44 UTC. Older rows in costDaily keep the ₹84 they were
+// written with until costs:backfill is run. Gemini's prices double on 1 Jan 2027 ($1.50 / $7.50, TTS $1.00 / $18.00).
+export const USD_INR = 94.9;
 
-const PER_M: Record<string, [number, number]> = {   // ₹ per million tokens, in / out
-  opus: [420, 2100],
-  fable: [420, 2100],     // not public: priced like Opus until known
-  sonnet: [252, 1260],
-  haiku: [84, 420],
-  "deepseek-v4.1-flash": [25.2, 100.8],
-  "gemini-3.8-flash": [63, 315],          // Google's list price ($0.75 / $3.75); Cheaper Inference sells it at about 35% off   // DeepSeek's list price at peak ($0.30 / $1.20); a reseller's bill may differ
-};
-const PER_CALL: Record<string, number> = {           // ₹ per successful call
-  muse_image: 0.85,       // Runway, 1 credit
-  gen4_image: 4.2,        // Runway, 5 credits
-  gen4_image_turbo: 1.7,  // Runway, 2 credits
-  supadata: 0,            // YouTube transcripts, free tier
-  wikimedia: 0,           // Commons photos, free (logged for their time, 8 Oct)
-};
+// $ per million tokens, in / out. The first key a model id contains wins, so the specific ones come first.
+const PER_M_USD: [string, number, number][] = [
+  ["ci:claude-opus-5.5", 2.616629, 13.083145],   // Opus 5.5 through Cheaper Inference: their catalog rate 19 Oct (it moves; never above list)
+  ["opus-5-5", 4, 20],              // Claude Opus 5.5
+  ["opus", 5, 25],                  // older Opus (5, 4.8 ...)
+  ["fable", 10, 50],                // Claude Fable 5.1 (masked comparison only)
+  ["sonnet-5", 2, 10],              // Claude Sonnet 5.5 and 5
+  ["sonnet", 3, 15],                // Sonnet 4.6
+  ["haiku", 1, 5],                  // Claude Haiku 4.5
+  ["gemini-3.8-flash-lite-tts", 0.5, 6], // read aloud, plain words (D140)
+  ["gemini-3.8-flash-tts", 0.5, 9], // read aloud: text in, audio tokens out
+  ["gemini-3.8-flash", 0.75, 3.75], // output includes thinking tokens
+  ["deepseek-v4.1-flash", 0.3, 1.2],   // not re-checked 19 Oct (unused); a reseller's bill may differ
+];
+const PER_CALL_USD: [string, number][] = [   // $ per successful call; Runway credits are $0.01 each (Runway's API pricing page)
+  ["gen4_image_turbo", 0.02],   // 2 credits
+  ["gen4_image", 0.05],         // 5 credits (720p)
+  ["muse_image", 0.01],         // 1 credit
+  ["supadata", 0],              // YouTube transcripts, free tier
+  ["wikimedia", 0],             // Commons photos, free (logged for their time, 8 Oct)
+];
 
 export function providerOf(model: string) {
   const m = model.toLowerCase();
@@ -39,8 +49,8 @@ export function providerOf(model: string) {
 
 export function inrOf(model: string, ok: boolean, tokensIn = 0, tokensOut = 0) {
   const m = model.toLowerCase() === "anthropic" ? "opus" : model.toLowerCase();
-  for (const [k, [a, b]] of Object.entries(PER_M)) if (m.includes(k)) return (tokensIn * a + tokensOut * b) / 1e6;
-  for (const [k, p] of Object.entries(PER_CALL)) if (m.includes(k)) return ok ? p : 0;
+  for (const [k, a, b] of PER_M_USD) if (m.includes(k)) return ((tokensIn * a + tokensOut * b) / 1e6) * USD_INR;
+  for (const [k, p] of PER_CALL_USD) if (m.includes(k)) return ok ? p * USD_INR : 0;
   return 0;
 }
 

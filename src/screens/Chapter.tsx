@@ -357,24 +357,43 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
     const head = f.cover ? [title] : f.part === 0 && cc.title && !f.item.recall ? [cc.title] : []
     return [...head, ...(f.text ?? '').split(/\n\n+/)].map((x) => x.trim()).filter(Boolean)
   }
-  // Each part (the headline, each paragraph, each option) is its own short file, all asked for at once, so the voice
-  // starts as soon as the first one is ready instead of after the whole page (a 36 s page took 22 s to make, 15 Oct).
+  // Two files per page (19 Oct, I2-22, Prateek: "do one clip per page", then "lets do second"): the first part (the
+  // headline, or a question's prompt) on its own, so the voice starts in about 3 s, then the rest of the page in one
+  // request. A page costs 2 of Gemini's 100 requests a day instead of one per paragraph. In one file the first page took
+  // 13 to 18 s to start (dev), and Flash-Lite once read a headline and dropped the paragraph after it.
+  // The rest goes in as few pieces as the server takes in one go (8 parts, 2,400 characters).
   // A preload the server turns away (its 50 a day are used) is forgotten, and a play asks again for real.
-  const ask = (part: string, preload: boolean) => voicePage({ handbookId, chapter: n, parts: [part], deviceToken, preload }).then((r) => (r.ok ? r.url : null)).catch(() => null)
-  const audioFor = (parts: string[], preload = false) => parts.map((part) => {
-    const hit = audioCache.current.get(part)
+  const ask = (parts: string[], preload: boolean) => voicePage({ handbookId, chapter: n, parts, deviceToken, preload }).then((r) => (r.ok ? r.url : null)).catch(() => null)
+  const piecesOf = (parts: string[]) => {
+    if (!parts.length) return []
+    const out: string[][] = [[parts[0]]]
+    for (const p of parts.slice(1)) {
+      const last = out[out.length - 1]
+      if (out.length > 1 && last.length < 8 && [...last, p].join('\n\n').length <= 2400) last.push(p)
+      else out.push([p])
+    }
+    return out
+  }
+  const audioFor = (parts: string[], preload = false) => piecesOf(parts).map((piece) => {
+    const key = piece.join('\n\n')
+    const hit = audioCache.current.get(key)
     if (hit && (preload || !hit.preload)) return hit.p
-    if (hit) { const p = hit.p.then((u) => u ?? ask(part, false)); audioCache.current.set(part, { p, preload: false }); return p }
-    const entry = { p: ask(part, preload), preload }
-    audioCache.current.set(part, entry)
-    if (preload) entry.p.then((u) => { if (!u && audioCache.current.get(part) === entry) audioCache.current.delete(part) })
+    if (hit) { const p = hit.p.then((u) => u ?? ask(piece, false)); audioCache.current.set(key, { p, preload: false }); return p }
+    const entry = { p: ask(piece, preload), preload }
+    audioCache.current.set(key, entry)
+    if (preload) entry.p.then((u) => { if (!u && audioCache.current.get(key) === entry) audioCache.current.delete(key) })
     return entry.p
   })
   // Preload (15 Oct, Prateek: "chapter 1 pre loaded for at least the first 5 slides … start loading the voice once a
   // chapter is starting"): this page and the next four are always being voiced, played or not, so play starts at once.
   // About ₹3 a chapter opened; a page voiced once is a cached file for every later reader. Capped on the server at 50 new
   // clips a day and 5 a minute across the app (convex/voice.ts), so plays keep the other half of Gemini's 100 a day.
-  useEffect(() => { if (!after) for (let k = 0; k < 5; k++) audioFor(partsOf(frames[i + k]), true) }, [i, frames, after]) // eslint-disable-line react-hooks/exhaustive-deps
+  // 19 Oct (I2-22): this page first, the next four once it is ready. Asked all at once, the five were made side by side and
+  // the page being read took about 10 s instead of 3 to 7 (dev, Git book, chapter 1).
+  useEffect(() => {
+    if (after) return
+    Promise.all(audioFor(partsOf(frames[i]), true)).finally(() => { for (let k = 1; k < 5; k++) audioFor(partsOf(frames[i + k]), true) })
+  }, [i, frames, after]) // eslint-disable-line react-hooks/exhaustive-deps
   // Plays a page's parts in order; false if any part had no audio (the caller falls back), or it was stopped.
   const playParts = async (parts: string[], stopped: () => boolean) => {
     const files = audioFor(parts)

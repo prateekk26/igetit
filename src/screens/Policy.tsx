@@ -8,7 +8,7 @@ import type { ReactNode } from 'react'
 import { PolicyLinks, TITLES, type PolicyPage } from '../components/PolicyLinks'
 import { Wordmark } from '../components/Ooh'
 
-const UPDATED = '11 October 2026'
+const UPDATED = '19 October 2026'
 
 // Prateek fills these. Shown on every page that needs them.
 const CONTACT = {
@@ -77,6 +77,7 @@ const BODY: Record<PolicyPage, ReactNode> = {
       <ul className="policy-list">
         <li><strong>Convex</strong> (United States) stores everything above and hosts the site.</li>
         <li><strong>Anthropic</strong> (United States) receives your topic, level, profile line and questions so Claude can write and check your chapters. Anthropic doesn't train its models on this data. Some questions are answered with a web search run through Anthropic; the search sees the question, not who asked it.</li>
+        <li><strong>Cheaper Inference</strong> receives chapter 1 of a handbook you made, once you finish it, so Anthropic's Claude can judge whether it is good enough to share on the Shelf. It passes the request to Claude through one of the companies it buys Claude from. It gets the chapter's words only, never your name, email or profile line.</li>
         <li><strong>Google</strong> (United States) receives the words of a topic you type, the level you picked, the goal you chose for it and, since 8 October, the plan and chapter text as it is written: Google's Gemini model researches the topic with Google Search and writes the plan and the chapters (Anthropic's Claude writes them if Gemini fails, and checks every chapter). It gets nothing else about you. Google may keep and use these words under its API terms.</li>
         <li><strong>Langfuse</strong> (United States) receives the numbers behind each AI call we make for a handbook: which step, which model, how long it took, how many tokens, whether it failed. Never the words you typed, never the chapter text, never anything about you. We use it to see where the writing is slow or failing.</li>
         <li><strong>PostHog</strong> (United States) counts visits, from 11 October: which page of this site you opened, the link you came from, your browser and kind of device, and the rough location your internet address points to, under a random code kept on your phone (no cookie). It also receives the same numbers Langfuse does for each AI call (which step, which model, how long, how many tokens, the cost, whether it failed), never the words. Never what you type, never your handbooks, never your email. We use it so outside judges can check our visitor numbers, and to watch the writing for slow or failing steps.</li>

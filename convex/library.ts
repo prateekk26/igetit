@@ -63,8 +63,13 @@ export const consider = internalAction({
 // Quiz checks are left out: chapter 1 has no quizzes, and later chapters' quizzes are fact checked when written. About
 // Rs 5 to 7 a book (Opus judge, a Sonnet fix when doubts are named, two Sonnet grades).
 const READING = ["hook", "concrete_images", "short_cards", "no_cliche", "topic_specific", "would_keep_reading", "laugh_or_sit_up", "open_loop"];
+// 19 Oct (D138, Prateek: "lets move our judge to C key"): the same Opus 5.5 judge through Cheaper Inference, about 35% less;
+// on dev it agreed with Anthropic's Opus as closely as Opus agrees with itself (evals/ci-judge/). If it fails, Anthropic.
+const SHELF_JUDGE = "cia:claude-opus-5.5";
 async function judgeChapter(ctx: any, ch: { title?: string; cards: any[]; outcomeLine?: string }, trace: { handbookId?: Id<"handbooks">; chapter?: number }) {
-  const j: any = await ctx.runAction(internal.ai.generate, { kind: "audit", system: JUDGE, user: "Chapter JSON:\n" + JSON.stringify({ title: ch.title, cards: ch.cards, outcomeLine: ch.outcomeLine }), model: JUDGE_MODEL, effort: "high", ...(trace.handbookId ? { trace } : {}) });
+  const ask = (model: string) => ctx.runAction(internal.ai.generate, { kind: "audit", system: JUDGE, user: "Chapter JSON:\n" + JSON.stringify({ title: ch.title, cards: ch.cards, outcomeLine: ch.outcomeLine }), model, effort: "high", ...(trace.handbookId ? { trace } : {}) });
+  let j: any = await ask(SHELF_JUDGE);
+  if (!j.ok) j = await ask(JUDGE_MODEL);
   if (!j.ok) return { error: String(j.error).slice(0, 120) } as any;
   const checks: Record<string, any> = j.json?.checks && typeof j.json.checks === "object" ? { ...j.json.checks } : {};
   for (const k of ["one_idea", "answerable", "feedback_names_confusion"]) if (k in checks) checks[k] = "n/a";

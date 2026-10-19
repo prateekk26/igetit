@@ -5,6 +5,17 @@ What each day taught us, not what shipped (that's PROGRESS.md). Every build day 
 Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-of-sprint write-up. A message that starts with "learned:" lands under "Noted during the day" at the bottom; fold those into the day before the session ends.
 
 
+## Mon 19 Oct, the day (day 18; the site down, the real prices, the cheaper judge and voice)
+
+### Product/Tech
+- Thought: the site was down because of something we shipped. Learned: Convex deleted the custom domain itself a day after a $10 subscription payment failed (audit log), while the app kept running on the .convex.site address. Now: a failed Convex payment is a site-down risk, not a billing note.
+- Thought: our cost table was close enough. Learned: it priced Sonnet 5.5 at $3/$15 (list is $2/$10), Opus 5.5 at $5/$25 ($4/$20), the read-aloud voice as plain text ($9 a million audio tokens, not $3.75), and used Rs 84 to the dollar (Rs 94.90 today); Runway pictures belonged to no book. Now: prices in dollars, one rate, checked on each provider's page, and every picture counted in its book.
+- Thought: a reseller's "Opus" might be weaker. Learned: on 7 chapters it agreed with Anthropic's Opus as closely as Opus agrees with itself (11.2 against 11.3 of 12), at Rs 2.03 a book against Rs 3.57; it missed one planted wrong quiz key twice. Now: the Shelf judge runs there, Anthropic as backup (D138).
+- Thought: the Lite voice is the same voice, cheaper. Learned: a third cheaper and quicker, but in one request per page it once read a headline and dropped the paragraph (26 of 33 words), skipped code lines once, and once read the tone tag aloud; one clip per page also made the first page start 13 to 18 s after the tap. Now: Lite for plain words, the full model for code, a page as a headline clip plus one clip for the rest (voice starts in about 4 s, 10 of 10 clips complete), and transcribing clips to count words is how we check a voice.
+
+### GTM
+- Thought: Google's voice limits were far away. Learned: AI Studio showed 99 of 100 requests a day and 19 a minute against 10; each paragraph was its own request. Now: two requests a page, and Lite's own 100 a day on top (I2-22).
+
 ## Sat 17 Oct, the day (day 16; the first handbook faster, cheaper, truer)
 
 ### Product/Tech

@@ -48,7 +48,7 @@ export default function AdminPipeline() {
         <p className="adm-status">Every AI and photo call behind a handbook.</p>
         <Seg label="Pipeline window" value={days} onChange={setDays} options={WINDOWS.map((w) => ({ v: w.d, label: w.label }))} />
       </div>
-      <How>Time, tokens, retries, failures and estimated cost for each call. Prices are list prices at ₹84 a dollar; the providers' bills are the real numbers.</How>
+      <How>Time, tokens, retries, failures and estimated cost for each call. Prices are list prices at ₹94.90 a dollar (19 Oct); the providers' bills are the real numbers.</How>
 
       <ul className="adm-list">
         <li><span>Typed handbooks</span><b>{t.handbooks}</b></li>

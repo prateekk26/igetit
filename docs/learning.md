@@ -22,6 +22,22 @@ Entry format:
 Day 1 is Fri 2 Oct (kickoff); Sat 17 Oct is submission.
 
 
+## Mon 19 Oct (day 18)
+
+### The live address went down over a $10 payment
+- **Realised:** 19 Oct (day 18), when www.igetit.now refused every secure connection
+- **Could have known:** 17 Oct (day 16), from the Convex invoice marked "Payment failed" and the dashboard banner
+- **What it cost:** about a day of www.igetit.now down; paying readers and the Razorpay-approved address both live there
+- **Now:** a failed Convex payment is fixed the same day; the custom domain is re-added and checked after any plan change
+- **Post opener:** "My app went down and the code was fine. A $10 card decline deleted my domain."
+
+### Our AI cost numbers were wrong for weeks
+- **Realised:** 19 Oct (day 18), checking an Opus price against Anthropic's list
+- **Could have known:** from the day Sonnet 5.5 and Opus 5.5 went in, from their price pages
+- **What it cost:** Sonnet shown 50% high, Opus 25% high, voice 2.4 times low, the rupee 13% off; pictures missing from every book's cost
+- **Now:** dollars from each provider's page in convex/costs.ts, one rate (USD_INR), a date on both
+- **Post opener:** "I optimised my AI bill for a week using prices I'd never checked."
+
 ## Sat 17 Oct (day 16)
 
 ### Backup models were eating almost half the AI bill

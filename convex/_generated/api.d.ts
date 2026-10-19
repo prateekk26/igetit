@@ -22,6 +22,7 @@ import type * as evalArtifact from "../evalArtifact.js";
 import type * as evalCases from "../evalCases.js";
 import type * as evalChapterPrompt from "../evalChapterPrompt.js";
 import type * as evalCheck from "../evalCheck.js";
+import type * as evalCiJudge from "../evalCiJudge.js";
 import type * as evalDoOnce from "../evalDoOnce.js";
 import type * as evalFigures from "../evalFigures.js";
 import type * as evalModels from "../evalModels.js";
@@ -138,6 +139,7 @@ declare const fullApi: ApiFromModules<{
   evalCases: typeof evalCases;
   evalChapterPrompt: typeof evalChapterPrompt;
   evalCheck: typeof evalCheck;
+  evalCiJudge: typeof evalCiJudge;
   evalDoOnce: typeof evalDoOnce;
   evalFigures: typeof evalFigures;
   evalModels: typeof evalModels;

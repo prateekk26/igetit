@@ -7,6 +7,12 @@ import { internal } from "./_generated/api";
 import { VOICE, VOICE_VERSION } from "./voice";
 
 const TTS = "gemini-3.8-flash-tts";
+// 19 Oct (D140, Prateek: "go with option 1"): Flash-Lite speech for plain words, a third cheaper ($6 against $9 a million
+// audio tokens) and quicker (5 to 7 s against 8 to 16 s a page on dev). On a page of code lines it skipped 30 of 93 words in
+// 1 of 2 runs, so a part with code (backticks or braces) keeps the full model, and never falls back to Lite. Lite has its
+// own 100 a day, so a plain part that Lite can't make tries the full model. Clips already made are reused as before.
+const TTS_LITE = "gemini-3.8-flash-lite-tts";
+const hasCode = (t: string) => /[`{}]/.test(t);
 // How it should sound (agent): warm, alive, never a newsreader. The speech model reads any instruction in the text out
 // loud (a 2 s line came back as 23 s with a sentence of direction, 15 Oct) and refuses a system instruction, so the tone
 // is one bracketed tag before each part, which it follows without speaking: a question curious, a headline warm with
@@ -47,19 +53,21 @@ export const page = action({
     if (!g.ok) return g;
     const started = Date.now();
     const keys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_BACKUP].filter(Boolean) as string[];
-    let body: any = null, err = "no Gemini key";
-    for (const k of keys) {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${TTS}:generateContent`, {
+    let body: any = null, err = "no Gemini key", model = TTS;
+    for (const m of clean.some(hasCode) ? [TTS] : [TTS_LITE, TTS]) for (const k of keys) {
+      if (body) break;
+      model = m;
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
         method: "POST", signal: AbortSignal.timeout(90000), headers: { "Content-Type": "application/json", "x-goog-api-key": k },
         body: JSON.stringify({ contents: [{ parts: [{ text: clean.map(tagged).join("\n\n") }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } } }),
       }).catch((e: any) => ({ ok: false, status: 0, json: async () => ({ error: String(e?.message ?? e) }) }) as any);
       const j = await res.json().catch(() => ({}));
-      if (res.ok) { body = j; break; }
-      err = `Gemini speech ${res.status}: ${JSON.stringify(j).slice(0, 200)}`;
+      if (res.ok && j?.candidates?.[0]?.content?.parts?.some((p: any) => p.inlineData?.data)) { body = j; break; }
+      err = `Gemini speech ${m} ${res.status}: ${JSON.stringify(j).slice(0, 200)}`;
     }
     const part = body?.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
     if (!part) {
-      await ctx.runMutation(internal.handbooks.logAiCall, { kind: "voice", model: TTS, input: text.slice(0, 2000), output: "", ms: Date.now() - started, ok: false, error: err.slice(0, 500) });
+      await ctx.runMutation(internal.handbooks.logAiCall, { kind: "voice", model, input: text.slice(0, 2000), output: "", ms: Date.now() - started, ok: false, error: err.slice(0, 500) });
       return { ok: false, code: "failed" };
     }
     const { pcm, rate } = speech(Buffer.from(part.inlineData.data, "base64"), part.inlineData.mimeType ?? "");
@@ -72,7 +80,7 @@ export const page = action({
     const storageId = await ctx.storage.store(new Blob(chunks as BlobPart[], { type: "audio/mpeg" }));
     await ctx.runMutation(internal.voice.save, { key, storageId, ms, chars: text.length });
     const u = body.usageMetadata ?? {};
-    await ctx.runMutation(internal.handbooks.logAiCall, { kind: "voice", model: TTS, input: text.slice(0, 2000), output: `[${ms} ms of audio]`, tokensIn: u.promptTokenCount, tokensOut: u.candidatesTokenCount, ms: Date.now() - started, ok: true, handbookId, chapter });
+    await ctx.runMutation(internal.handbooks.logAiCall, { kind: "voice", model, input: text.slice(0, 2000), output: `[${ms} ms of audio]`, tokensIn: u.promptTokenCount, tokensOut: u.candidatesTokenCount, ms: Date.now() - started, ok: true, handbookId, chapter });
     const again = await ctx.runQuery(internal.voice.cached, { key });
     return again?.url ? { ok: true, url: again.url, ms: again.ms } : { ok: false, code: "failed" };
   },

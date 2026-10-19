@@ -413,7 +413,7 @@ function CostsCard() {
         <p className="adm-big"><b>{inr(total)}</b> over the last {days} days</p>
         <Seg label="Cost window" value={days} onChange={setDays} options={[7, 14, 30].map((n) => ({ v: n, label: `${n} days` }))} />
       </div>
-      <How>Tap a day for its models, a model for what it was used for. List prices at ₹84 a dollar; the providers' bills are the real numbers.</How>
+      <How>Tap a day for its models, a model for what it was used for. List prices at ₹94.90 a dollar (19 Oct); the providers' bills are the real numbers.</How>
       <ul className="adm-list">{[...byModel.values()].sort((a, b) => b.inr - a.inr).map((m) => <li key={m.model}><span>{m.provider} · {m.model} · {m.calls} calls</span><b>{inr(m.inr)}</b></li>)}</ul>
       {rows.map((d) => (
         <details key={d.day} className="cost-day">
