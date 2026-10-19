@@ -746,7 +746,8 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .v-nailed .teach-verdict { color: var(--pass); }
 
 /* ---------- the owner's /admin dashboard ---------- */
-.adm { max-width: 1120px; margin: 0 auto; padding: 16px; min-height: 100dvh; background: var(--paper); }
+.adm { max-width: 1440px; margin: 0 auto; padding: 16px; min-height: 100dvh; background: var(--paper); }   /* 20 Oct (Prateek: "increase width of card"): was 1120 */
+@media (min-width: 1100px) { .adm { padding: 16px 24px; } }
 .adm-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 6px 0 14px; }
 .adm-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .adm-tabs button { border: 1.5px solid var(--tint); background: transparent; border-radius: 999px; padding: 6px 12px; font: 600 var(--small) var(--sans); min-height: 36px; }
