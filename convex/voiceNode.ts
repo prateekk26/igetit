@@ -11,6 +11,8 @@ const TTS = "gemini-3.8-flash-tts";
 // audio tokens) and quicker (5 to 7 s against 8 to 16 s a page on dev). On a page of code lines it skipped 30 of 93 words in
 // 1 of 2 runs, so a part with code (backticks or braces) keeps the full model, and never falls back to Lite. Lite has its
 // own 100 a day, so a plain part that Lite can't make tries the full model. Clips already made are reused as before.
+// Lite gets the words with no tone tags (19 Oct, Prateek: "fix the tone note bug"): it read "[warmly, with emphasis]"
+// aloud before 1 of 3 headlines on dev, and the clip is saved for every reader. The full model keeps its tags.
 const TTS_LITE = "gemini-3.8-flash-lite-tts";
 const hasCode = (t: string) => /[`{}]/.test(t);
 // How it should sound (agent): warm, alive, never a newsreader. The speech model reads any instruction in the text out
@@ -59,7 +61,7 @@ export const page = action({
       model = m;
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
         method: "POST", signal: AbortSignal.timeout(90000), headers: { "Content-Type": "application/json", "x-goog-api-key": k },
-        body: JSON.stringify({ contents: [{ parts: [{ text: clean.map(tagged).join("\n\n") }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } } }),
+        body: JSON.stringify({ contents: [{ parts: [{ text: (m === TTS_LITE ? clean : clean.map(tagged)).join("\n\n") }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } } }),
       }).catch((e: any) => ({ ok: false, status: 0, json: async () => ({ error: String(e?.message ?? e) }) }) as any);
       const j = await res.json().catch(() => ({}));
       if (res.ok && j?.candidates?.[0]?.content?.parts?.some((p: any) => p.inlineData?.data)) { body = j; break; }
