@@ -26,6 +26,14 @@ type Frame =
   | { kind: 'exercise'; prompt: string; options: { id: string; text: string }[]; answer: string; whyNot: Record<string, string> }
 type DemoBook = { topic: string; label: string; title: string; frames: Frame[]; total: number; of: number; next: { title: string; hook: string } | null }
 
+// Homepage motion (20 Oct, Prateek: "lets do 1,2,3,4"). Every piece checks these first: nothing moves for a phone set to
+// reduce motion; the mouse-following eyes need a mouse; rotating chips need the wrapped chip rows (600 px and up).
+const still = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false } }
+const mouse = () => { try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches } catch { return false } }
+const wrapped = () => { try { return window.matchMedia('(min-width: 600px)').matches } catch { return false } }
+// The box's examples, typed and erased in turn (3). Copy (agent).
+const EXAMPLES = ['why the Moon changes shape', 'asking for a raise', 'how compound interest works', 'why we put things off', 'making a perfect dosa', 'how vaccines train the body']
+
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
 export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance, account, onSignOut, onMember, memberPrice }: Props) {
@@ -43,6 +51,53 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const [demoAt, setDemoAt] = useState(0)
   const [scrolled, setScrolled] = useState(false)
   const heroInput = useRef<HTMLInputElement>(null)
+  // (2) Ooh watches: its eyes follow the mouse, look at the box while typing and at a chip under the finger or mouse;
+  // after 2.5 s with nothing to look at, its own idle glance comes back. Written straight to the drawing, no re-render.
+  const stage = useRef<HTMLDivElement>(null)
+  const [heroFace, setHeroFace] = useState<'curious' | 'again'>('curious')
+  const lookTimer = useRef(0)
+  const lookAt = (x: number, y: number) => {
+    const svg = stage.current?.querySelector('.c1-ooh') as SVGSVGElement | null
+    if (!svg || still()) return
+    const r = svg.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height * 0.45
+    const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 260)
+    svg.style.setProperty('--lx', `${((dx / d) * 3.2 * k).toFixed(2)}px`)
+    svg.style.setProperty('--ly', `${((dy / d) * 2.6 * k).toFixed(2)}px`)
+    svg.classList.add('looking')
+    window.clearTimeout(lookTimer.current)
+    lookTimer.current = window.setTimeout(() => svg.classList.remove('looking'), 2500)
+  }
+  const lookAtEl = (el: Element | null | undefined) => { if (!el) return; const r = el.getBoundingClientRect(); lookAt(r.left + r.width / 2, r.top + r.height / 2) }
+  useEffect(() => {
+    if (!mouse() || still()) return
+    let raf = 0
+    const on = (e: PointerEvent) => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; if (window.scrollY < window.innerHeight) lookAt(e.clientX, e.clientY) }) }
+    window.addEventListener('pointermove', on, { passive: true })
+    return () => { window.removeEventListener('pointermove', on); cancelAnimationFrame(raf); window.clearTimeout(lookTimer.current) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // (3) The example in the box types and erases itself until the box is used; written to the placeholder directly.
+  const exAt = useRef(0)
+  const [boxBusy, setBoxBusy] = useState(false)   // focused, or holding the reader's own words
+  useEffect(() => {
+    const el = heroInput.current
+    if (!el || still() || boxBusy) return
+    let alive = true
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    const show = (t: string) => { if (alive && heroInput.current) heroInput.current.placeholder = 'e.g. ' + t }
+    ;(async () => {
+      show(EXAMPLES[exAt.current])
+      await sleep(2600)
+      while (alive) {
+        const was = EXAMPLES[exAt.current]
+        for (let k = was.length; k >= 0 && alive; k--) { show(was.slice(0, k)); await sleep(26) }
+        exAt.current = (exAt.current + 1) % EXAMPLES.length
+        const next = EXAMPLES[exAt.current]
+        for (let k = 1; k <= next.length && alive; k++) { show(next.slice(0, k)); await sleep(62) }
+        await sleep(2400)
+      }
+    })()
+    return () => { alive = false; if (heroInput.current && heroInput.current.placeholder) heroInput.current.placeholder = 'e.g. ' + EXAMPLES[exAt.current] }
+  }, [boxBusy])
 
   // The four chips: the owner's pins (up to 4), then free ready topics at random, drawn once per visit (14 Oct, Prateek: "keep
   // rotating them to discover the click rates on various topics until we find the 3/4 best ones").
@@ -65,6 +120,61 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     row.querySelectorAll('button').forEach((b) => io.observe(b))
     return () => io.disconnect()
   }, [chips])
+  // (1) The chips arrive one after another once Ooh has landed. Where they wrap (600 px and up) one chip that isn't a pin
+  // shrinks out every 5 s and another ready topic grows in, unless the reader is at the chips or the box. On a phone the
+  // row gives one small nudge so it reads as scrollable.
+  const [outAt, setOutAt] = useState<number | null>(null)
+  const [swapped, setSwapped] = useState<Set<string>>(() => new Set())
+  const hold = useRef(false)
+  const chipsNow = useRef(chips); chipsNow.current = chips
+  const busyNow = useRef(busy); busyNow.current = busy
+  useEffect(() => {
+    if (!c || !chips.length || still() || !wrapped()) return
+    const pool = [...c.shelf.filter((x) => x.free), ...c.shelf.filter((x) => !x.free)].map((x) => x.topic)
+    let turn = 0, t2 = 0
+    const t = window.setInterval(() => {
+      const cur = chipsNow.current
+      if (hold.current || busyNow.current || document.hidden) return
+      const slots = cur.map((x, i) => (c.pinned.includes(x) ? -1 : i)).filter((i) => i >= 0)
+      const next = shuffle(pool.filter((p) => !cur.includes(p)))[0]
+      if (!slots.length || !next) return
+      const at = slots[turn++ % slots.length]
+      setOutAt(at)
+      t2 = window.setTimeout(() => { setChips((cs) => cs.map((x, i) => (i === at ? next : x))); setSwapped((sw) => new Set(sw).add(next)); setOutAt(null) }, 230)
+    }, 5000)
+    return () => { window.clearInterval(t); window.clearTimeout(t2) }
+  }, [c, chips.length > 0]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const row = chipRow.current
+    if (!row || !chips.length || still() || wrapped()) return
+    let t2 = 0
+    const t = window.setTimeout(() => {
+      if (row.scrollWidth <= row.clientWidth + 4 || row.scrollLeft > 0) return
+      row.scrollTo({ left: 56, behavior: 'smooth' })
+      t2 = window.setTimeout(() => row.scrollTo({ left: 0, behavior: 'smooth' }), 650)
+    }, 1900)
+    return () => { window.clearTimeout(t); window.clearTimeout(t2) }
+  }, [chips.length > 0]) // eslint-disable-line react-hooks/exhaustive-deps
+  // (4) A tapped chip flies into the box and Ooh nods; then the book opens as before. Straight on under reduce motion.
+  const fly = (btn: HTMLElement | null) => new Promise<void>((done) => {
+    const box = heroInput.current
+    if (!btn || !box || still() || !btn.animate) return done()
+    const a = btn.getBoundingClientRect(), b = box.getBoundingClientRect()
+    const ghost = document.createElement('span')
+    ghost.className = 'c1-chip-ghost'
+    ghost.textContent = btn.textContent
+    Object.assign(ghost.style, { left: `${a.left}px`, top: `${a.top}px`, height: `${a.height}px` })
+    document.body.appendChild(ghost)
+    const dx = b.left + 18 - a.left, dy = b.top + (b.height - a.height) / 2 - a.top
+    lookAtEl(box); setHeroFace('again')
+    const anim = ghost.animate([
+      { transform: 'none', opacity: 1 },
+      { transform: `translate(${dx * 0.6}px, ${dy * 0.6 - 28}px) scale(1.06)`, opacity: 1, offset: 0.55 },
+      { transform: `translate(${dx}px, ${dy}px)`, opacity: 0 },
+    ], { duration: 460, easing: 'cubic-bezier(0.3, 0.7, 0.3, 1)' })
+    anim.onfinish = () => { ghost.remove(); done() }
+    anim.oncancel = () => { ghost.remove(); done() }
+  })
 
   // For the owner's /admin funnel: the page was seen, and how far down each visitor got. The bar turns solid once the
   // page leaves the top.
@@ -88,11 +198,15 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     setTimeout(() => heroInput.current?.focus({ preventScroll: true }), 400)
   }
   // A ready topic starts straight away: no typing, and it opens instantly (it's already written).
-  const pick = async (t: string, via: 'chip' | 'demo') => {
+  const pick = async (t: string, via: 'chip' | 'demo', from?: HTMLElement) => {
     track('submit', { via, topic: t })
-    setTopic(t); setError(null); setBusy(true); setPickedRow(t)
+    setError(null); setBusy(true); setPickedRow(t)
+    // the box's typing example stops and clears, so the chip lands in an empty box
+    setBoxBusy(true); if (heroInput.current) heroInput.current.placeholder = ''
+    if (via === 'chip') await fly(from ?? null)
+    setTopic(t)
     try { await onCreate(t, 'new', voice, via === 'demo' ? 2 : undefined) }
-    catch { setError("Couldn't start it just now. Try once more in a minute."); setBusy(false); setPickedRow(null); toBox() }
+    catch { setError("Couldn't start it just now. Try once more in a minute."); setBusy(false); setPickedRow(null); setTopic(''); setBoxBusy(false); if (heroInput.current) heroInput.current.placeholder = 'e.g. ' + EXAMPLES[exAt.current]; toBox() }
   }
   const go = async () => {
     setError(null)
@@ -109,11 +223,11 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const box = (where: 'hero' | 'final') => (
     <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
-      <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
+      <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type'); if (where === 'hero') lookAtEl(e.target) }} onFocus={(e) => { track('box_focus', undefined, 'box_focus'); if (where === 'hero') { setBoxBusy(true); hold.current = true; lookAtEl(e.target) } }} onBlur={(e) => { if (where === 'hero') { setBoxBusy(!!e.target.value); hold.current = false } }}
         placeholder="e.g. why the Moon changes shape" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
       {where === 'hero' && chips.length > 0 && (
-        <div className="c1-chips" role="group" aria-label="Or open one that's ready" ref={chipRow}>
-          {chips.map((t) => <button key={t} type="button" data-topic={t} className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'chip')}>{pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}</button>)}
+        <div className="c1-chips" role="group" aria-label="Or open one that's ready" ref={chipRow} onPointerEnter={() => { hold.current = true }} onPointerLeave={() => { hold.current = document.activeElement === heroInput.current }}>
+          {chips.map((t, i) => <button key={t} type="button" data-topic={t} className={[pickedRow === t ? 'is-opening' : '', outAt === i ? 'chip-out' : ''].filter(Boolean).join(' ') || undefined} style={{ animationDelay: swapped.has(t) ? '0ms' : `${900 + i * 80}ms` }} disabled={busy} onPointerEnter={(e) => lookAtEl(e.currentTarget)} onFocus={(e) => lookAtEl(e.currentTarget)} onClick={(e) => pick(t, 'chip', e.currentTarget)}>{pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}</button>)}
         </div>
       )}
       <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>
@@ -141,9 +255,9 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
 
       {/* 1. The ask (C1). Ooh is the dot of a tall "i" on the marigold stage; from 1024 the stage is the left half. */}
       <section className="lp-hero c1">
-        <div className="c1-stage" aria-hidden="true">
+        <div className="c1-stage" aria-hidden="true" ref={stage}>
           <span className="c1-stem" />
-          <Ooh face="curious" tone="cream" className="c1-ooh" size={132} idle />
+          <Ooh face={heroFace} tone="cream" className="c1-ooh" size={132} idle />
         </div>
         <div className="c1-copy">
           <div className="c1-main">
