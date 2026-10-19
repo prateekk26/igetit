@@ -113,7 +113,8 @@ function BookPages({ days, traces }: { days: number; traces: string | null }) {
   useEffect(() => { const t = setTimeout(() => setQ(typing.trim()), 400); return () => clearTimeout(t) }, [typing])
   useEffect(() => setCursors([null]), [days, q, kind, failedOnly])
   const page = cursors.length - 1
-  const r = useQuery(api.pipeline.journeysPage, { days, paginationOpts: { numItems: PER_PAGE, cursor: cursors[page] }, ...(q ? { q } : {}), kind, failedOnly })
+  // Failed only checks 100 books a page (a failure is rare, so 20 a page came back empty page after page).
+  const r = useQuery(api.pipeline.journeysPage, { days, paginationOpts: { numItems: failedOnly ? 100 : PER_PAGE, cursor: cursors[page] }, ...(q ? { q } : {}), kind, failedOnly })
   return (
     <>
       <div className="adm-filters">

@@ -34,8 +34,8 @@ export function Seg<T extends string | number>({ value, options, onChange, label
 // page at a time, where a total would mean reading every row.
 export const PER_PAGE = 20
 
+// Shown even on a single page (20 Oct, Prateek: "in ui u have to show buttons as well right?"), so the pages are findable.
 export function PageBar({ page, hasOlder, onNewer, onOlder, range }: { page: number; hasOlder: boolean; onNewer: () => void; onOlder: () => void; range?: string }) {
-  if (page === 0 && !hasOlder) return null
   return (
     <div className="adm-pager" role="group" aria-label="Pages">
       <button type="button" className="quiet" onClick={onNewer} disabled={page === 0}>← Newer</button>
