@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, mutation } from "./_generated/server";
 import { RateLimiter, HOUR, MINUTE, DAY } from "@convex-dev/rate-limiter";
 import { components } from "./_generated/api";
 import { ownedHandbook } from "./handbooks";
@@ -20,6 +20,7 @@ const limiter = new RateLimiter(components.rateLimiter, {
   // app, so a reader who presses play still has the rest. A play is never counted here.
   voicePreloadDay: { kind: "fixed window", rate: 50, period: DAY },
   voicePreloadMinute: { kind: "fixed window", rate: 5, period: MINUTE },
+  voicePlayed: { kind: "fixed window", rate: 6000, period: HOUR },   // play logging writes, app-wide
 });
 
 export const cached = internalQuery({
@@ -31,11 +32,40 @@ export const cached = internalQuery({
 });
 
 export const save = internalMutation({
-  args: { key: v.string(), storageId: v.id("_storage"), ms: v.number(), chars: v.number() },
+  args: { key: v.string(), storageId: v.id("_storage"), ms: v.number(), chars: v.number(), made: v.optional(v.union(v.literal("ahead"), v.literal("play"))), ahead: v.optional(v.number()) },
   handler: async (ctx, a) => {
     const had = await ctx.db.query("pageAudio").withIndex("by_key", (q) => q.eq("key", a.key)).first();
     if (had) { await ctx.storage.delete(a.storageId); return; }
     await ctx.db.insert("pageAudio", { ...a, at: Date.now() });
+  },
+});
+
+// A clip started playing (19 Oct): counted on its row. The key is the clip's own hash, sent back with its URL.
+export const played = mutation({
+  args: { key: v.string() },
+  handler: async (ctx, { key }) => {
+    if (!/^[0-9a-f]{64}$/.test(key)) return;
+    const row = await ctx.db.query("pageAudio").withIndex("by_key", (q) => q.eq("key", key)).first();
+    if (!row || (row.plays ?? 0) >= 100000) return;
+    if (!(await limiter.limit(ctx, "voicePlayed")).ok) return;
+    await ctx.db.patch(row._id, { plays: (row.plays ?? 0) + 1, ...(row.firstPlayAt ? {} : { firstPlayAt: Date.now() }) });
+  },
+});
+
+// How far ahead is worth making (19 Oct): clips made since a time, by how they were made and how far ahead, and how
+// many of them were ever played. npx convex run --prod voice:aheadReport '{"sinceHours":168}'
+export const aheadReport = internalQuery({
+  args: { sinceHours: v.number() },
+  handler: async (ctx, { sinceHours }) => {
+    const since = Date.now() - sinceHours * 3600e3;
+    const rows = (await ctx.db.query("pageAudio").order("desc").take(8000)).filter((r) => r.at >= since && r.made);
+    const by: Record<string, { made: number; played: number; plays: number }> = {};
+    for (const r of rows) {
+      const k = r.made === "play" ? "made on a play tap" : `made ${r.ahead ?? "?"} page(s) ahead`;
+      const b = (by[k] ??= { made: 0, played: 0, plays: 0 });
+      b.made++; if (r.plays) { b.played++; b.plays += r.plays; }
+    }
+    return Object.entries(by).sort(([a], [b]) => a.localeCompare(b)).map(([k, b]) => ({ k, ...b, playedPct: Math.round((100 * b.played) / b.made) }));
   },
 });
 

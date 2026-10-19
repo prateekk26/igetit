@@ -8,8 +8,9 @@ function audio() {
   return el
 }
 
-// Plays a URL to the end. Resolves true when it finished, false when it was stopped or could not play.
-export function playUrl(url: string): Promise<boolean> {
+// Plays a URL to the end. Resolves true when it finished, false when it was stopped or could not play. onStart (19 Oct,
+// play logging) runs once the browser has really started it, never for a play the browser refused.
+export function playUrl(url: string, onStart?: () => void): Promise<boolean> {
   const a = audio(), mine = ++token
   return new Promise((resolve) => {
     // 17 Oct: only the clip still playing clears the handlers. A clip cut off while loading fails late (its play()
@@ -19,7 +20,7 @@ export function playUrl(url: string): Promise<boolean> {
     a.onerror = () => done(false)
     a.src = url
     a.playbackRate = 1.1   // this voice reads slowly; a touch faster sounds natural (agent)
-    a.play().catch(() => done(false))
+    a.play().then(() => { if (mine === token) onStart?.() }).catch(() => done(false))
   })
 }
 

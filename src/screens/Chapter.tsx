@@ -346,6 +346,8 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // 15 Oct: the page voice (Gemini speech, a warm female voice, cached per page) and auto-play. A page is read as its
   // own words: the headline, the paragraphs; a question, its options; an answer, the right option and why.
   const voicePage = useAction(api.voiceNode.page)
+  const voicePlayed = useMutation(api.voice.played)   // play logging (19 Oct): which clips are ever heard
+  const keyByUrl = useRef(new Map<string, string>())
   const iRef = useRef(i); iRef.current = i
   const audioCache = useRef(new Map<string, { p: Promise<string | null>; preload: boolean }>())
   const partsOf = (f?: Frame): string[] => {
@@ -363,7 +365,8 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // 13 to 18 s to start (dev), and Flash-Lite once read a headline and dropped the paragraph after it.
   // The rest goes in as few pieces as the server takes in one go (8 parts, 2,400 characters).
   // A preload the server turns away (its 50 a day are used) is forgotten, and a play asks again for real.
-  const ask = (parts: string[], preload: boolean) => voicePage({ handbookId, chapter: n, parts, deviceToken, preload }).then((r) => (r.ok ? r.url : null)).catch(() => null)
+  const ask = (parts: string[], preload: boolean, ahead?: number) => voicePage({ handbookId, chapter: n, parts, deviceToken, preload, ...(preload && ahead !== undefined ? { ahead } : {}) })
+    .then((r) => { if (!r.ok) return null; keyByUrl.current.set(r.url, r.key); return r.url }).catch(() => null)
   const piecesOf = (parts: string[]) => {
     if (!parts.length) return []
     const out: string[][] = [[parts[0]]]
@@ -374,12 +377,12 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
     }
     return out
   }
-  const audioFor = (parts: string[], preload = false) => piecesOf(parts).map((piece) => {
+  const audioFor = (parts: string[], preload = false, ahead?: number) => piecesOf(parts).map((piece) => {
     const key = piece.join('\n\n')
     const hit = audioCache.current.get(key)
     if (hit && (preload || !hit.preload)) return hit.p
     if (hit) { const p = hit.p.then((u) => u ?? ask(piece, false)); audioCache.current.set(key, { p, preload: false }); return p }
-    const entry = { p: ask(piece, preload), preload }
+    const entry = { p: ask(piece, preload, ahead), preload }
     audioCache.current.set(key, entry)
     if (preload) entry.p.then((u) => { if (!u && audioCache.current.get(key) === entry) audioCache.current.delete(key) })
     return entry.p
@@ -392,12 +395,16 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // the page being read took about 10 s instead of 3 to 7 (dev, Git book, chapter 1).
   useEffect(() => {
     if (after) return
-    Promise.all(audioFor(partsOf(frames[i]), true)).finally(() => { for (let k = 1; k < 5; k++) audioFor(partsOf(frames[i + k]), true) })
+    Promise.all(audioFor(partsOf(frames[i]), true, 0)).finally(() => { for (let k = 1; k < 5; k++) audioFor(partsOf(frames[i + k]), true, k) })
   }, [i, frames, after]) // eslint-disable-line react-hooks/exhaustive-deps
   // Plays a page's parts in order; false if any part had no audio (the caller falls back), or it was stopped.
   const playParts = async (parts: string[], stopped: () => boolean) => {
     const files = audioFor(parts)
-    for (const f of files) { const url = await f; if (stopped()) return true; if (!url || !(await playUrl(url))) return false }
+    for (const f of files) {
+      const url = await f; if (stopped()) return true
+      const key = url ? keyByUrl.current.get(url) : undefined
+      if (!url || !(await playUrl(url, () => { if (key) voicePlayed({ key }).catch(() => {}) }))) return false
+    }
     return true
   }
   const [auto, setAutoState] = useState(autoOn)

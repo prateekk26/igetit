@@ -185,6 +185,12 @@ export default defineSchema({
     ms: v.number(),
     chars: v.number(),
     at: v.number(),
+    // Play logging (19 Oct, Prateek: "add play logging for voice clips and we will see how many ahead pages would help"):
+    // made "ahead" (k pages ahead of the page being read, 0 = that page) or on a "play" tap; plays counted. No reader data.
+    made: v.optional(v.union(v.literal("ahead"), v.literal("play"))),
+    ahead: v.optional(v.number()),
+    plays: v.optional(v.number()),
+    firstPlayAt: v.optional(v.number()),
   }).index("by_key", ["key"]),
 
   cardQuestions: defineTable({

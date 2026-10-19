@@ -43,14 +43,15 @@ function speech(buf: Buffer, mime: string): { pcm: Buffer; rate: number } {
 // One page read aloud: the cached file if this exact text was spoken before, else Gemini speech, encoded to a small MP3
 // (48 kbps mono) and stored. Returns its URL and length.
 export const page = action({
-  args: { handbookId: v.id("handbooks"), chapter: v.number(), parts: v.array(v.string()), deviceToken: v.optional(v.string()), preload: v.optional(v.boolean()) },
-  handler: async (ctx, { handbookId, chapter, parts, deviceToken, preload }): Promise<{ ok: true; url: string; ms: number } | { ok: false; code: string }> => {
+  // ahead (19 Oct, play logging): how many pages ahead of the page being read a preload is; kept on the clip's row.
+  args: { handbookId: v.id("handbooks"), chapter: v.number(), parts: v.array(v.string()), deviceToken: v.optional(v.string()), preload: v.optional(v.boolean()), ahead: v.optional(v.number()) },
+  handler: async (ctx, { handbookId, chapter, parts, deviceToken, preload, ahead }): Promise<{ ok: true; url: string; ms: number; key: string } | { ok: false; code: string }> => {
     const clean = parts.map((p) => p.replace(/\*\*|\*/g, "").trim()).filter(Boolean).slice(0, 8);
     const text = clean.join("\n\n").slice(0, 2400);
     if (!text) return { ok: false, code: "empty" };
     const key = createHash("sha256").update(`${VOICE_VERSION}|${VOICE}|${text}`).digest("hex");
     const hit = await ctx.runQuery(internal.voice.cached, { key });
-    if (hit?.url) return { ok: true, url: hit.url, ms: hit.ms };
+    if (hit?.url) return { ok: true, url: hit.url, ms: hit.ms, key };
     const g = await ctx.runMutation(internal.voice.gate, { handbookId, chapter, parts: clean, deviceToken, preload });
     if (!g.ok) return g;
     const started = Date.now();
@@ -80,10 +81,10 @@ export const page = action({
     const end = enc.flush(); if (end.length) chunks.push(new Uint8Array(end));
     const ms = Math.round((samples.length / rate) * 1000);
     const storageId = await ctx.storage.store(new Blob(chunks as BlobPart[], { type: "audio/mpeg" }));
-    await ctx.runMutation(internal.voice.save, { key, storageId, ms, chars: text.length });
+    await ctx.runMutation(internal.voice.save, { key, storageId, ms, chars: text.length, made: preload ? "ahead" : "play", ...(preload && typeof ahead === "number" ? { ahead: Math.max(0, Math.min(10, Math.round(ahead))) } : {}) });
     const u = body.usageMetadata ?? {};
     await ctx.runMutation(internal.handbooks.logAiCall, { kind: "voice", model, input: text.slice(0, 2000), output: `[${ms} ms of audio]`, tokensIn: u.promptTokenCount, tokensOut: u.candidatesTokenCount, ms: Date.now() - started, ok: true, handbookId, chapter });
     const again = await ctx.runQuery(internal.voice.cached, { key });
-    return again?.url ? { ok: true, url: again.url, ms: again.ms } : { ok: false, code: "failed" };
+    return again?.url ? { ok: true, url: again.url, ms: again.ms, key } : { ok: false, code: "failed" };
   },
 });
