@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { internalAction, internalMutation, internalQuery, query, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -116,6 +117,25 @@ async function build(ctx: QueryCtx, days: number) {
       handbooks: journeys.slice(0, 40),
     };
 }
+
+// The books on /admin, a page at a time (20 Oct, Prateek: "we need pagination"): newest first within the window, each
+// with its journey from its own call rows. The dashboard's list stopped at the 40 newest and was built from at most
+// 20,000 call rows, so older books could not be seen at all. A book with no AI calls (a ready book opened) is left out,
+// so a page can hold fewer than asked.
+export const journeysPage = query({
+  args: { days: v.number(), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { days, paginationOpts }) => {
+    if (!(await isOwner(ctx)).ok) return null;
+    const since = days ? Date.now() - days * DAY : 0;
+    const res = await ctx.db.query("handbooks").withIndex("by_creation_time", (q) => q.gte("_creationTime", since)).order("desc").paginate(paginationOpts);
+    const page = [];
+    for (const h of res.page) {
+      const rs = (await ctx.db.query("callStats").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).take(500)).filter((r) => groupOf(r) === "reader");
+      if (rs.length) page.push(journey(h, rs));
+    }
+    return { page, isDone: res.isDone, continueCursor: res.continueCursor };
+  },
+});
 
 // Every call for one handbook, in order, with its time from the moment the handbook was typed.
 export const handbookCalls = query({

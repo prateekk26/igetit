@@ -189,7 +189,7 @@ export const adminList = query({
       rupeesTest: sum("test"),
       started: rows.length,
       payers: new Set(paid.map((r) => r.userId)).size,
-      recent: rows.slice(0, 20).map((r) => ({ at: r.at, amount: r.amount, month: r.month + 1, plan: r.plan ?? "month", tier: r.tier === undefined ? null : r.tier + 1, status: r.status, mode: r.mode, via: r.via ?? null })),
+      recent: rows.slice(0, 300).map((r) => ({ at: r.at, amount: r.amount, month: r.month + 1, plan: r.plan ?? "month", tier: r.tier === undefined ? null : r.tier + 1, status: r.status, mode: r.mode, via: r.via ?? null })),
     };
   },
 });

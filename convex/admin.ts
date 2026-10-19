@@ -240,7 +240,7 @@ async function build(ctx: QueryCtx, days: number) {
       daySources,
       reasons: Object.entries(rows.reduce((m, r) => { const k = r.reason.replace(/\d+/g, "N").replace(/"[^"]*"/g, "…"); m[k] = (m[k] ?? 0) + 1; return m; }, {} as Record<string, number>)).map(([reason, n]) => ({ reason, n })).sort((a, b) => b.n - a.n),
       devices: Object.entries(rows.reduce((m, r) => { const k = r.device ?? "unknown"; m[k] = (m[k] ?? 0) + 1; return m; }, {} as Record<string, number>)).map(([device, n]) => ({ device, n })),
-      recent: rows.sort((a, b) => b.first - a.first).slice(0, 50),
+      recent: rows.sort((a, b) => b.first - a.first).slice(0, 300),   // 20 Oct: 300 (was 50), shown 20 a page on /admin
     };
   }
 }

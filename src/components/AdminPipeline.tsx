@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import { How, Seg } from './AdminUi'
+import { ByDay, How, PageBar, PER_PAGE, Seg } from './AdminUi'
 
 // /admin, "AI pipeline" (8 Oct): every AI and media call behind a handbook, from the goal question to the last picture.
 // Top line, each step (time, failures, retries, tokens, cost), each handbook with its call timeline and a link to its
@@ -85,9 +85,7 @@ export default function AdminPipeline() {
       ))}
 
       <h3>Each handbook</h3>
-      {d.handbooks.length === 0 ? <p className="note">No handbooks in this window.</p> : (
-        <div className="adm-journeys">{d.handbooks.map((h) => <Journey key={h.id} h={h} traces={d.traces} />)}</div>
-      )}
+      <BookPages days={days} traces={d.traces} />
     </section>
   )
 }
@@ -103,6 +101,23 @@ const partsLine = (h: J) => {
   const gaps = h.toChapter1 - shown.reduce((t, [, v]) => t + v, 0)
   return ` (${[...shown.map(([k, v]) => `${k} ${s(v)}`), ...(gaps > 1000 ? [`between steps ${s(gaps)}`] : [])].join(' · ')})`
 }
+// The books, a page at a time from the server (20 Oct), under day headings. Newer goes back through the cursors seen.
+function BookPages({ days, traces }: { days: number; traces: string | null }) {
+  const [cursors, setCursors] = useState<(string | null)[]>([null])
+  useEffect(() => setCursors([null]), [days])
+  const page = cursors.length - 1
+  const r = useQuery(api.pipeline.journeysPage, { days, paginationOpts: { numItems: PER_PAGE, cursor: cursors[page] } })
+  if (r === undefined) return <p className="note">Loading…</p>
+  if (r === null) return null
+  if (!r.page.length && page === 0) return <p className="note">No handbooks in this window.</p>
+  return (
+    <>
+      <ByDay items={r.page as J[]} at={(h) => h.createdAt}>{(h) => <Journey key={h.id} h={h} traces={traces} />}</ByDay>
+      <PageBar page={page} hasOlder={!r.isDone} onNewer={() => setCursors(cursors.slice(0, -1))} onOlder={() => setCursors([...cursors, r.continueCursor])} />
+    </>
+  )
+}
+
 function Journey({ h, traces }: { h: J; traces: string | null }) {
   const [open, setOpen] = useState(false)
   return (

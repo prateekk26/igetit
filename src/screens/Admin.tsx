@@ -4,7 +4,7 @@ import AdminReview from '../components/AdminReview'
 import { AdminAlerts, AdminRuns } from '../components/AdminWatch'
 import AdminEvals from '../components/AdminEvals'
 import AdminShelf from '../components/AdminShelf'
-import { How, Seg } from '../components/AdminUi'
+import { ByDay, How, Paged, Seg } from '../components/AdminUi'
 import { Wordmark } from '../components/Ooh'
 import './admin.css'
 import { deviceToken } from '../lib/device'
@@ -131,10 +131,12 @@ export default function Admin() {
 
           <section className="adm-card adm-wide">
             <h2>Topics</h2>
-            <table className="adm-table">
-              <thead><tr><th>Topic</th><th></th><th>Started</th><th>Opened ch 1</th><th>Passed ch 1</th></tr></thead>
-              <tbody>{d.topics.map((t) => <tr key={t.topic}><td>{t.topic}</td><td><small>{t.ready ? 'ready' : 'typed'}</small></td><td>{t.started}</td><td>{t.opened}</td><td>{t.passed}</td></tr>)}</tbody>
-            </table>
+            <Paged items={d.topics} resetKey={days}>{(page) => (
+              <table className="adm-table">
+                <thead><tr><th>Topic</th><th></th><th>Started</th><th>Opened ch 1</th><th>Passed ch 1</th></tr></thead>
+                <tbody>{page.map((t) => <tr key={t.topic}><td>{t.topic}</td><td><small>{t.ready ? 'ready' : 'typed'}</small></td><td>{t.started}</td><td>{t.opened}</td><td>{t.passed}</td></tr>)}</tbody>
+              </table>
+            )}</Paged>
           </section>
 
           <div className="adm-grid">
@@ -151,9 +153,9 @@ export default function Admin() {
 
           <section className="adm-card adm-wide">
             <h2>Each person's path</h2>
-            <p className="adm-status">Latest 50 visitors. Tap one to see everything they did, in order.</p>
-            <div className="adm-journeys">
-              {d.recent.map((r) => (
+            <p className="adm-status">Newest first, up to 300 visitors in this window. Tap one to see everything they did, in order.</p>
+            <Paged items={d.recent} resetKey={days}>{(page) => (
+            <ByDay items={page} at={(r) => r.first}>{(r) => (
                 <details key={r.visitor + r.first} className="adm-j">
                   <summary>
                     <span className="adm-j-when">{time(r.first)}</span>
@@ -167,8 +169,8 @@ export default function Admin() {
                     {r.timeline.length === 0 ? <li><span>—</span>No page activity recorded.</li> : r.timeline.map((x, k) => <li key={k}><span>{x.t < 0 ? '' : `+${secs(x.t)}`}</span>{x.what}</li>)}
                   </ol>
                 </details>
-              ))}
-            </div>
+              )}</ByDay>
+            )}</Paged>
           </section>
 
           <section className="adm-card adm-wide">
@@ -390,7 +392,7 @@ function PaymentsCard() {
         <li><span>People who paid</span><b>{d.payers}</b></li>
         <li><span>Pay sheets opened</span><b>{d.started}</b></li>
       </ul>
-      {d.recent.length > 0 && <ul className="adm-list">{d.recent.map((r, i) => <li key={i}><span>{when(r.at)} · {r.plan === 'year' ? 'year' : 'month'}{r.tier ? ` · tier ${r.tier}` : ''} · {r.mode}{r.via ? ` · ${r.via}` : ''}</span><b>{r.status} {inr(r.amount)}</b></li>)}</ul>}
+      {d.recent.length > 0 && <Paged items={d.recent}>{(page) => <ul className="adm-list">{page.map((r, i) => <li key={i}><span>{when(r.at)} · {r.plan === 'year' ? 'year' : 'month'}{r.tier ? ` · tier ${r.tier}` : ''} · {r.mode}{r.via ? ` · ${r.via}` : ''}</span><b>{r.status} {inr(r.amount)}</b></li>)}</ul>}</Paged>}
     </section>
   )
 }

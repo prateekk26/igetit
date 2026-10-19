@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
-import { How } from './AdminUi'
+import { How, Paged } from './AdminUi'
 import type { Id } from '../../convex/_generated/dataModel'
 
 // /admin "Review" (D32, Prateek 9 Oct: nothing typed goes public until he approves it). Pending rows newest first with
@@ -52,18 +52,18 @@ export default function AdminReview() {
       <div className="adm-head"><h2>Review</h2><span className="adm-sub">{pending.length ? `${pending.length} typed ${pending.length === 1 ? 'handbook' : 'handbooks'} waiting to go public` : 'Typed handbooks waiting to go public'}</span></div>
       <How>A typed topic reaches here once its own reader passed chapter 1 and it cleared the automatic filter (privacy check, judge 9 of 12 or more, a real topic, not one of our phones). Nothing is shared until you tap Approve.</How>
       {error && <p className="error">{error}</p>}
-      {pending.length === 0 ? <p className="note">Nothing waiting.</p> : <ul className="adm-review">{pending.map((r) => <Row key={r.id} r={r} />)}</ul>}
+      {pending.length === 0 ? <p className="note">Nothing waiting.</p> : <Paged items={pending}>{(page) => <ul className="adm-review">{page.map((r) => <Row key={r.id} r={r} />)}</ul>}</Paged>}
       {building.length > 0 && <p className="note">Rebuilding now: {building.map((r) => r.topic).join('; ')}. Research, plan and chapter 1 take about three minutes; the new chapter 1 appears above as its own row.</p>}
       {byMe.length > 0 && (
         <details className="adm-fold">
           <summary>Rejected by you ({byMe.length})</summary>
-          <ul className="adm-review">{byMe.map((r) => <Row key={r.id} r={r} auto />)}</ul>
+          <Paged items={byMe}>{(page) => <ul className="adm-review">{page.map((r) => <Row key={r.id} r={r} auto />)}</ul>}</Paged>
         </details>
       )}
       {auto.length > 0 && (
         <details className="adm-fold">
           <summary>Rejected automatically ({auto.length}): approve to override, or delete forever</summary>
-          <ul className="adm-review">{auto.map((r) => <Row key={r.id} r={r} auto />)}</ul>
+          <Paged items={auto}>{(page) => <ul className="adm-review">{page.map((r) => <Row key={r.id} r={r} auto />)}</ul>}</Paged>
         </details>
       )}
     </section>
