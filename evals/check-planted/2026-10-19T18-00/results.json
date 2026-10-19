@@ -1,0 +1,106 @@
+{
+ "planted": [
+  {
+   "k": 1,
+   "card": 0,
+   "words": "only once a minute"
+  },
+  {
+   "k": 2,
+   "card": 1,
+   "words": "exactly 1,000"
+  },
+  {
+   "k": 3,
+   "card": 1,
+   "words": "directly from the company"
+  },
+  {
+   "k": 4,
+   "card": 2,
+   "words": "up 6%"
+  },
+  {
+   "k": 5,
+   "card": 3,
+   "words": "was taught by Warren"
+  },
+  {
+   "k": 6,
+   "card": 7,
+   "words": "opened in 1995"
+  },
+  {
+   "k": 7,
+   "card": 4,
+   "words": "8:30 am"
+  },
+  {
+   "k": 8,
+   "card": 1,
+   "words": "guaranteed share"
+  },
+  {
+   "k": 9,
+   "card": 5,
+   "words": "and the price falls"
+  },
+  {
+   "k": 10,
+   "card": 6,
+   "answer": "b"
+  }
+ ],
+ "extra": [
+  {
+   "k": "x1",
+   "card": 2,
+   "words": "The 400 left over"
+  },
+  {
+   "k": "x2",
+   "card": 2,
+   "words": "₹9,000"
+  },
+  {
+   "k": "x3",
+   "card": 1,
+   "words": "T+2"
+  }
+ ],
+ "rows": [
+  {
+   "fixes": [
+    "card 0: Prices change many times a minute; the claim is false and unneeded.",
+    "card 1: There is no fixed 1,000-piece split.",
+    "card 1: Settlement is now T+1, profits are not guaranteed or monthly; demat explained.",
+    "card 1: Contradicts the point and the later card; buyers trade with other owners.",
+    "card 2: ₹3 on ₹500 is 0.6%.",
+    "card 2: 300 buyers minus 100 sellers leaves 200.",
+    "card 2: 3 × 300 = 900.",
+    "card 3: Roles reversed.",
+    "card 4: Indian market opens at 9:15; 8:40 trade impossible.",
+    "card 5: Original had the first case falling; buyers outnumbering sellers raises price.",
+    "card 5: Cleanup after correcting the first case.",
+    "card 6: Price rises when buyers outnumber sellers.",
+    "card 6: Old line was false and gave away the answer.",
+    "card 7: BSE founded 1875, not 1995.",
+    "card 5: More buyers than slices pushes the price up, not down. (fixed on the second ask)"
+   ],
+   "version": "live",
+   "effort": null,
+   "model": null,
+   "caught": 10,
+   "missed": [],
+   "caughtExtra": 3,
+   "missedExtra": [],
+   "stray": [],
+   "applied": 15,
+   "skipped": 0,
+   "ms": 19834,
+   "tokensIn": 0,
+   "tokensOut": 0,
+   "inr": 0
+  }
+ ]
+}
