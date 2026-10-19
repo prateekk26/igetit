@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
+import { isOwner } from "./admin";
 import { RateLimiter, HOUR, MINUTE, DAY } from "@convex-dev/rate-limiter";
 import { components } from "./_generated/api";
 import { ownedHandbook } from "./handbooks";
@@ -54,9 +55,10 @@ export const played = mutation({
 
 // How far ahead is worth making (19 Oct): clips made since a time, by how they were made and how far ahead, and how
 // many of them were ever played. npx convex run --prod voice:aheadReport '{"sinceHours":168}'
-export const aheadReport = internalQuery({
-  args: { sinceHours: v.number() },
-  handler: async (ctx, { sinceHours }) => {
+export const aheadReport = internalQuery({ args: { sinceHours: v.number() }, handler: async (ctx, { sinceHours }) => ahead(ctx, sinceHours) });
+// The same report on /admin, AI tab (20 Oct, Prateek: "we are keeping logging report in admin right?"). Owner only.
+export const aheadAdmin = query({ args: { sinceHours: v.number() }, handler: async (ctx, { sinceHours }) => ((await isOwner(ctx)).ok ? ahead(ctx, sinceHours) : null) });
+async function ahead(ctx: QueryCtx, sinceHours: number) {
     const since = Date.now() - sinceHours * 3600e3;
     const rows = (await ctx.db.query("pageAudio").order("desc").take(8000)).filter((r) => r.at >= since && r.made);
     const by: Record<string, { made: number; played: number; plays: number }> = {};
@@ -66,8 +68,7 @@ export const aheadReport = internalQuery({
       b.made++; if (r.plays) { b.played++; b.plays += r.plays; }
     }
     return Object.entries(by).sort(([a], [b]) => a.localeCompare(b)).map(([k, b]) => ({ k, ...b, playedPct: Math.round((100 * b.played) / b.made) }));
-  },
-});
+}
 
 const norm = (s: string) => s.toLowerCase().normalize("NFKC").replace(/[*_`#>]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 function strings(x: any, out: string[] = []): string[] {

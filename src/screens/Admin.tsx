@@ -63,7 +63,7 @@ export default function Admin() {
           {tab === 'trending' && <><TrendingCard /><ExperimentsCard /></>}
           {tab === 'payments' && <PaymentsCard />}
           {/* AI and cost together (8 Oct, Tanisha): what every step takes and costs, by handbook, then spend by day. */}
-          {tab === 'ai' && <><AdminAlerts /><ProviderSwitch /><AdminPipeline /><AdminRuns /><CostsCard /></>}
+          {tab === 'ai' && <><AdminAlerts /><ProviderSwitch /><AdminPipeline /><AdminRuns /><CostsCard /><VoiceAheadCard /></>}
           {/* D82 (Prateek, 11 Oct): everything that judges chapter quality has its own tab. */}
           {tab === 'evals' && <AdminEvals />}
 
@@ -402,6 +402,26 @@ function PaymentsCard() {
 // What the app spends (7 Oct, Prateek): per day, then per model, then per job inside a model. Estimates from list
 // prices (costs.ts); each provider's bill is the truth.
 const JOB: Record<string, string> = { plan: 'Plans', chapter: 'Chapters', check: 'Fact checks and picture scenes', versions: 'Quiz versions', match: 'Match with a ready book', library: 'Library check', photo: 'Wikimedia photos (free)', move: 'Moving figures', artifact: 'Try-it pages', repair: 'Rewrites and polish', scenes: 'Picture scenes', picture: 'Pictures', intent: 'Goal question', research: 'Research', transcript: 'YouTube transcripts', ask: 'Ask or object', teach: 'Teach it back', simpler: 'Say it simpler (removed)', audit: 'Audits' }
+// Read-aloud clips made ahead and whether they were heard (20 Oct, D144): decides how many pages ahead are worth making.
+function VoiceAheadCard() {
+  const [days, setDays] = useState(7)
+  const rows = useQuery(api.voice.aheadAdmin, { sinceHours: days * 24 })
+  if (!rows) return null
+  const made = rows.reduce((t, r) => t + r.made, 0), played = rows.reduce((t, r) => t + r.played, 0)
+  return (
+    <Fold id="voiceahead" title="Read-aloud: pages made ahead" summary={made ? `${made} clips, ${Math.round((100 * played) / made)}% ever played, last ${days} days` : `no clips logged in the last ${days} days`}>
+      <Seg label="Read-aloud window" value={days} onChange={setDays} options={[1, 7, 30].map((n) => ({ v: n, label: n === 1 ? 'Today' : `${n} days` }))} />
+      <How>Each new clip records whether it was made ahead of the page being read (0 = that page, 1 = the next one ...) or when someone tapped play, and whether anyone ever played it. Few plays far ahead means fewer pages need making ahead. Counted since 20 Oct, 12:30 am.</How>
+      {rows.length === 0 ? <p className="note">No clips logged yet in this window.</p> : (
+        <table className="adm-table">
+          <thead><tr><th>How it was made</th><th>Clips</th><th>Ever played</th><th>Share played</th></tr></thead>
+          <tbody>{rows.map((r) => <tr key={r.k}><td>{r.k}</td><td>{r.made}</td><td>{r.played}</td><td><b>{r.playedPct}%</b></td></tr>)}</tbody>
+        </table>
+      )}
+    </Fold>
+  )
+}
+
 function CostsCard() {
   const [days, setDays] = useState(14)
   const rows = useQuery(api.costs.byDay, { days })
