@@ -11,6 +11,11 @@ One entry per decision: what, why, what it replaced, and when to look at it agai
 
 How to add: at the end of a session, append under today's date. A decision Prateek made says "(Prateek)"; one the agent made in his stead says "(agent, authorised)". Never rewrite an old entry; add a new one that supersedes it.
 
+## 2026-10-20
+
+### Decisions
+- **D145. The writing wait fills, calls the reader back, and says the measured time (Prateek: "do 1,2,3,5,6,7", from the agent's UX list; "once all seem good, deploy it on live prod").** (1) A bar that fills against the measured time (src/components/WaitBar.tsx: BOOK_MS 95 s from the goal to chapter 1, CHAPTER_MS 50 s a chapter; it slows near the end, stops at 95% until the chapter is ready, and never drops when the reader moves from the wait screen to the handbook page). "About a minute and a half" for a book and "about a minute" for a chapter everywhere (wait screen, Start, handbook page, a stale rewrite, the homepage's step 1). (2) When the chapter a reader waits on lands: the tab's name becomes "✓ Chapter N is ready · I Get It" if the page is in the background, a short buzz if it is on screen (src/lib/readyPing.ts), and a "Chapter 1 is ready" push to the owner's phones that already have reminders on (convex/pushSend.ts ready, scheduled once from setChapter for a typed book's first chapter 1; sw.js skips it when the app is on screen). (3) A wait screen held by a story lists the plan's chapter titles once the plan lands, and keeps them on the Ready screen. (6) "Opening your handbook…" is a grey outline of the handbook page. (7) The Start button reads "Making your book…" while it works (DESIGN.md already said so). Why: the observability report (16 to 20 Oct, p50) has research 43 s, plan 11 s, chapter 33 s, check 9 s, and /admin's last 5 typed books 66 to 96 s, while the screen said two minutes and showed a sliding stripe; nothing called back a reader who switched apps. Item 4 (Ooh acting out each step) was not picked. Look again: when a week of PostHog wait_view events can be compared with chapter 1 opens.
+
 ## 2026-10-19
 
 ### Decisions

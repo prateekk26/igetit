@@ -72,3 +72,22 @@ export const markSent = internalMutation({
   args: { id: v.id("pushSubs"), day: v.string(), gone: v.optional(v.boolean()) },
   handler: async (ctx, { id, day, gone }) => { if (gone) await ctx.db.delete(id); else await ctx.db.patch(id, { lastSentDay: day }); },
 });
+
+// "Chapter 1 is ready" (20 Oct, Prateek's yes to the UX list, item 2): the phones of the handbook's owner that already
+// turned reminders on. A first-time reader has none yet (reminders are offered after chapter 1), so this reaches people
+// making their second book, who are the ones likely to switch apps during the wait. The phone stays quiet if the app is
+// on screen (sw.js).
+export const readySubs = internalQuery({
+  args: { handbookId: v.id("handbooks") },
+  handler: async (ctx, { handbookId }) => {
+    const h = await ctx.db.get(handbookId);
+    if (!h?.ownerToken) return null;
+    const subs = await ctx.db.query("pushSubs").withIndex("by_device", (q) => q.eq("deviceToken", h.ownerToken!)).collect();
+    if (!subs.length) return null;
+    const name = String((h.plan as any)?.topic ?? h.topic ?? "").trim();
+    return {
+      subs: subs.map((s) => ({ id: s._id, subscription: { endpoint: s.endpoint, keys: s.keys } })),
+      payload: { title: "Chapter 1 is ready", body: name ? `${name}: written and fact-checked. Tap to read.` : "Written and fact-checked. Tap to read.", url: "/?utm_source=ready", tag: `ready-${handbookId}`, skipIfVisible: true },
+    };
+  },
+});

@@ -5,6 +5,15 @@ What each day taught us, not what shipped (that's PROGRESS.md). Every build day 
 Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-of-sprint write-up. A message that starts with "learned:" lands under "Noted during the day" at the bottom; fold those into the day before the session ends.
 
 
+## Tue 20 Oct, the day (day 19; the wait that fills)
+
+### Product/Tech
+- Thought: the wait screen's "about two minutes" was a safe promise. Learned: since the 17 Oct speed-up the real wait is 66 to 96 s (p50: research 43 s, plan 11 s, chapter 33 s, check 9 s), so the screen was overstating it by a third; the second test book still took 120 s. Now: the times live in one place (WaitBar.tsx BOOK_MS, CHAPTER_MS), next to the measurement they came from.
+- Thought: a progress bar is one component. Learned: the wait spans two screens (the wait screen, then the handbook page once the plan lands), and timing each screen on its own made the bar fall from 70% to 7% at the hand-off. Now: chapter 1 of a new book carries the book's clock and a 60% floor onto the handbook page.
+
+### GTM
+- Thought: people watch the wait. Learned: nothing called back a reader who switched apps during a 90 s wait, and the push we already had only reaches phones that turned on reminders, which happens after chapter 1. Now: the tab's name says "✓ Chapter 1 is ready"; the push reaches second-book readers. Worth reading: wait_view against chapter 1 opens in PostHog after a week.
+
 ## Mon 19 Oct, the day (day 18; the site down, the real prices, the cheaper judge and voice)
 
 ### Product/Tech

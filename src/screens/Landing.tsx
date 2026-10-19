@@ -180,7 +180,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
       <section className="lp-steps c-steps">
         <h2>Tonight, in five minutes.</h2>
         <ol>
-          <li><span className="c-n">1</span><div><h3>Say what you're wondering about.</h3><p>In your own words. In about two minutes you get a short book on it, written for you, and chapter 1 is ready.</p></div></li>
+          <li><span className="c-n">1</span><div><h3>Say what you're wondering about.</h3><p>In your own words. In about a minute and a half you get a short book on it, written for you, and chapter 1 is ready.</p></div></li>
           <li><span className="c-n">2</span><div><h3>Read chapter 1.</h3><p>One idea a page, with pictures. Stuck? Ask a question right on the page.</p></div></li>
           <li><span className="c-n">3</span><div><h3>Come back for chapter 2.</h3><p>It starts with two quick questions on chapter 1, so what you read stays with you.</p></div></li>
         </ol>

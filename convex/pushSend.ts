@@ -25,6 +25,28 @@ export const sendDue = internalAction({
   },
 });
 
+// "Chapter 1 is ready", once, when a typed handbook's first chapter is saved (handbooks.ts setChapter schedules it).
+export const ready = internalAction({
+  args: { handbookId: v.id("handbooks") },
+  handler: async (ctx, { handbookId }): Promise<{ sent: number }> => {
+    const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
+    if (!pub || !priv) return { sent: 0 };
+    const r: any = await ctx.runQuery(internal.push.readySubs, { handbookId });
+    if (!r) return { sent: 0 };
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "https://www.igetit.now", pub, priv);
+    let sent = 0;
+    for (const s of r.subs) {
+      try { await webpush.sendNotification(s.subscription, JSON.stringify(r.payload), { TTL: 600 }); sent++; }
+      catch (e: any) {
+        const code = e?.statusCode;
+        if (code === 404 || code === 410) await ctx.runMutation(internal.push.markSent, { id: s.id, day: "", gone: true });
+        else console.log("ready push failed", code, String(e?.body ?? e?.message ?? e).slice(0, 200));
+      }
+    }
+    return { sent };
+  },
+});
+
 // One test notification to a phone that has a reminder: npx convex run pushSend:test '{"deviceToken":"..."}'
 export const test = internalAction({
   args: { endpoint: v.string(), p256dh: v.string(), auth: v.string() },

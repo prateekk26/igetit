@@ -22,6 +22,15 @@ Entry format:
 Day 1 is Fri 2 Oct (kickoff); Sat 17 Oct is submission.
 
 
+## Tue 20 Oct (day 19)
+
+### The wait screen promised two minutes for a 90-second wait
+- **Realised:** 20 Oct (day 19), reading /admin's new "chapter 1 in" column (66 to 96 s) next to the screen's "About two minutes in all"
+- **Could have known:** 17 Oct (day 16), when the gate measured 98 s from research to chapter 1 and the plan moved to Sonnet (11 s)
+- **What it cost:** 3 days of every typed book's wait saying it took a third longer than it did, on a screen that also never called back a reader who left
+- **Now:** the times sit in WaitBar.tsx next to their measurement; any change to the pipeline's speed rereads them
+- **Post opener:** Our loading screen said two minutes. It took ninety seconds. Here's what we changed.
+
 ## Mon 19 Oct (day 18)
 
 ### The live address went down over a $10 payment

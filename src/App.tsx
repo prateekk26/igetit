@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useReadyPing } from './lib/readyPing'
+import { BOOK_MS, CHAPTER_MS } from './components/WaitBar'
 import AuthButtons from './components/AuthButtons'
 import { useAction, useConvexAuth, useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
@@ -225,6 +227,9 @@ export default function App() {
   const holdable = hb?.status === 'ready' && ch1Status === 'ready' && passed.length === 0 && (progress?.currentCard ?? 0) === 0 && (view === 'auto' || (view === 'chapter' && !(chapter?.status === 'ready' && Array.isArray(chapter.cards))))
   useEffect(() => { if (hold && hb && view !== 'explore' && view !== 'library' && !holdable) setHold(null) }, [hold, hb, view, holdable])
   useEffect(() => { setWaitHold(false) }, [hb?._id])
+  // The chapter this reader is waiting on (the next one on Done, else the current one): a ping when it lands (20 Oct).
+  const waitedN = doneN ? doneN + 1 : currentN
+  useReadyPing(hb && view !== 'chapter' ? `${hb._id}:${waitedN}` : null, hb?.chapters.find((c) => c.n === waitedN)?.status, `Chapter ${waitedN} is ready`)
   useEffect(() => {
     if (!hb || hb.status !== 'ready' || autoEntered.current === hb._id || view !== 'auto') return
     const fresh = passed.length === 0 && currentN === 1 && (progress?.currentCard ?? 0) === 0
@@ -396,7 +401,8 @@ export default function App() {
     )
   }
   if (deepLink?.l) return <LinkOpening book={linkBook} />
-  if (data === undefined || deepLink) return <Shell><div className="splash">Opening your handbook…</div></Shell>
+  // The page's shape in grey while it loads, not a line on an empty page (20 Oct, item 6).
+  if (data === undefined || deepLink) return <Shell><PlanSkeleton /></Shell>
 
   // Open a topic by name: a ready one opens at once; a typed one is written. Past the free typed-topic limit, the
   // payment page opens with the reason (7 Oct, Prateek: a signed-up reader's next step is membership).
@@ -451,6 +457,7 @@ export default function App() {
         {view === 'start-again' && libRows.length > 0 && !lib?.signedIn && <SignupNudge onSignIn={() => signIn('start-again')} context="second-topic" compact freeChapters={freeChapters} />}
         <Start
           chapterOneReady={ch1Status === 'ready'}
+          planTitles={((hb?.plan as any)?.chapters ?? []).map((c: any) => String(c.title ?? '')).filter(Boolean)}
           phase={(hb as any)?.phase ?? (hb?.status === 'ready' ? 'chapter' : null)}
           startedAt={(hb as any)?.startedAt}
           goal={(hb as any)?.goal ?? null}
@@ -705,9 +712,12 @@ export default function App() {
         passed={passed}
         current={currentN}
         chapterReady={!!chapterReady}
+        // A new typed book's chapter 1 carries on the wait screen's bar (it jumped from 70% back to 7% on 20 Oct's test).
+        chapterWait={currentN === 1 && passed.length === 0 && hb.source === 'live' && (hb as any).startedAt ? { since: (hb as any).startedAt, expectMs: BOOK_MS, floor: 0.6 }
+          : (hb.chapters.find((c) => c.n === currentN) as any)?.writingSince ? { since: (hb.chapters.find((c) => c.n === currentN) as any).writingSince, expectMs: CHAPTER_MS } : undefined}
         chapterFailed={!!chapterFailed} chapterError={(hb.chapters.find((c) => c.n === currentN) as any)?.error}
         lockNote={lockNote} lockHead={lock?.code?.startsWith('daily') ? 'opens after midnight, India time' : null} onPricing={goPricing} onSignUp={lock?.code === 'signup-more' ? () => signIn('chapter') : undefined}
-        voiceNote={flash ? flash : (chapter as any)?.stale ? `Chapter ${currentN} gets rewritten for you first, from your last rating or how you asked to be taught. Tap start; about two minutes, fact-checked.` : hb.source === 'cache' && (hb as any).voice && (hb as any).voice !== 'friend' ? `This one was written in the friendly voice ahead of time. Your "${(hb as any).voice}" choice applies to handbooks written fresh.` : undefined}
+        voiceNote={flash ? flash : (chapter as any)?.stale ? `Chapter ${currentN} gets rewritten for you first, from your last rating or how you asked to be taught. Tap start; about a minute, fact-checked.` : hb.source === 'cache' && (hb as any).voice && (hb as any).voice !== 'friend' ? `This one was written in the friendly voice ahead of time. Your "${(hb as any).voice}" choice applies to handbooks written fresh.` : undefined}
         onStart={startCurrent}
         onTapChapter={tapChapter}
         canChangeLine={hb.source === 'live' && !(hb as any).fromLibrary && passed.length === 0 && (progress?.currentCard ?? 0) === 0}
@@ -850,4 +860,17 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
 function firstPicture(pictures?: Record<string, string>): string | undefined {
   const keys = Object.keys(pictures ?? {}).map(Number).sort((a, b) => a - b)
   return keys.length ? pictures![String(keys[0])] : undefined
+}
+
+// Opening a handbook: a grey outline of the handbook page (kicker, title, five chapter rows, the button) so nothing
+// jumps when it lands. The words are for screen readers only.
+function PlanSkeleton() {
+  return (
+    <div className="plan-skel" aria-busy="true">
+      <p className="lp-visually-hidden" role="status">Opening your handbook…</p>
+      <i className="k" /><i className="h" /><i className="h2" />
+      {[78, 64, 70, 58, 66].map((w, k) => <div className="row" key={k}><i className="dot" /><i className="line" style={{ maxWidth: `${w}%` }} /></div>)}
+      <i className="btn-s" />
+    </div>
+  )
 }

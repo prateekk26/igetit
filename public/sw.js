@@ -11,7 +11,10 @@ self.addEventListener('fetch', (e) => {
 self.addEventListener('push', (e) => {
   let d = {}
   try { d = e.data ? e.data.json() : {} } catch { d = { body: e.data && e.data.text() } }
-  e.waitUntil(self.registration.showNotification(d.title || 'I Get It', { body: d.body || 'Your next chapter is ready.', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', data: { url: d.url || '/' } }))
+  const show = () => self.registration.showNotification(d.title || 'I Get It', { body: d.body || 'Your next chapter is ready.', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag, data: { url: d.url || '/' } })
+  // "Chapter 1 is ready" (20 Oct) stays quiet when the app is on screen: the page itself shows it.
+  if (!d.skipIfVisible) { e.waitUntil(show()); return }
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => list.some((c) => c.visibilityState === 'visible' && c.focused) ? undefined : show()))
 })
 self.addEventListener('notificationclick', (e) => {
   e.notification.close()

@@ -75,7 +75,7 @@ em, i, .picture, .card.picture-card .serif, .story-text em { font-style: normal;
 .ask-send { box-shadow: none; }
 .quiet { font-weight: 600; color: var(--ink-2); }
 .back-link { font-weight: 700; }
-.busybar { background: var(--tint); height: 6px; border-radius: 3px; }
+.busybar, .waitbar { background: var(--tint); height: 6px; border-radius: 3px; }
 
 /* ---------- boxes and pills ---------- */
 .input, .lp-field input { border: 0; border-radius: var(--radius); background: var(--paper-2); font-family: var(--sans); font-weight: 500; font-size: 1.1875rem; box-shadow: none; }

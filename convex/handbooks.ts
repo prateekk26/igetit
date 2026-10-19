@@ -1345,7 +1345,12 @@ export const setChapter = internalMutation({
     else await ctx.db.insert("chapters", { handbookId, n, status: "ready", title, cards: shuffled, recallCards: recall, outcomeLine, svg, model, factCheck, scenes, ledger, createdAt: Date.now(), ...(tiers ? { quizTiers: tiers } : {}), ...(rTiers ? { recallTiers: rTiers } : {}) });
     if (redraw) { const h = await ctx.db.get(handbookId); if (h) await ensurePictures(ctx, h, n); }
     // D42: a rebuild started from the review queue is judged the moment its chapter 1 lands (nobody reads it first).
-    if (n === 1) { const hb = await ctx.db.get(handbookId); if ((hb as any)?.rebuildOf) await ctx.scheduler.runAfter(0, internal.library.consider, { handbookId }); }
+    // 20 Oct: a typed handbook's first chapter 1 (not a rewrite) tells the owner's phone, if it has reminders on.
+    if (n === 1) {
+      const hb = await ctx.db.get(handbookId);
+      if ((hb as any)?.rebuildOf) await ctx.scheduler.runAfter(0, internal.library.consider, { handbookId });
+      else if (hb?.source === "live" && !(existing && Array.isArray(existing.cards))) await ctx.scheduler.runAfter(0, internal.pushSend.ready, { handbookId });
+    }
   },
 });
 // ---------- adapting to the reader ----------

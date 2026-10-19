@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import ActionBar from '../components/ActionBar'
+import WaitBar, { BOOK_MS } from '../components/WaitBar'
 import { track } from '../lib/track'
 import Rich from '../components/Rich'
 import { useQuery } from 'convex/react'
@@ -50,12 +51,13 @@ type Props = {
   chapterOneReady?: boolean
   startedAt?: number   // when the writing started (the goal was picked), for "taking longer than usual"
   goal?: string | null
+  planTitles?: string[]   // the plan's chapter titles once it has landed, shown while a story holds this screen (20 Oct)
   allowance?: TypedAllowance | null   // the typed-topic allowance, said beside the box (Shaktimaan, 9 Oct night)
   replacingName?: string | null   // "Change what you typed": the unread handbook this line replaces, so it costs nothing
 }
 
 // The first screen, and the empty state of the whole product (DESIGN.md section 4, Start).
-export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, onLevelCheck, typedLevel = 'new', suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onMember, memberPrice, onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal , allowance, replacingName}: Props) {
+export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, onLevelCheck, typedLevel = 'new', suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onMember, memberPrice, onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal, planTitles, allowance, replacingName}: Props) {
   const declined = status === 'declined'
   // Ready handbook names, to tell a ready suggestion (free) from one that would be written for this reader.
   const keyOf = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
@@ -92,6 +94,8 @@ export default function Start({ onBack, initialTopic = '', status, question, int
 
   // Measured on prod, 7 to 9 Oct, on Gemini Flash (D41): research about 42 s, the plan 25 s, chapter 1 24 s, its check 8 s;
   // about two minutes from the goal to chapter 1, three at the slowest tenth. Past four, it says so.
+  // Re-measured 16 to 20 Oct (observability report, p50): research 43 s, plan 11 s (Sonnet), chapter 33 s, check 9 s;
+  // /admin's last 5 typed books 66 to 96 s. So "about a minute and a half", and the bar fills against BOOK_MS.
   // Past 15 minutes the write has died (actions stop at 10): "Start it again" appears (UX review 9 Oct: it waited for ever).
   const [stuck, setStuck] = useState(false)
   useEffect(() => {
@@ -113,6 +117,14 @@ export default function Start({ onBack, initialTopic = '', status, question, int
   const shown = nameOf(topic.trim() || initialTopic)   // the typed line is the name, first letter capitalised (D28)
   const stage = phase === 'chapter' || readyToOpen ? 3 : phase === 'plan' ? 2 : 1
 
+  // The plan landed while a story held this screen (20 Oct, item 3): their own chapters, not just a link to them.
+  const chapterList = planTitles && planTitles.length > 0 ? (
+    <div className="wait-plan">
+      <p className="wait-plan-head">Your {planTitles.length} chapters</p>
+      <ol>{planTitles.map((t, i) => <li key={i}>{t}</li>)}</ol>
+    </div>
+  ) : null
+
   // While the plan is written: the topic and what's happening, not the form again (Shaktimaan, 6 Oct).
   if (writing) {
     return (
@@ -121,6 +133,7 @@ export default function Start({ onBack, initialTopic = '', status, question, int
           <>
             <p className="plan-wait-kicker">Ready</p>
             <h1 className="plan-wait-topic">{shown}</h1>
+            {chapterList}
             <p className="note">Chapter 1 is written and checked. Finish the story or go now; it waits.</p>
             <button type="button" className="btn wait-open" onClick={onOpenReady}>Open chapter 1 →</button>
           </>
@@ -134,11 +147,12 @@ export default function Start({ onBack, initialTopic = '', status, question, int
               <li className={stage > 2 ? 'on done' : stage === 2 ? 'on' : ''}>Planning the chapters: a quick run-through, or up to seven nights</li>
               <li className={stage === 3 ? 'on' : ''}>Writing chapter 1 and checking its facts</li>
             </ol>
-            <p className="note">{stuck && !readyToOpen ? "This one stalled on our side. Start it again; it won't count twice." : verySlow ? 'Taking longer than usual. Still on it; you can leave, and it will be waiting in Your handbooks.' : readyToOpen ? 'Chapter 1 is being written and checked: about a minute. A button appears here when it is ready.' : 'About two minutes in all.'}</p>
+            {readyToOpen && chapterList}
+            <p className="note">{stuck && !readyToOpen ? "This one stalled on our side. Start it again; it won't count twice." : verySlow ? 'Taking longer than usual. Still on it; you can leave, and it will be waiting in Your handbooks.' : readyToOpen ? 'Chapter 1 is being written and checked: about a minute. A button appears here when it is ready.' : 'About a minute and a half in all.'}</p>
             {stuck && !readyToOpen && onRetry && <button type="button" className="btn wait-open" disabled={sending} onClick={() => { setSending(true); onRetry().catch((e) => setLocalError(friendly(e))).finally(() => setSending(false)) }}>Start it again</button>}
             {stuck && localError && <p className="error" role="alert">{localError}</p>}
             {readyToOpen && <button type="button" className="quiet" onClick={onOpenReady}>See the plan now</button>}
-            <div className="busybar" aria-hidden="true" />
+            <WaitBar since={startedAt} expectMs={BOOK_MS} floor={stage === 3 ? 0.6 : stage === 2 ? 0.45 : 0} />
           </>
         )}
         {story && (
@@ -347,11 +361,11 @@ export default function Start({ onBack, initialTopic = '', status, question, int
 
       {below && !writing && below(pick)}
 
-      <ActionBar busy={writing || sending} note={sending ? 'About two minutes: a look on the web first, then the plan, then chapter 1.' : undefined}>
+      <ActionBar busy={writing || sending} note={sending ? 'About a minute and a half: a look on the web first, then the plan, then chapter 1.' : undefined}>
         {status === 'failed' && onRetry && topic.trim() === initialTopic.trim() ? (
           <button className="btn" onClick={() => onRetry().catch((e) => setLocalError(friendly(e)))}>Try again</button>
         ) : (
-          <button className="btn" onClick={submit} disabled={writing || sending}>{writing || sending ? 'Finding your way…' : 'Make my book'}</button>
+          <button className="btn" onClick={submit} disabled={writing || sending}>{writing || sending ? 'Making your book…' : 'Make my book'}</button>
         )}
       </ActionBar>
     </>

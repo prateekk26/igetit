@@ -17,6 +17,7 @@ type Props = {
   current: number
   chapterReady: boolean
   chapterFailed: boolean
+  chapterWait?: { since?: number; expectMs: number; floor?: number }   // the filling bar while the chapter is written (20 Oct)
   chapterError?: string
   // Today's reading allowance is used (membership.ts): what to tell the reader, and the way to membership.
   lockNote?: string | null
@@ -51,7 +52,7 @@ type Props = {
 // The handbook (14 Oct, the C boards "The plan" and "Tonight"): for a reader coming back, tonight's chapter on a marigold
 // card with its own Start; then the picture, the title, Ooh's line (the outcome) and "What's in it", one numbered row a
 // chapter, each answering a tap as the old path's stops did. A first visit has no card; the bar's button starts chapter 1.
-export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forWhom, plan, passed, current, chapterReady, chapterFailed, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf: _onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext, onBack, more }: Props) {
+export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forWhom, plan, passed, current, chapterReady, chapterFailed, chapterWait, chapterError: _chapterError, lockNote, lockHead, onPricing, onSignUp, needsAccount, declined, onShelf: _onShelf, onStart, onTapChapter, onRetry, onChangeLine, canChangeLine, voiceNote, onCompare, comparing, coverPicture, caution, nextUp, whatsNext, onBack, more }: Props) {
   useEffect(() => { track('plan_view', undefined, 'plan_view:' + topic) }, [topic])
   const first = passed.length === 0 && current === 1   // a reader who came in at chapter 2 from a post is on 2
   const resuming = nextUp?.kind === 'resume'
@@ -148,7 +149,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
 
       </div>
       </div>
-      <ActionBar busy={!chapterReady && !chapterFailed} note={!chapterReady && !chapterFailed ? `Writing chapter ${current} and checking its facts… about two minutes.` : undefined}>
+      <ActionBar busy={!chapterReady && !chapterFailed} wait={chapterWait} note={!chapterReady && !chapterFailed ? `Writing chapter ${current} and checking its facts… about a minute.` : undefined}>
         {lockNote ? (
           <>
             <div className="lock-card">
