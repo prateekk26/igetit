@@ -122,9 +122,11 @@ function BookPages({ days, traces }: { days: number; traces: string | null }) {
         <label className="adm-check"><input type="checkbox" checked={failedOnly} onChange={(e) => setFailedOnly(e.target.checked)} /> Failed only</label>
       </div>
       {q ? <p className="note">Best matches first, within this window.</p> : null}
-      {r === undefined ? <p className="note">Loading…</p> : r === null ? null : !r.page.length && page === 0 ? <p className="note">No handbooks match.</p> : (
+      {r === undefined ? <p className="note">Loading…</p> : r === null ? null : !r.page.length && page === 0 && r.isDone ? <p className="note">No handbooks match.</p> : (
         <>
-          {q ? <div className="adm-journeys">{(r.page as J[]).map((h) => <Journey key={h.id} h={h} traces={traces} />)}</div>
+          {/* a filter is applied to each page of 20, so a page can be empty while older pages still hold matches */}
+          {!r.page.length ? <p className="note">None on this page. {r.isDone ? '' : 'Older pages may have some.'}</p> : null}
+          {q ? <div className="adm-journeys">{(r.page as J[]).map((h) => <Journey key={h.id} h={h} traces={traces} withDate />)}</div>
             : <ByDay items={r.page as J[]} at={(h) => h.createdAt}>{(h) => <Journey key={h.id} h={h} traces={traces} />}</ByDay>}
           <PageBar page={page} hasOlder={!r.isDone} onNewer={() => setCursors(cursors.slice(0, -1))} onOlder={() => setCursors([...cursors, r.continueCursor])} />
         </>
@@ -133,12 +135,12 @@ function BookPages({ days, traces }: { days: number; traces: string | null }) {
   )
 }
 
-function Journey({ h, traces }: { h: J; traces: string | null }) {
+function Journey({ h, traces, withDate }: { h: J; traces: string | null; withDate?: boolean }) {
   const [open, setOpen] = useState(false)
   return (
     <details className="adm-j" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary>
-        <span className="adm-j-when">{new Date(h.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })}</span>
+        <span className="adm-j-when">{withDate ? new Date(h.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : new Date(h.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })}</span>
         <span className="adm-j-tag">{h.kind}</span>
         <span className="adm-j-topic">{h.topic}</span>
         {/* 20 Oct (Prateek: "title and cost in one line"): the parts of the wait are in the opened row, not here */}
