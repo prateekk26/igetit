@@ -1,5 +1,6 @@
 import Ooh from '../components/Ooh'
 import PageLoading from '../components/PageLoading'
+import { useSnapPage } from '../lib/snap'
 import { useEffect, useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -35,6 +36,7 @@ const COMPARE: { what: string; free: string; member: string }[] = [
 // the spots left are the real count. Copy is (agent) until Prateek rewrites it.
 export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onBack, onSignIn, fromDone, plan: planProp, onPlan, autoPay, onAutoPay }: Props) {
   const ms = useQuery(api.membership.status, { deviceToken: deviceToken() })
+  useSnapPage('16px')   // its parts (prices, the table, the early-bird tiers, the rules) settle gently (20 Oct)
   const [busy, setBusy] = useState(false)
   const [planLocal, setPlanLocal] = useState<PlanKind>('month')
   const plan = planProp ?? planLocal

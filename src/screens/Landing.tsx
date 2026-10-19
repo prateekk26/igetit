@@ -8,6 +8,7 @@ import { PolicyLinks } from '../components/PolicyLinks'
 import { limitMessage } from '../lib/limits'
 import { freeChaptersText, typedBoxText, type TypedAllowance } from '../lib/free'
 import Ooh, { GoArrow, Wordmark } from '../components/Ooh'
+import { useSnapPage } from '../lib/snap'
 
 // The landing page, for first-time visitors (DESIGN.md, "The homepage, one story"). 14 Oct (Prateek: "people enter the
 // landing page and end up quitting early. Too lazy, can't think of a topic straight away"; "If we don't impress here,
@@ -51,6 +52,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const [demoAt, setDemoAt] = useState(0)
   const [scrolled, setScrolled] = useState(false)
   const heroInput = useRef<HTMLInputElement>(null)
+  useSnapPage('var(--home-bar-h, 60px)')   // its parts settle under the fixed bar (20 Oct)
   // (2) Ooh watches: its eyes follow the mouse, look at the box while typing and at a chip under the finger or mouse;
   // after 2.5 s with nothing to look at, its own idle glance comes back. Written straight to the drawing, no re-render.
   const stage = useRef<HTMLDivElement>(null)

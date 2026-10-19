@@ -1309,3 +1309,12 @@ ul.shelf .shelf-x:focus-visible { outline: 3px solid var(--ink); outline-offset:
   .c1-ooh.looking .ooh-eyes { transform: none; transition: none; }
 }
 
+/* Gentle snap on the homepage and Pricing only (20 Oct; src/lib/snap.ts adds the class while one of them is open) */
+:root { --home-bar-h: 60px; }
+@media (min-width: 600px) and (max-width: 1023px) { :root { --home-bar-h: 72px; } }
+@media (min-width: 1024px) { :root { --home-bar-h: 80px; } }
+html.snap-page { scroll-snap-type: y proximity; scroll-padding-top: var(--snap-pad, 0px); }
+html.snap-page :is(.lp-hero, .lp-demo, .lp-steps, .lp-final) { scroll-snap-align: start; }
+html.snap-page :is(.compare, .tiers-head, .once) { scroll-snap-align: start; }
+html.snap-page main > h1:first-of-type, html.snap-page main .sub:first-child { scroll-snap-align: start; }
+
