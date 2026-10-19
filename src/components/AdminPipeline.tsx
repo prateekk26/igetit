@@ -92,7 +92,17 @@ export default function AdminPipeline() {
   )
 }
 
-type J = { id: string; topic: string; createdAt: number; status: string; kind: string; goal: string | null; pickGoal: number | null; toPlan: number | null; toChapter1: number | null; calls: number; failed: number; retried: number; inr: number }
+type Parts = { research: number | null; plan: number | null; chapter: number | null; check: number | null }
+type J = { id: string; topic: string; createdAt: number; status: string; kind: string; goal: string | null; pickGoal: number | null; toPlan: number | null; toChapter1: number | null; parts?: Parts; calls: number; failed: number; retried: number; inr: number }
+// The reader's wait for chapter 1, part by part (20 Oct): each step's own time, then the gaps between steps, so it adds up.
+const partsLine = (h: J) => {
+  const p = h.parts
+  if (!p || h.toChapter1 === null) return ''
+  const list: [string, number | null][] = [['research', p.research], ['plan', p.plan], ['writing', p.chapter], ['check', p.check]]
+  const shown = list.filter(([, v]) => v !== null) as [string, number][]
+  const gaps = h.toChapter1 - shown.reduce((t, [, v]) => t + v, 0)
+  return ` (${[...shown.map(([k, v]) => `${k} ${s(v)}`), ...(gaps > 1000 ? [`between steps ${s(gaps)}`] : [])].join(' · ')})`
+}
 function Journey({ h, traces }: { h: J; traces: string | null }) {
   const [open, setOpen] = useState(false)
   return (
@@ -101,7 +111,7 @@ function Journey({ h, traces }: { h: J; traces: string | null }) {
         <span className="adm-j-when">{when(h.createdAt)}</span>
         <span className="adm-j-tag">{h.kind}</span>
         <span className="adm-j-topic">{h.topic}</span>
-        <span className="adm-j-reason">chapter 1 in {s(h.toChapter1)} · {h.calls} calls{h.failed ? ` · ${h.failed} failed` : ''} · {inr(h.inr)}</span>
+        <span className="adm-j-reason">chapter 1 in {s(h.toChapter1)}{partsLine(h)} · {h.calls} calls{h.failed ? ` · ${h.failed} failed` : ''} · {inr(h.inr)}</span>
       </summary>
       {open && <Timeline h={h} traces={traces} />}
     </details>
@@ -114,7 +124,7 @@ function Timeline({ h, traces }: { h: J; traces: string | null }) {
   return (
     <div style={{ padding: '8px 12px 12px' }}>
       <p className="note">
-        {h.goal ? <>Goal: “{h.goal}” · </> : null}goal question {s(h.pickGoal)} · plan {s(h.toPlan)} after the goal · chapter 1 {s(h.toChapter1)} after the goal
+        {h.goal ? <>Goal: “{h.goal}” · </> : null}goal question {s(h.pickGoal)} · plan {s(h.toPlan)} after the goal · chapter 1 ready {s(h.toChapter1)} after the goal{partsLine(h)}
         {trace ? <> · <a href={trace} target="_blank" rel="noreferrer">Open in Langfuse</a></> : null}
       </p>
       {!rows ? <p className="note">Loading…</p> : (

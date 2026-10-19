@@ -48,7 +48,14 @@ function steps(rows: Row[]) {
 function journey(h: Doc<"handbooks">, rs: Row[]) {
   const end = (f: (r: Row) => boolean) => { const xs = rs.filter((r) => r.ok && f(r)).map((r) => r.at); return xs.length ? Math.max(...xs) : null; };
   const plan = end((r) => r.kind === "plan");
-  const ch1 = end((r) => r.chapter === 1 && (r.kind === "chapter" || r.kind === "check"));
+  // 20 Oct (Prateek: "i should see time in which user got first chapter"): chapter 1 is ready at its first fact check
+  // after it was written. It used to be the last chapter-1 call of any kind, which took in the Shelf review's check, run
+  // only after the reader finished the chapter (a 95 s wait showed as 3.1 min).
+  const first = (f: (r: Row) => boolean, after = 0) => rs.filter((r) => r.ok && f(r) && r.at > after).sort((a, b) => a.at - b.at)[0];
+  const ch1Write = first((r) => r.kind === "chapter" && r.chapter === 1);
+  const ch1Check = ch1Write ? first((r) => r.kind === "check" && r.chapter === 1, ch1Write.at) : undefined;
+  const ch1 = ch1Check?.at ?? ch1Write?.at ?? null;
+  const parts = { research: first((r) => r.kind === "research")?.ms ?? null, plan: first((r) => r.kind === "plan")?.ms ?? null, chapter: ch1Write?.ms ?? null, check: ch1Check?.ms ?? null };
   const goalAt = (h as any).goalChosenAt as number | undefined;
   const from = goalAt ?? h.createdAt;
   return {
@@ -57,7 +64,8 @@ function journey(h: Doc<"handbooks">, rs: Row[]) {
     goal: (h as any).goal ?? null,
     pickGoal: goalAt ? goalAt - h.createdAt : null,      // the reader's time on the goal question
     toPlan: plan ? plan - from : null,                    // machine time from the goal to the plan
-    toChapter1: ch1 ? ch1 - from : null,                  // machine time from the goal to chapter 1
+    toChapter1: ch1 ? ch1 - from : null,                  // machine time from the goal to chapter 1, the reader's wait
+    parts,                                                // what that wait was made of (each step's own time)
     calls: rs.length, failed: rs.filter((r) => !r.ok).length, retried: rs.filter((r) => (r.attempts ?? 1) > 1).length,
     inr: sum(rs.map((r) => r.inr)),
   };
