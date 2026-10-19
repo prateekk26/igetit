@@ -31,6 +31,29 @@ Day 1 is Fri 2 Oct (kickoff); Sat 17 Oct is submission.
 - **Now:** the times sit in WaitBar.tsx next to their measurement; any change to the pipeline's speed rereads them
 - **Post opener:** Our loading screen said two minutes. It took ninety seconds. Here's what we changed.
 
+## Tue 20 Oct (day 19)
+
+### Our own test runs were counted as readers
+- **Realised:** 20 Oct (day 19), night, reading every chapter 1 pass for the chapter 2 analysis
+- **Could have known:** 18 Oct (day 17), when agent sessions began checking the live site at 1,280 px and 390 px without marking themselves as ours
+- **What it cost:** /admin showed chapter 1 passes on 18 and 19 Oct; all 7 were tests and real passes were 0; 72 of 78 sign-up wall taps were our phones; "today we got 5 handbooks" was partly tests
+- **Now:** every analysis leaves out the 1,280 then 390 px pattern; agent checks should open the site marked as ours (strategy 0 in docs/measure/2026-10-20-ch1-to-ch2.md)
+- **Post opener:** "My dashboard said people were finishing chapter 1. It was my own robots."
+
+### Crashes were never recorded
+- **Realised:** 20 Oct (day 19), night, looking for why readers reloaded after chapter 1
+- **Could have known:** from the day the crash screen shipped: it sends a "crash" event the server's list of event names does not allow
+- **What it cost:** no way to know how often readers saw "Something broke on our side", for every day the app has been live
+- **Now:** proposed: add "crash" to the allowed names (strategy 0)
+- **Post opener:** "I built a crash screen and a crash counter. The counter never counted."
+
+### The "Tapped Pay" step always said 0
+- **Realised:** 20 Oct (day 19), night: 2 people paid, the funnel said 0
+- **Could have known:** most likely 7 Oct (day 6), when live payments started: the funnel counts priceIntents, which records Pay taps only while payments are off (AGENTS.md), and the table is empty today
+- **What it cost:** the funnel's last step read 0 for two weeks, including the week the first two ₹199 payments came in
+- **Now:** proposed: the step reads the payments table (strategy 0)
+- **Post opener:** "My funnel said nobody paid. My bank said two people did."
+
 ## Mon 19 Oct (day 18)
 
 ### The live address went down over a $10 payment

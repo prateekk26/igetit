@@ -16,6 +16,16 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 ### GTM
 - Thought: people watch the wait. Learned: nothing called back a reader who switched apps during a 90 s wait, and the push we already had only reaches phones that turned on reminders, which happens after chapter 1. Now: the tab's name says "✓ Chapter 1 is ready"; the push reaches second-book readers. Worth reading: wait_view against chapter 1 opens in PostHog after a week.
 
+## Tue 20 Oct, the night (day 19; why readers stop after chapter 1)
+
+### Product/Tech
+- Thought: a lot of people are finishing chapter 1 now. Learned: real readers passed chapter 1 43 times from 6 to 17 Oct, 1 to 2 a day, and 0 times on 18 and 19 Oct; the rest were our tests. Now: tests are left out of every analysis (1,280 then 390 px pattern), and marking them is the first fix.
+- Thought: chapter 1 to chapter 2 is the leak. Learned: in the same sitting it's 62% to 86% since the wall moved after chapter 2; the leak is coming back (3 of 43, 0 reminders ever set) and the start of chapter 2 (0 of 7 who skipped its recall question finished, 7 of 10 who answered did). Now: no recall when chapter 2 follows chapter 1 the same night is the first product change to test.
+- Thought: the sign-up wall is the problem. Learned: it converts about 29% of the visitors who reach it, and both real readers who tapped it after chapter 2 finished signing up; only about 7 ever reached it. Now: grow the number who reach it, and make it an offer.
+
+### GTM
+- Thought: any traffic teaches us. Learned: GrowthX visitors go on to chapter 2 at 18%, typed-topic readers at 70%; coursemates sample, strangers with a topic read. Now: judge changes on readers outside GrowthX, and watch five strangers instead of waiting three weeks for numbers.
+
 ## Mon 19 Oct, the day (day 18; the site down, the real prices, the cheaper judge and voice)
 
 ### Product/Tech
