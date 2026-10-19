@@ -100,19 +100,35 @@ const partsLine = (h: J) => {
   const gaps = h.toChapter1 - shown.reduce((t, [, v]) => t + v, 0)
   return ` (${[...shown.map(([k, v]) => `${k} ${s(v)}`), ...(gaps > 1000 ? [`between steps ${s(gaps)}`] : [])].join(' · ')})`
 }
-// The books, a page at a time from the server (20 Oct), under day headings. Newer goes back through the cursors seen.
+// The books, a page at a time from the server (20 Oct), under day headings; Newer goes back through the cursors seen.
+// Search (topic words, best match first), kind and "failed only" narrow it; any change starts again at page 1.
+const KINDS = [{ v: 'all', label: 'All' }, { v: 'typed', label: 'Typed' }, { v: 'ready', label: 'Shelf' }, { v: 'shared', label: 'Shared copies' }] as const
+type Kind = (typeof KINDS)[number]['v']
 function BookPages({ days, traces }: { days: number; traces: string | null }) {
+  const [typing, setTyping] = useState('')
+  const [q, setQ] = useState('')
+  const [kind, setKind] = useState<Kind>('all')
+  const [failedOnly, setFailedOnly] = useState(false)
   const [cursors, setCursors] = useState<(string | null)[]>([null])
-  useEffect(() => setCursors([null]), [days])
+  useEffect(() => { const t = setTimeout(() => setQ(typing.trim()), 400); return () => clearTimeout(t) }, [typing])
+  useEffect(() => setCursors([null]), [days, q, kind, failedOnly])
   const page = cursors.length - 1
-  const r = useQuery(api.pipeline.journeysPage, { days, paginationOpts: { numItems: PER_PAGE, cursor: cursors[page] } })
-  if (r === undefined) return <p className="note">Loading…</p>
-  if (r === null) return null
-  if (!r.page.length && page === 0) return <p className="note">No handbooks in this window.</p>
+  const r = useQuery(api.pipeline.journeysPage, { days, paginationOpts: { numItems: PER_PAGE, cursor: cursors[page] }, ...(q ? { q } : {}), kind, failedOnly })
   return (
     <>
-      <ByDay items={r.page as J[]} at={(h) => h.createdAt}>{(h) => <Journey key={h.id} h={h} traces={traces} />}</ByDay>
-      <PageBar page={page} hasOlder={!r.isDone} onNewer={() => setCursors(cursors.slice(0, -1))} onOlder={() => setCursors([...cursors, r.continueCursor])} />
+      <div className="adm-filters">
+        <input className="input" type="search" placeholder="Search topics" aria-label="Search book topics" value={typing} onChange={(e) => setTyping(e.target.value)} />
+        <Seg label="Kind of book" value={kind} onChange={setKind} options={KINDS.map((k) => ({ v: k.v, label: k.label }))} />
+        <label className="adm-check"><input type="checkbox" checked={failedOnly} onChange={(e) => setFailedOnly(e.target.checked)} /> Failed only</label>
+      </div>
+      {q ? <p className="note">Best matches first, within this window.</p> : null}
+      {r === undefined ? <p className="note">Loading…</p> : r === null ? null : !r.page.length && page === 0 ? <p className="note">No handbooks match.</p> : (
+        <>
+          {q ? <div className="adm-journeys">{(r.page as J[]).map((h) => <Journey key={h.id} h={h} traces={traces} />)}</div>
+            : <ByDay items={r.page as J[]} at={(h) => h.createdAt}>{(h) => <Journey key={h.id} h={h} traces={traces} />}</ByDay>}
+          <PageBar page={page} hasOlder={!r.isDone} onNewer={() => setCursors(cursors.slice(0, -1))} onOlder={() => setCursors([...cursors, r.continueCursor])} />
+        </>
+      )}
     </>
   )
 }

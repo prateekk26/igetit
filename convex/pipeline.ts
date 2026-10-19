@@ -122,22 +122,38 @@ async function build(ctx: QueryCtx, days: number) {
 // with its journey from its own call rows. The dashboard's list stopped at the 40 newest and was built from at most
 // 20,000 call rows, so older books could not be seen at all. A book with no AI calls (a ready book opened) is left out,
 // so a page can hold fewer than asked.
+// Filters (20 Oct, Prateek: "a search box and filters"): words in the topic (by relevance, then within the window), the
+// kind of book, and only books with a failed call. A filter is applied to each page, so a page can come back short.
+const filtersV = { q: v.optional(v.string()), kind: v.optional(v.union(v.literal("all"), v.literal("typed"), v.literal("ready"), v.literal("shared"))), failedOnly: v.optional(v.boolean()) };
 export const journeysPage = query({
-  args: { days: v.number(), paginationOpts: paginationOptsValidator },
-  handler: async (ctx, { days, paginationOpts }) => {
-    if (!(await isOwner(ctx)).ok) return null;
+  args: { days: v.number(), paginationOpts: paginationOptsValidator, ...filtersV },
+  handler: async (ctx, args) => ((await isOwner(ctx)).ok ? journeys(ctx, args) : null),
+});
+// The same page from the CLI: npx convex run --prod pipeline:journeysPageCli '{"days":7,"paginationOpts":{"numItems":20,"cursor":null}}'
+export const journeysPageCli = internalQuery({ args: { days: v.number(), paginationOpts: paginationOptsValidator, ...filtersV }, handler: async (ctx, args) => journeys(ctx, args) });
+async function journeys(ctx: QueryCtx, { days, paginationOpts, q, kind = "all", failedOnly }: { days: number; paginationOpts: any; q?: string; kind?: "all" | "typed" | "ready" | "shared"; failedOnly?: boolean }) {
     // The window starts at a fixed moment, midnight India time (days - 1) days back: a page's cursor works only for the
     // very same query, and "now minus N days" moved between pages, so Older failed with a server error.
     const since = days ? Math.floor((Date.now() + IST) / DAY) * DAY - IST - (days - 1) * DAY : 0;
-    const res = await ctx.db.query("handbooks").withIndex("by_creation_time", (q) => q.gte("_creationTime", since)).order("desc").paginate(paginationOpts);
+    const words = q?.trim().slice(0, 100);
+    const res = words
+      ? await ctx.db.query("handbooks").withSearchIndex("search_topic", (s) => (kind === "ready" ? s.search("topic", words).eq("source", "cache") : kind === "all" ? s.search("topic", words) : s.search("topic", words).eq("source", "live"))).paginate(paginationOpts)
+      : await ctx.db.query("handbooks").withIndex("by_creation_time", (r) => r.gte("_creationTime", since)).order("desc")
+          .filter((f) => (kind === "ready" ? f.eq(f.field("source"), "cache") : kind === "typed" ? f.and(f.eq(f.field("source"), "live"), f.eq(f.field("fromLibrary"), undefined)) : kind === "shared" ? f.neq(f.field("fromLibrary"), undefined) : true))
+          .paginate(paginationOpts);
     const page = [];
     for (const h of res.page) {
+      if (words && h._creationTime < since) continue;
+      if (words && kind === "typed" && (h as any).fromLibrary) continue;
+      if (words && kind === "shared" && !(h as any).fromLibrary) continue;
       const rs = (await ctx.db.query("callStats").withIndex("by_handbook", (q) => q.eq("handbookId", h._id)).take(500)).filter((r) => groupOf(r) === "reader");
-      if (rs.length) page.push(journey(h, rs));
+      if (!rs.length) continue;
+      const j = journey(h, rs);
+      if (failedOnly && !j.failed) continue;
+      page.push(j);
     }
     return { page, isDone: res.isDone, continueCursor: res.continueCursor };
-  },
-});
+}
 
 // Every call for one handbook, in order, with its time from the moment the handbook was typed.
 export const handbookCalls = query({

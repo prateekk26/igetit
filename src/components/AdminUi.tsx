@@ -75,3 +75,18 @@ export function ByDay<T>({ items, at, children }: { items: T[]; at: (x: T) => nu
   for (const x of items) { const label = dayLabel(at(x)); const g = groups[groups.length - 1]; if (g && g.label === label) g.xs.push(x); else groups.push({ label, xs: [x] }) }
   return <>{groups.map((g, i) => <div key={g.label + i}><h3 className="adm-day">{g.label}</h3><div className="adm-journeys">{g.xs.map(children)}</div></div>)}</>
 }
+
+// A section folded shut, its one-line summary on the heading (20 Oct, Prateek: "more organised"). Open or shut is
+// remembered on this browser per section; it opens shut if storage is unavailable.
+export function Fold({ id, title, summary, children }: { id: string; title: ReactNode; summary?: ReactNode; children: ReactNode }) {
+  const key = `igi.adm.open.${id}`
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem(key) === '1' } catch { return false } })
+  return (
+    <section className="adm-card adm-wide">
+      <details className="adm-sec" open={open} onToggle={(e) => { const o = (e.target as HTMLDetailsElement).open; setOpen(o); try { localStorage.setItem(key, o ? '1' : '0') } catch { /* private mode */ } }}>
+        <summary><h2>{title}</h2>{summary ? <span className="adm-sub">{summary}</span> : null}</summary>
+        {open && <div className="adm-sec-body">{children}</div>}
+      </details>
+    </section>
+  )
+}

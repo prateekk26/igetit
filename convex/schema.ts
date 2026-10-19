@@ -60,7 +60,8 @@ export default defineSchema({
     .index("by_token", ["ownerToken"])
     .index("by_user", ["userId"])
     .index("by_created", ["createdAt"])
-    .index("by_topicKey", ["topicKey", "level"]),   // readers' copies of a ready topic (setCachePictures, 12 Oct)
+    .index("by_topicKey", ["topicKey", "level"])   // readers' copies of a ready topic (setCachePictures, 12 Oct)
+    .searchIndex("search_topic", { searchField: "topic", filterFields: ["source"] }),   // /admin's book search (20 Oct)
 
   chapters: defineTable({
     handbookId: v.id("handbooks"),

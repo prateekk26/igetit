@@ -4,7 +4,7 @@ import AdminReview from '../components/AdminReview'
 import { AdminAlerts, AdminRuns } from '../components/AdminWatch'
 import AdminEvals from '../components/AdminEvals'
 import AdminShelf from '../components/AdminShelf'
-import { ByDay, How, Paged, Seg } from '../components/AdminUi'
+import { ByDay, Fold, How, Paged, Seg } from '../components/AdminUi'
 import { Wordmark } from '../components/Ooh'
 import './admin.css'
 import { deviceToken } from '../lib/device'
@@ -121,23 +121,23 @@ export default function Admin() {
 
           </div>
 
-          <section className="adm-card adm-wide">
-            <h2>By source</h2>
+          <Fold id="sources" title="By source" summary={`${d.sources.length} sources`}>
+
             <table className="adm-table">
               <thead><tr><th>Source</th><th>Visitors</th><th>Started</th><th>Opened ch 1</th><th>Passed ch 1</th><th>Signed up</th></tr></thead>
               <tbody>{d.sources.map((s) => <tr key={s.source}><td>{s.source}</td><td>{s.visitors}</td><td>{s.started} <small>{pct(s.started, s.visitors)}%</small></td><td>{s.opened}</td><td>{s.passed} <small>{pct(s.passed, s.visitors)}%</small></td><td>{s.signedUp}</td></tr>)}</tbody>
             </table>
-          </section>
+          </Fold>
 
-          <section className="adm-card adm-wide">
-            <h2>Topics</h2>
+          <Fold id="topics" title="Topics" summary={`${d.topics.length} topics`}>
+
             <Paged items={d.topics} resetKey={days}>{(page) => (
               <table className="adm-table">
                 <thead><tr><th>Topic</th><th></th><th>Started</th><th>Opened ch 1</th><th>Passed ch 1</th></tr></thead>
                 <tbody>{page.map((t) => <tr key={t.topic}><td>{t.topic}</td><td><small>{t.ready ? 'ready' : 'typed'}</small></td><td>{t.started}</td><td>{t.opened}</td><td>{t.passed}</td></tr>)}</tbody>
               </table>
             )}</Paged>
-          </section>
+          </Fold>
 
           <div className="adm-grid">
             <section className="adm-card">
@@ -151,8 +151,8 @@ export default function Admin() {
             </section>
           </div>
 
-          <section className="adm-card adm-wide">
-            <h2>Each person's path</h2>
+          <Fold id="paths" title="Each person's path" summary={`${d.recent.length}${d.recent.length >= 300 ? "+" : ""} visitors, newest first`}>
+
             <p className="adm-status">Newest first, up to 300 visitors in this window. Tap one to see everything they did, in order.</p>
             <Paged items={d.recent} resetKey={days}>{(page) => (
             <ByDay items={page} at={(r) => r.first}>{(r) => (
@@ -171,15 +171,17 @@ export default function Admin() {
                 </details>
               )}</ByDay>
             )}</Paged>
-          </section>
+          </Fold>
 
-          <section className="adm-card adm-wide">
-            <h2>By day</h2>
-            <table className="adm-table">
-              <thead><tr><th>Day</th><th>New visitors</th><th>Handbooks started</th><th>Passed ch 1</th></tr></thead>
-              <tbody>{d.days.slice().reverse().map((x) => <tr key={x.day}><td>{x.day}</td><td>{x.visitors}</td><td>{x.started}</td><td>{x.passed}</td></tr>)}</tbody>
-            </table>
-          </section>
+          <Fold id="byday" title="By day" summary={`${d.days.length} days · ${d.days.reduce((t, x) => t + x.visitors, 0)} new visitors`}>
+
+            <Paged items={d.days.slice().reverse()} resetKey={days}>{(page) => (
+              <table className="adm-table">
+                <thead><tr><th>Day</th><th>New visitors</th><th>Handbooks started</th><th>Passed ch 1</th></tr></thead>
+                <tbody>{page.map((x) => <tr key={x.day}><td>{x.day}</td><td>{x.visitors}</td><td>{x.started}</td><td>{x.passed}</td></tr>)}</tbody>
+              </table>
+            )}</Paged>
+          </Fold>
           </>}
         </>
       )}
@@ -409,8 +411,7 @@ function CostsCard() {
   const byModel = new Map<string, { model: string; provider: string; inr: number; calls: number }>()
   for (const d of rows) for (const m of d.models) { const x = byModel.get(m.model) ?? { model: m.model, provider: m.provider, inr: 0, calls: 0 }; x.inr += m.inr; x.calls += m.calls; byModel.set(m.model, x) }
   return (
-    <section className="adm-card adm-wide">
-      <h2>What we spend (estimated)</h2>
+    <Fold id="spend" title="What we spend (estimated)" summary={`${inr(total)} over the last ${days} days`}>
       <div className="adm-head-row">
         <p className="adm-big"><b>{inr(total)}</b> over the last {days} days</p>
         <Seg label="Cost window" value={days} onChange={setDays} options={[7, 14, 30].map((n) => ({ v: n, label: `${n} days` }))} />
@@ -428,7 +429,7 @@ function CostsCard() {
           ))}
         </details>
       ))}
-    </section>
+    </Fold>
   )
 }
 

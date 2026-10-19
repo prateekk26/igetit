@@ -843,6 +843,15 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .cheer { font-variation-settings: 'wdth' 92; }
 
 .adm-journeys { display: grid; gap: 6px; }
+.adm-sec > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-height: 44px; }
+.adm-sec > summary::-webkit-details-marker { display: none; }
+.adm-sec > summary h2 { margin: 0; }
+.adm-sec > summary h2::before { content: '▸ '; color: var(--ink-2); }
+.adm-sec[open] > summary h2::before { content: '▾ '; }
+.adm-sec-body { margin-top: 10px; }
+.adm-filters { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 6px 0 10px; }
+.adm-filters .input { flex: 1 1 200px; min-height: 44px; }
+.adm-check { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: var(--small); }
 .adm-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .adm-pager button { min-height: 44px; }
 .adm-day { margin: 14px 0 6px; font-size: var(--small); color: var(--ink-2); text-transform: none; }
