@@ -1,3 +1,4 @@
+import Ooh from '../components/Ooh'
 import { useEffect, useMemo, useState } from 'react'
 import { limitMessage } from '../lib/limits'
 import { track } from '../lib/track'
@@ -22,6 +23,7 @@ const plate = (k: string) => { let h = 0; for (const c of k) h = (h * 17 + c.cha
 const length = (i: Item) => (i.chapters ? `${i.chapters} ${i.chapters === 1 ? 'chapter' : 'chapters'}${i.minutes ? ` · ${i.minutes} min` : ''}` : '')
 
 export default function Shelf({ onReady, onShared, onBack, backLabel = 'Your book', notice, have = {} }: Props) {
+  const [shelfOohSeen] = useState(() => { try { const v = sessionStorage.getItem('igetit.shelfOoh') === '1'; sessionStorage.setItem('igetit.shelfOoh', '1'); return v } catch { return false } })
   const items = useQuery(api.library.explore, {}) as Item[] | undefined
   const layout = useQuery(api.shelf.layout, {})
   const order = useMemo(() => sectionOrder(layout?.shelves), [layout])
@@ -71,7 +73,8 @@ export default function Shelf({ onReady, onShared, onBack, backLabel = 'Your boo
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" /><circle cx="9" cy="9" r="1.2" fill="currentColor" /><circle cx="15" cy="15" r="1.2" fill="currentColor" /><circle cx="15" cy="9" r="1.2" fill="currentColor" /><circle cx="9" cy="15" r="1.2" fill="currentColor" /></svg>Surprise me
         </button>
       </header>
-      <h1>The Shelf</h1>
+      {/* Ooh rolls in beside the title and glances across the books, once a visit (20 Oct); after that it sits still */}
+      <h1 className="c12-h1">The Shelf <span className={`shelf-ooh${shelfOohSeen ? ' seen' : ''}`}><Ooh face="curious" size={44} /></span></h1>
       <p className="c12-lede">Little books other readers loved. Add one to your book.</p>
       {notice && <p className="note shelf-notice" role="status">{notice}</p>}
       {note && <p className="error" role="alert">{note}</p>}

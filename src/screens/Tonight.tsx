@@ -35,7 +35,9 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
       <div className="c4-main">
         <h1>Tonight</h1>
         <p className="c4-date">{today()}</p>
-        <p className="c3-says c4-says"><Ooh size={28} idle /><span>{say}</span></p>
+        {/* Nothing to read tonight (20 Oct): a big Ooh, happy when every book is finished, curious while the first is written */}
+        {!book && <div className="ooh-empty"><Ooh face={ready.length ? 'happy' : 'curious'} size={96} idle /></div>}
+        <p className={`c3-says c4-says${book ? '' : ' empty'}`}>{book && <Ooh size={28} idle />}<span>{say}</span></p>
         {book && (
           <div className="c4-tonight c4-card">
             <div className="c4-card-words">

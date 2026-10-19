@@ -12,11 +12,17 @@
   h1 { font: 800 1.6rem/1.1 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0 0 12px; }
   p { margin: 0 0 20px; }
   button { width: 100%; min-height: 56px; border: 2.5px solid #1b1a17; border-radius: 12px; background: #f2a93b; color: #1b1a17; font: 700 1rem system-ui, -apple-system, 'Segoe UI', sans-serif; box-shadow: 4px 4px 0 #1b1a17; cursor: pointer; }
+  .ooh { display: block; margin: 0 auto 16px; overflow: visible; }
+  .ooh .b { transform-box: view-box; transform-origin: 20px 40px; animation: br 3.6s ease-in-out infinite; }
+  @keyframes br { 0%, 100% { transform: none; } 50% { transform: scale(1.04, 0.97); } }
+  @media (prefers-reduced-motion: reduce) { .ooh .b { animation: none; } }
   button:focus-visible { outline: 3px solid #1b1a17; outline-offset: 3px; }
 </style>
 </head>
 <body>
 <main>
+  <!-- Ooh, sleepy (20 Oct): eyes shut, a slow breath; still for reduce motion -->
+  <svg class="ooh" width="96" height="96" viewBox="-6 -8 52 52" aria-hidden="true"><g class="b"><circle cx="20" cy="20" r="20" fill="#F2A93B"/><g fill="none" stroke="#1B1A17" stroke-width="2.6" stroke-linecap="round"><path d="M11.5 17q3.5 3.5 7 0"/><path d="M21.5 17q3.5 3.5 7 0"/></g></g></svg>
   <h1>You're offline.</h1>
   <p>I Get It needs a connection to open. Your place is saved: it opens where you left off when you're back online.</p>
   <button type="button" onclick="location.reload()">Try again</button>

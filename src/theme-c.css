@@ -1247,3 +1247,45 @@ ul.shelf .shelf-remove:has(.note) { flex: 1 1 100%; }
 ul.shelf .shelf-x { all: unset; box-sizing: border-box; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--ink-2); cursor: pointer; transition: background-color 120ms ease-out, color 120ms ease-out; }
 ul.shelf .shelf-x:hover { background: var(--paper-2); color: var(--ink); }
 ul.shelf .shelf-x:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- Ooh around the site (20 Oct, Prateek: "i like all oohs add them all"; preview: claude.ai/artifact/8sBeRaVcKpQK6haKC7VoRk) ---------- */
+/* new faces */
+.ooh-sleepy .ooh-body { transform-origin: 20px 40px; animation: ooh-breathe-s 3.6s ease-in-out infinite; }
+@keyframes ooh-breathe-s { 0%, 100% { transform: none; } 50% { transform: scale(1.04, 0.97); } }
+.ooh-wink .ooh-body { transform-origin: 20px 40px; animation: ooh-tilt 900ms ease-out both; }
+@keyframes ooh-tilt { 0% { transform: none; } 40% { transform: rotate(-8deg) translateY(-3px); } 100% { transform: rotate(-4deg); } }
+.ooh-wink .ooh-wo { transform-origin: 25px 18px; animation: ooh-shut 900ms ease-out both; }
+@keyframes ooh-shut { 0%, 30% { transform: none; opacity: 1; } 42% { transform: scaleY(0.1); opacity: 1; } 44%, 100% { opacity: 0; } }
+.ooh-wink .ooh-wa { animation: ooh-in-w 900ms both; }
+@keyframes ooh-in-w { 0%, 43% { opacity: 0; } 44%, 100% { opacity: 1; } }
+/* 1. on a question's pick */
+.story-tag { display: inline-flex; align-items: center; gap: 6px; }
+/* 2. empty pages */
+.ooh-empty { display: grid; place-items: center; padding: 24px 0 4px; }
+.c3-says.empty { justify-content: center; text-align: center; }
+/* 3. the Shelf */
+.c12-h1 { display: flex; align-items: center; gap: 12px; }
+.shelf-ooh { display: inline-flex; animation: ooh-rollin 600ms cubic-bezier(0.3, 0.7, 0.3, 1.2) 150ms both; }
+.shelf-ooh .ooh-eyes { animation: ooh-glance 1400ms ease-in-out 800ms both !important; }
+.shelf-ooh.seen, .shelf-ooh.seen .ooh-eyes { animation: none !important; }
+@keyframes ooh-rollin { from { transform: translateX(60px) rotate(25deg); opacity: 0; } to { transform: none; opacity: 1; } }
+/* 4. sign in */
+.signin-row { display: flex; align-items: center; gap: 10px; }
+.signin-row .input { flex: 1; min-width: 0; }
+.signin-sent { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; color: var(--voice); font: 700 17px var(--sans); }
+.signin-in { min-height: 50vh; display: grid; place-items: center; align-content: center; gap: 8px; text-align: center; }
+.signin-in p { margin: 0; font: 800 24px var(--sans); }
+/* 5. the stamp's Ooh */
+.c3-side { display: inline-flex; align-items: center; gap: 6px; }
+.c3-pop { animation: ooh-pop 520ms cubic-bezier(0.3, 0.7, 0.3, 1.5) 620ms both; }
+@keyframes ooh-pop { from { transform: scale(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .shelf-ooh, .shelf-ooh .ooh-eyes, .c3-pop, .ooh-sleepy .ooh-body, .ooh-wink .ooh-body, .ooh-wink .ooh-wa { animation: none !important; }
+  .ooh-wink .ooh-wo { animation: none !important; opacity: 0; }
+}
+/* more of the happy path (20 Oct): the account card, the chapter's last page, Start a new book */
+.lock-card-head { display: flex; align-items: center; gap: 10px; }
+.story-end-ooh { display: flex; justify-content: center; margin: 18px 0 -4px; }
+.start-ooh { display: block; margin: 4px 0 10px; }
+/* Placeholders read as typed words in ink-2 (Prateek, 20 Oct: "placeholder looks like input typed in"): a lighter grey, still 4.5:1 on the box */
+.c1-input::placeholder, .input::placeholder, .lp-field input::placeholder { color: #6f6a60; }

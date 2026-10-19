@@ -4,6 +4,7 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import ActionBar from '../components/ActionBar'
+import Ooh from '../components/Ooh'
 
 // heading and backLabel (8 Oct night, critique): the wall names the chapter it opens and says where "Not now" goes.
 type Props = { onDone: () => Promise<void>; onBack: () => void; reason?: string | null; heading?: string; backLabel?: string }
@@ -50,9 +51,17 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
       setError(m.includes('too many') ? "That's a few codes in a row. Wait a few minutes, then try again." : "Couldn't send the code just now. Try again in a minute.")
     } finally { setBusy(false) }
   }
+  // Signed in (20 Oct): Ooh winks "You're in." for 0.9 s, then the page moves on. Straight on under reduce motion.
+  const [inNow, setInNow] = useState(false)
+  const welcome = async () => {
+    let still = false
+    try { still = window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { /* move on */ }
+    if (!still) { setInNow(true); await new Promise((r) => setTimeout(r, 900)) }
+    await onDone()
+  }
   const checkCode = async () => {
     setBusy(true); setError(null)
-    try { await signIn('email-otp', { email: email.trim(), code: code.trim() }); await onDone() }
+    try { await signIn('email-otp', { email: email.trim(), code: code.trim() }); await welcome() }
     catch { setCode(''); setError("That code didn't work. A code works for 10 minutes and only the newest one counts: check the latest email, or send a new code.") }
     finally { setBusy(false) }
   }
@@ -62,7 +71,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
     if (flow === 'signUp' && password.length < 8) { setError('Use at least 8 characters for the password.'); return }
     if (!password) { setError('Type your password.'); return }
     setBusy(true); setError(null)
-    try { await signIn('password', { email: email.trim(), password, flow }); await onDone() }
+    try { await signIn('password', { email: email.trim(), password, flow }); await welcome() }
     catch (e: any) {
       const m = String(e?.message ?? e)
       // Say what to do next, not "didn't go through" (UX review 9 Oct: an existing account got that). On the live site
@@ -76,6 +85,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
 
   if (mode === 'password') {
     const fresh = codesReady === false
+    if (inNow) return <div className="signin-in" role="status"><Ooh face="wink" size={96} /><p>You're in.</p></div>
     return (
       <>
         {reason && <p className="why-here">{reason}</p>}
@@ -110,6 +120,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
     )
   }
 
+  if (inNow) return <div className="signin-in" role="status"><Ooh face="wink" size={96} /><p>You're in.</p></div>
   return (
     <>
       {reason && <p className="why-here">{reason}</p>}
@@ -119,10 +130,16 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
       {step === 'email' ? (
         <form className="field" onSubmit={(e) => { e.preventDefault(); if (!busy) sendCode() }} noValidate>
           <label htmlFor="email">Email</label>
-          <input id="email" className="input" type="email" autoComplete="email" inputMode="email" autoFocus value={email} onChange={(e) => edit(setEmail)(e.target.value)} enterKeyHint="send" />
+          {/* Ooh waits beside the box (20 Oct) */}
+          <div className="signin-row">
+            <input id="email" className="input" type="email" autoComplete="email" inputMode="email" autoFocus value={email} onChange={(e) => edit(setEmail)(e.target.value)} enterKeyHint="send" />
+            <Ooh face="curious" size={40} idle />
+          </div>
         </form>
       ) : (
         <form className="field" onSubmit={(e) => { e.preventDefault(); if (code.length === 6 && !busy) checkCode() }}>
+          {/* and hops when the code is on its way (20 Oct) */}
+          <p className="signin-sent"><Ooh face="happy" size={32} /><span>Code sent. Check your inbox.</span></p>
           <label htmlFor="code">The 6-digit code we sent to {email.trim()}</label>
           {/* No maxLength: a pasted "Your code is 123456" was cut to "Your c" before the digits were picked out (UX review 9 Oct). */}
           <input id="code" ref={codeRef} className="input" inputMode="numeric" autoComplete="one-time-code" autoFocus value={code} enterKeyHint="go"

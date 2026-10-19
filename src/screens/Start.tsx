@@ -337,6 +337,8 @@ export default function Start({ onBack, initialTopic = '', status, question, int
           <p className="note">Or type something else below.</p>
         </section>
       )}
+      {/* Start a new book (20 Oct): Ooh idles over the heading, curious about what comes next */}
+      <Ooh face="curious" size={56} idle className="start-ooh" />
       <p className="for-line">For everything you saved and never got back to.</p>
       <h1>Seven nights from “I keep meaning to” to “I get it”.</h1>
       <p className="lede">Five minutes a day: a small step. 7 days: a small jump.</p>

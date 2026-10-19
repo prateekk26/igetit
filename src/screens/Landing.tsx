@@ -110,7 +110,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
       <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type') }} onFocus={() => track('box_focus', undefined, 'box_focus')}
-        placeholder="Why the Moon changes shape" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
+        placeholder="e.g. why the Moon changes shape" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
       {where === 'hero' && chips.length > 0 && (
         <div className="c1-chips" role="group" aria-label="Or open one that's ready" ref={chipRow}>
           {chips.map((t) => <button key={t} type="button" data-topic={t} className={pickedRow === t ? 'is-opening' : undefined} disabled={busy} onClick={() => pick(t, 'chip')}>{pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}</button>)}

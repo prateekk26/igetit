@@ -667,7 +667,8 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
                 </div>
               ))}
               {isLast && (
-                <button type="button" className="story-finish no-tap" onClick={finish} disabled={finishing}>{finishing ? 'Saving…' : `Finish chapter ${n}`}</button>
+                <>{/* The last page (20 Oct): Ooh lands with smiling eyes above the button */}<span className="story-end-ooh" aria-hidden="true"><Ooh face="getit" size={48} /></span>
+                <button type="button" className="story-finish no-tap" onClick={finish} disabled={finishing}>{finishing ? 'Saving…' : `Finish chapter ${n}`}</button></>
               )}
             </>
           )}

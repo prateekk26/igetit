@@ -102,7 +102,8 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
         {plan.pushback && <p className="c3-says"><Ooh size={28} /><span>{plan.pushback}</span></p>}
         {/* A quick handbook (a recap, one recipe; 7 Oct) says so up top: no weeks of study for this one. */}
         {!plan.pushback && plan.framing && <p className="c3-says"><Ooh size={28} /><span>{plan.framing}</span></p>}
-        <p className="c3-says"><Ooh size={28} idle /><span>{plan.outcome7}{tail}</span></p>
+        {/* A new book, first open (20 Oct): Ooh hops once, then idles; otherwise it glances as before */}
+        <p className="c3-says"><Ooh face={first ? 'happy' : 'curious'} size={28} idle /><span>{plan.outcome7}{tail}</span></p>
         {caution && <p className="roadmap-caution c3-caution">Study aid, verify before you act.</p>}
       </section>
 
@@ -130,7 +131,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
           const inner = (<>
             <span className="c3-n" aria-hidden="true">{done ? '✓' : c.n}</span>
             <span className="c3-t"><span className="lp-visually-hidden">Chapter {c.n}: </span>{c.title}</span>
-            <span className="c3-side">{side}</span>
+            <span className="c3-side">{done && stamped.includes(c.n) && <Ooh face="happy" size={26} className="c3-pop" />}{side}</span>
           </>)
           const cls = `c3-row ${done ? 'done' : now ? 'now' : 'ahead'}${done && stamped.includes(c.n) ? ' stamp' : ''}`
           // Every row answers a tap (Prateek, 9 Oct: "the chapters in the path don't seem clickable"): finished and skipped
@@ -166,7 +167,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
         {lockNote ? (
           <>
             <div className="lock-card">
-              <p className="lock-card-head">{onSignUp ? `Chapter ${current} is free with an account` : lockHead ? `Chapter ${current} ${lockHead}` : `Chapter ${current} didn't open`}</p>
+              <p className="lock-card-head">{onSignUp && <Ooh face="curious" size={30} />}{onSignUp ? `Chapter ${current} is free with an account` : lockHead ? `Chapter ${current} ${lockHead}` : `Chapter ${current} didn't open`}</p>
               <p className="lock-card-text">{lockNote}</p>
               {onSignUp && <p className="free-banner"><strong>Free.</strong> Just your email. No card, no spam, ever.</p>}
               {onSignUp ? <button className="btn" onClick={onSignUp}>Sign up free and keep reading</button>

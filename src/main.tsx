@@ -6,6 +6,7 @@ import './index.css'
 import './screens.css'
 import './theme-c.css'   // theme C, Picture book (14 Oct); remove this line to go back to the print look
 import App from './App.tsx'
+import Ooh from './components/Ooh'
 import { POLICY_PAGES, type PolicyPage } from './components/PolicyLinks'
 // Pages a reader rarely opens load only when opened (11 Oct, Prateek: "only download the things for the first screen").
 const Stats = lazy(() => import('./screens/Stats'))
@@ -61,6 +62,7 @@ class Safety extends Component<{ children: ReactNode }, { err: string | null }> 
     // open on this phone (the handbooks themselves stay) and starts from the home page.
     return (
       <div className="splash" style={{ padding: 24, textAlign: 'center', display: 'grid', gap: 12, justifyItems: 'center' }}>
+        <Ooh face="sleepy" size={88} />
         <p className="serif" style={{ fontSize: 20 }}>Something broke on our side. Your place is saved.</p>
         <button type="button" className="btn" style={{ maxWidth: 320 }} onClick={() => window.location.reload()}>Reload</button>
         <button type="button" className="quiet" onClick={() => { try { localStorage.removeItem('igetit.active') } catch { /* nothing to forget */ } window.location.assign('/') }}>Start from the home page</button>

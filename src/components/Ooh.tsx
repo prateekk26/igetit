@@ -1,7 +1,9 @@
 // Ooh, the marigold dot with two ink eyes (theme C, 14 Oct; brand book C, page 6). It acts with its eyes and its round
 // body only. A face plays once and settles in 0.5 to 1.4 s; only "making" loops. One moving Ooh on a screen at most.
 // The motion lives in theme-c.css (.ooh-*); reduce motion shows the still face.
-export type OohFace = 'curious' | 'happy' | 'again' | 'getit' | 'making'
+// sleepy and wink (20 Oct, Prateek: "i like all oohs add them all"): eyes shut with a slow breath (offline, an error);
+// one eye closing with a small tilt (just signed in).
+export type OohFace = 'curious' | 'happy' | 'again' | 'getit' | 'making' | 'sleepy' | 'wink'
 
 const INK = '#1B1A17'
 const eyes = (rx = 3, ry = 4, cy = 18) => (
@@ -9,6 +11,12 @@ const eyes = (rx = 3, ry = 4, cy = 18) => (
     <ellipse cx="15" cy={cy} rx={rx} ry={ry} />
     <ellipse cx="25" cy={cy} rx={rx} ry={ry} />
   </>
+)
+const shut = (
+  <g fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round">
+    <path d="M11.5 17q3.5 3.5 7 0" />
+    <path d="M21.5 17q3.5 3.5 7 0" />
+  </g>
 )
 const arcs = (
   <g fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round">
@@ -30,6 +38,8 @@ export default function Ooh({ face = 'curious', size = 40, className = '', tone 
         {face === 'happy' ? arcs
           : face === 'getit' ? <><g className="ooh-la" fill={INK}>{eyes()}</g><g className="ooh-lb">{arcs}</g></>
           : face === 'making' ? <g className="ooh-eyes" fill={INK}>{eyes(2.8, 3.6, 15)}</g>
+          : face === 'sleepy' ? shut
+          : face === 'wink' ? <><g fill={INK}><ellipse cx="15" cy="18" rx="3" ry="4" /></g><g className="ooh-wo" fill={INK}><ellipse cx="25" cy="18" rx="3" ry="4" /></g><g className="ooh-wa" fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round"><path d="M21.5 19.5q3.5-5 7 0" /></g></>
           : <g className="ooh-eyes" fill={INK}>{eyes()}</g>}
       </g>
     </svg>
