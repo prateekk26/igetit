@@ -18,7 +18,6 @@ const s = (ms: number | null) => (ms === null ? '—' : ms < 1000 ? `${ms} ms` :
 const inr = (n: number | null) => (n === null ? '—' : `₹${n.toLocaleString('en-IN', { maximumFractionDigits: n < 10 ? 2 : 0 })}`)
 const share = (x: number) => `${Math.round(x * 100)}%`
 const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
-const when = (t: number) => new Date(t).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 // The Langfuse trace id is derived from the handbook id the same way convex/langfuse.ts does: sha256("trace:" + id).
 // The project's traces page comes from the server (LANGFUSE_TRACES_URL in the Convex env); without it, no link.
@@ -123,10 +122,11 @@ function Journey({ h, traces }: { h: J; traces: string | null }) {
   return (
     <details className="adm-j" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary>
-        <span className="adm-j-when">{when(h.createdAt)}</span>
+        <span className="adm-j-when">{new Date(h.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })}</span>
         <span className="adm-j-tag">{h.kind}</span>
         <span className="adm-j-topic">{h.topic}</span>
-        <span className="adm-j-reason">chapter 1 in {s(h.toChapter1)}{partsLine(h)} · {h.calls} calls{h.failed ? ` · ${h.failed} failed` : ''} · {inr(h.inr)}</span>
+        {/* 20 Oct (Prateek: "title and cost in one line"): the parts of the wait are in the opened row, not here */}
+        <span className="adm-j-reason">{h.toChapter1 !== null ? `chapter 1 in ${s(h.toChapter1)} · ` : ''}{h.calls} calls{h.failed ? ` · ${h.failed} failed` : ''} · {inr(h.inr)}</span>
       </summary>
       {open && <Timeline h={h} traces={traces} />}
     </details>

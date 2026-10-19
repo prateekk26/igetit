@@ -850,7 +850,7 @@ h2 { font-family: var(--sans); font-size: var(--heading); line-height: 1.15; let
 .adm-j summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 10px 12px; font-size: var(--small); }
 .adm-j summary::-webkit-details-marker { display: none; }
 .adm-j[open] summary { border-bottom: 1px solid var(--paper-2); }
-.adm-j-when { color: var(--ink-2); min-width: 110px; }
+.adm-j-when { color: var(--ink-2); min-width: 72px; }   /* time only, under its day heading (20 Oct) */
 .adm-j-tag { background: var(--paper-2); border-radius: 999px; padding: 2px 8px; }
 .adm-j-topic { font-weight: 600; }
 .adm-j-reason { margin-left: auto; color: var(--ink); }

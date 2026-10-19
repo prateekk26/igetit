@@ -158,7 +158,7 @@ export default function Admin() {
             <ByDay items={page} at={(r) => r.first}>{(r) => (
                 <details key={r.visitor + r.first} className="adm-j">
                   <summary>
-                    <span className="adm-j-when">{time(r.first)}</span>
+                    <span className="adm-j-when">{new Date(r.first).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })}</span>
                     <span className="adm-j-tag">{r.source}</span>
                     <span className="adm-j-tag">{r.device ?? '?'}</span>
                     <span className="adm-j-tag">{secs(r.spentS)}</span>
