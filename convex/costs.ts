@@ -16,6 +16,7 @@ export const USD_INR = 94.9;
 const PER_M_USD: [string, number, number][] = [
   ["ci:claude-opus-5.5", 2.616629, 13.083145],   // Opus 5.5 through Cheaper Inference: their catalog rate 19 Oct (it moves; never above list)
   ["opus-5-5", 4, 20],              // Claude Opus 5.5
+  ["ci:claude-sonnet-5.5", 1.3, 6.5],   // Sonnet 5.5 through Cheaper Inference: their catalog rate 19 Oct (the fact check, D143)
   ["opus", 5, 25],                  // older Opus (5, 4.8 ...)
   ["fable", 10, 50],                // Claude Fable 5.1 (masked comparison only)
   ["sonnet-5", 2, 10],              // Claude Sonnet 5.5 and 5

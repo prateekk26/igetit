@@ -10,12 +10,12 @@ import { applyAnywhere, validFix, factCheck } from "./handbooks";
 // cards come back with the tokens and time. scripts/check-planted.mjs plants, runs and scores. Dev only.
 export const run = internalAction({
   // version "live": the prompt and effort a reader's chapter gets today (the eval gate runs this one).
-  args: { cards: v.any(), version: v.union(v.literal("v3"), v.literal("v4"), v.literal("v5"), v.literal("quiz"), v.literal("live")), effort: v.optional(v.union(v.literal("low"), v.literal("medium"))), title: v.string(), topic: v.string(), reference: v.optional(v.string()) },
-  handler: async (ctx, { cards, version, effort, title, topic, reference }): Promise<any> => {
+  args: { cards: v.any(), version: v.union(v.literal("v3"), v.literal("v4"), v.literal("v5"), v.literal("quiz"), v.literal("live")), effort: v.optional(v.union(v.literal("low"), v.literal("medium"))), title: v.string(), topic: v.string(), reference: v.optional(v.string()), model: v.optional(v.string()) },
+  handler: async (ctx, { cards, version, effort, title, topic, reference, model }): Promise<any> => {
     const t0 = Date.now();
     // "live" (17 Oct): the real fact check a reader's chapter gets, second ask for an edit that missed included.
     if (version === "live") {
-      const out = await factCheck(ctx, topic, "new", title, cards as any[]);
+      const out = await factCheck(ctx, topic, "new", title, cards as any[], model ? { model } : {});   // model (19 Oct): e.g. "cia:claude-sonnet-5.5"
       return { ok: out.report.status !== "unchecked" || out.report.fixes > 0, ms: Date.now() - t0, tokensIn: 0, tokensOut: 0, applied: out.report.fixes, skipped: out.report.notes.filter((x: string) => /fix skipped/.test(x)).length, fixes: out.report.notes, cards: out.cards };
     }
     // reference (17 Oct, quiz check test): sent the way factCheck sends it.

@@ -13,6 +13,8 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 - Thought: a reseller's "Opus" might be weaker. Learned: on 7 chapters it agreed with Anthropic's Opus as closely as Opus agrees with itself (11.2 against 11.3 of 12), at Rs 2.03 a book against Rs 3.57; it missed one planted wrong quiz key twice. Now: the Shelf judge runs there, Anthropic as backup (D138).
 - Thought: the Lite voice is the same voice, cheaper. Learned: a third cheaper and quicker, but in one request per page it once read a headline and dropped the paragraph (26 of 33 words), skipped code lines once, and once read the tone tag aloud; one clip per page also made the first page start 13 to 18 s after the tap. Now: Lite for plain words, the full model for code, a page as a headline clip plus one clip for the rest (voice starts in about 4 s, 10 of 10 clips complete), and transcribing clips to count words is how we check a voice.
 
+- Thought: the fact check needs Anthropic's own Sonnet. Learned: the same Sonnet through Cheaper Inference caught as many planted mistakes (11 and 11 against 10 and 12) for about a third less, but took 4 s longer a chapter. Now: it runs there, Anthropic as backup (D143), and /admin's facts grades are the week's watch.
+
 ### GTM
 - Thought: Google's voice limits were far away. Learned: AI Studio showed 99 of 100 requests a day and 19 a minute against 10; each paragraph was its own request. Now: two requests a page, and Lite's own 100 a day on top (I2-22).
 

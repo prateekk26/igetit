@@ -44,14 +44,14 @@ export async function planted({ convex = defaultConvex, settings = [["live"]], r
   const plantedCards = new Set([...planted, ...extra].map((p) => p.card));
 
   const rows = [];
-  for (const [version, effort] of settings) for (let k = 0; k < runs; k++) {
-    const r = await convex("evalCheck:run", { cards, version, ...(effort ? { effort } : {}), title: base.title, topic: "Indian stock market basics" });
+  for (const [version, effort, model] of settings) for (let k = 0; k < runs; k++) {   // model (19 Oct): optional third value
+    const r = await convex("evalCheck:run", { cards, version, ...(effort ? { effort } : {}), ...(model ? { model } : {}), title: base.title, topic: "Indian stock market basics" });
     if (!r.ok) { rows.push({ version, effort, error: r.error }); log(version, effort, "error", r.error); continue; }
     const missed = planted.filter((p) => p.answer ? r.cards[p.card].answer !== p.answer : JSON.stringify(r.cards[p.card]).includes(p.words)).map((p) => p.k);
     const stray = r.cards.map((c, i) => (JSON.stringify(c) !== JSON.stringify(cards[i]) && !plantedCards.has(i) ? i : null)).filter((x) => x !== null);
     const inr = ((r.tokensIn * 3 + r.tokensOut * 15) / 1e6) * 85;
     const missedExtra = extra.filter((p) => JSON.stringify(r.cards[p.card]).includes(p.words)).map((p) => p.k);
-    const row = { fixes: r.fixes, version, effort, caught: 10 - missed.length, missed, caughtExtra: extra.length - missedExtra.length, missedExtra, stray, applied: r.applied, skipped: r.skipped, ms: r.ms, tokensIn: r.tokensIn, tokensOut: r.tokensOut, inr: Math.round(inr * 100) / 100 };
+    const row = { fixes: r.fixes, version, effort, model, caught: 10 - missed.length, missed, caughtExtra: extra.length - missedExtra.length, missedExtra, stray, applied: r.applied, skipped: r.skipped, ms: r.ms, tokensIn: r.tokensIn, tokensOut: r.tokensOut, inr: Math.round(inr * 100) / 100 };
     rows.push(row); log(JSON.stringify({ ...row, fixes: undefined }));
   }
   return { planted, extra, rows };

@@ -969,13 +969,23 @@ export async function factCheck(...args: Parameters<typeof factCheckOnly>): Retu
   if (!clean.fixed) return checked;
   return { ...checked, cards: clean.cards, report: { ...checked.report, notes: [...checked.report.notes, `Wording: rewrote ${clean.fixed} card${clean.fixed === 1 ? "" : "s"} that used "wrong" or "incorrect".`] } };
 }
+// The fact check on Claude Sonnet 5.5 through Cheaper Inference (19 Oct, D143, Prateek: "yes switch with anthropic as
+// backup and deploy"): one check a chapter; if that call fails, the same request goes to Anthropic. On the 13 planted
+// mistakes it caught 11 and 11 against Anthropic's 10 and 12, no stray edits, about ₹1.17 a check against ₹1.79, and
+// 11.6 s against 7.3 s (dev). A call that names its own model (tests, comparisons) is sent as named.
+const CHECK_VIA = "cia:claude-sonnet-5.5";
+async function checkCall(ctx: any, args: any) {
+  if (args.model) return ctx.runAction(internal.ai.generate, args);
+  const r: any = await ctx.runAction(internal.ai.generate, { ...args, model: CHECK_VIA });
+  return r.ok ? r : ctx.runAction(internal.ai.generate, args);
+}
 async function factCheckOnly(ctx: any, topic: string, level: string, title: string, cards: any[], opts: { system?: string; model?: string; effort?: "low" | "medium" | "high" | "xhigh" | "max"; trace?: Trace; pictures?: { cards: number[]; analogy: string }; reference?: string; delivery?: string; mainCount?: number } = {}): Promise<{ cards: any[]; report: FactReport; scenes: Scene[]; added: number }> {
   const { pictures, reference, delivery, mainCount, system: systemOverride, ...callOpts } = opts;
   const withScenes = !!pictures?.cards.length;
   // reference (D29c): material the cards must agree with (a handbook's own chapters, for its wait stories).
   // Today (9 Oct, after the outside reviews): the checker has no date of its own, so it took recent facts for errors.
   const user = checkUserMessage(topic, level, { title, cards }, withScenes ? pictures : undefined) + `\nToday: ${new Date().toISOString().slice(0, 10)}` + (reference ? `\n\nReference material these cards must agree with (names and numbers in the cards should trace to it or to a named source):\n${reference}` : "") + (delivery ? `\n\nThis chapter must deliver:\n${delivery}` : "");
-  const r = await ctx.runAction(internal.ai.generate, { kind: "check", system: systemOverride ?? checkPrompt(withScenes), user, ...callOpts });
+  const r = await checkCall(ctx, { kind: "check", system: systemOverride ?? checkPrompt(withScenes), user, ...callOpts });
   if (!r.ok) return { cards, report: { status: "unchecked", fixes: 0, notes: [r.error], at: Date.now() }, scenes: [], added: 0 };
   const scenes: Scene[] = [];
   for (const x of withScenes && Array.isArray(r.json?.scenes) ? r.json.scenes : []) {
@@ -1010,7 +1020,7 @@ async function factCheckOnly(ctx: any, topic: string, level: string, title: stri
     const asked = broken.splice(0);
     const again = `Topic: ${topic}\nThese edits could not be applied: the "find" text is not in the card exactly as written (or the change broke the card). For each, copy "find" character for character from the card below and give the edit again, in the same JSON format as before.\n` +
       asked.map(({ i, problem, find }) => `Card ${i} (problem: ${problem}${find ? `; your find was: ${find}` : ""}):\n${JSON.stringify(out[i])}`).join("\n\n") + `\n\nReturn only this JSON: {"ok": false, "fixes": [{"card": <index>, "find": "<exact text from that card>", "replace": "<the new text>", "why": "<one plain line>"}]}`;
-    const r2 = await ctx.runAction(internal.ai.generate, { kind: "check", system: systemOverride ?? checkPrompt(false), user: again, ...callOpts });
+    const r2 = await checkCall(ctx, { kind: "check", system: systemOverride ?? checkPrompt(false), user: again, ...callOpts });
     const before = notes.length;
     for (const f of r2.ok && Array.isArray(r2.json?.fixes) ? r2.json.fixes : []) if (asked.some((b) => b.i === Number(f?.card))) apply(f);
     for (let k = before; k < notes.length; k++) notes[k] += " (fixed on the second ask)";
