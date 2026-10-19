@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import Ooh, { GoArrow } from '../components/Ooh'
+import { nameOf } from '../lib/name'
 
 // Tonight (C4, 14 Oct; Prateek: "follow the UI given and use our backend to populate the data"): the home of a reader
 // coming back. "Tonight" and the date, Ooh saying what's next, tonight's chapter of the book they read last on a marigold
@@ -17,6 +19,13 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
   const book = unfinished.find((r) => r.started) ?? unfinished[0] ?? null
   const total = book?.total ?? 7
   const midway = !!book && (book.card ?? 0) > 0
+  // A long list (Prateek, 20 Oct: "will this list go endless?"): books still being read first, finished ones last, the
+  // first five shown and "Show all N books" for the rest. No scroll box (awkward on a phone), no pages (more taps).
+  const SHOWN = 5
+  const [all, setAll] = useState(false)
+  const isDone = (r: Row) => r.status === 'ready' && r.passed >= (r.total ?? 7)
+  const ordered = [...rows.filter((r) => !isDone(r)), ...rows.filter(isDone)]
+  const listed = all ? ordered : ordered.slice(0, SHOWN)
   const say = !book ? (ready.length ? "You've finished every book you have. Pick your next one from the Shelf." : 'Your first book is still being written. It shows up here when it is ready.')
     : midway ? `You stopped partway through chapter ${book.current}. Pick up where you left off.`
     : book.current > 1 ? `Two quick questions on chapter ${book.current - 1} first, then chapter ${book.current}.`
@@ -30,6 +39,9 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
         {book && (
           <div className="c4-tonight c4-card">
             <div className="c4-card-words">
+              {/* Which book (Prateek, 20 Oct: "chapter 1 of what?"): its name over the chapter line; the same book is
+                  marked "Tonight" in the list beside it. */}
+              <span className="c4-book">{nameOf(book.topic)}</span>
               <span className="c4-kicker">Chapter {book.current} of {total}</span>
               <h2>{book.nextTitle ?? book.topic}</h2>
               <span className="c4-meta">{midway ? 'Partway through' : `${book.nextMinutes ?? 5} minutes${book.current > 1 ? ', after two quick questions' : ''}`}</span>
@@ -42,14 +54,14 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
       <div className="c4-books">
         <h2 className="c4-label">Your book{rows.length === 1 ? '' : 's'}</h2>
         <ul>
-          {rows.map((r) => {
-            const t = r.total ?? 7, done = r.passed >= t
+          {listed.map((r) => {
+            const t = r.total ?? 7, done = r.passed >= t, on = r._id === book?._id
             return (
-              <li key={r._id}>
+              <li key={r._id} className={on ? 'c4-on' : undefined}>
                 <button type="button" onClick={() => onOpen(r._id)}>
-                  {r.cover ? <img src={r.cover} alt="" /> : <span className="c4-blank" aria-hidden="true">{r.topic.slice(0, 1)}</span>}
+                  {r.cover ? <img src={r.cover} alt="" /> : <span className="c4-blank" aria-hidden="true">{nameOf(r.topic).slice(0, 1)}</span>}
                   <span className="c4-book-t">
-                    <b>{r.topic}</b>
+                    <b>{nameOf(r.topic)}{on && <span className="c4-on-tag">Tonight</span>}</b>
                     <span className="c4-progress" role="img" aria-label={r.status !== 'ready' ? 'Being written' : done ? `All ${t} chapters done` : `${r.passed} of ${t} chapters done`}>
                       {r.status !== 'ready' ? <small>Being written</small> : (
                         <>
@@ -64,6 +76,9 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
             )
           })}
         </ul>
+        {ordered.length > SHOWN && (
+          <button type="button" className="c4-all" aria-expanded={all} onClick={() => setAll((x) => !x)}>{all ? 'Show fewer' : `Show all ${ordered.length} books`}</button>
+        )}
         <div className="c4-more">
           <button type="button" className="c-more" onClick={onNew}>Start a new book →</button>
           <button type="button" className="c-more" onClick={onManage}>Manage your books</button>

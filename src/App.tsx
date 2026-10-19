@@ -811,8 +811,10 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
   const [menu, setMenu] = useState(false)
   return (
     <div className={`shell${tab ? ' has-tabs' : ''}`}>
-      {tab && !bare && (
-        <header className="hub-top">
+      {/* On a laptop the side column always has the wordmark and Your account, also on pages that draw their own top bar
+          (the Shelf): without it the menu below fell to the bottom of the page (20 Oct). On a phone those pages hide it. */}
+      {tab && (
+        <header className={`hub-top${bare ? ' bare' : ''}`}>
           <button type="button" className="wordmark wordmark-btn" onClick={() => goFront?.()} aria-label="I Get It, home"><Wordmark />{member && <span className="member-mark">Member</span>}</button>
           <AuthButtons links={authLinks} onSignOut={authSignOut} />
           <button type="button" className="hub-acct" aria-label="Your account" aria-expanded={menu} onClick={() => setMenu(true)}>
@@ -822,7 +824,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
         </header>
       )}
       {menu && tab && !rail && (
-        <Sheet onClose={() => setMenu(false)} label="Your account">
+        <Sheet onClose={() => setMenu(false)} label="Your account" pop>
           <nav className="menu-sheet hub-menu" onClick={(e) => { if ((e.target as HTMLElement).closest('button, a')) setMenu(false) }}>
             <p className="verdict" style={{ fontSize: 'var(--ui)' }}>Your account</p>
             {acct?.signIn && <button type="button" className="btn" onClick={acct.signIn}>Sign in or make a free account</button>}

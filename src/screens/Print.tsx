@@ -1,3 +1,4 @@
+import PageLoading from '../components/PageLoading'
 import { useEffect } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -23,7 +24,7 @@ export default function Print() {
       </header>
       <main className="policy">
         {!id ? <p className="lede">No handbook chosen. Members print from a handbook's menu: "Print or save as PDF". <a href="/">Back to your handbooks</a></p>
-          : data === undefined ? <p className="note">Loading…</p>
+          : data === undefined ? <PageLoading />
           : !data.member ? (
             <>
               <h1>Print or save as PDF</h1>

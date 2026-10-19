@@ -1157,3 +1157,91 @@ button.c3-row:active { transform: scale(0.98); background: var(--paper-2); }
   button.c3-row { transition: none; }
 }
 
+/* ---------- Laptop fixes, 20 Oct ---------- */
+.hub-top.bare { display: none; }
+@media (min-width: 1024px) {
+  /* the side column's rows hug their content; the page spans them (the menu fell to the bottom on the Shelf) */
+  .shell.has-tabs { grid-template-rows: auto auto 1fr; }
+  .shell.has-tabs > .hub-top.bare { display: flex; }
+  /* Your account sits at the side column's foot on any screen width, and its menu opens as a card just above it */
+  .shell.has-tabs > .hub-top .hub-acct { left: max(24px, calc((100vw - 1240px) / 2 + 24px)); }
+  .scrim.pop { background: transparent; }
+  .sheet.pop { left: max(24px, calc((100vw - 1240px) / 2 + 24px)); right: auto; bottom: 84px; width: 264px; transform: none; padding: 8px 8px 10px; border-radius: 20px; background: var(--paper); box-shadow: 0 12px 40px rgba(27, 26, 23, 0.16), 0 0 0 1px var(--rule); animation: popup 180ms var(--ease) both; }
+  .sheet.pop .handle { display: none; }
+  .sheet.pop .sheet-close { top: 4px; right: 4px; }
+  .sheet.pop .verdict { font-size: 1.25rem; margin: 8px 12px 6px; }
+  .sheet.pop .hub-menu .quiet, .sheet.pop .hub-menu .btn { display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 12px; margin: 0; border-radius: 12px; text-align: left; text-decoration: none; color: var(--ink); }
+  .sheet.pop .hub-menu .quiet:hover { background: var(--paper-2); }
+  @keyframes popup { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) { .sheet.pop { animation: none; } }
+/* Tonight (20 Oct, Prateek: "chapter 1 of what?"): the book's name on the card, and the same book marked in the list */
+.c4-book { font: 800 17px/1.2 var(--sans); margin-bottom: 2px; }
+.c4-on > button { background: var(--paper-2); padding-right: 12px; }
+.c4-books li button { padding: 6px; margin: 0 -6px; width: calc(100% + 12px); transition: background-color 120ms ease-out; }
+.c4-books li button:hover { background: var(--paper-2); }
+.c4-on-tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--accent); font: 700 12px/1.4 var(--sans); vertical-align: 2px; }
+@media (min-width: 1024px) {
+  /* the list beside it is long; its extra height goes to the last row, so the card sits right under Ooh's line */
+  .c4 { grid-template-rows: auto auto auto 1fr; }
+  .c4-main > .c4-card { align-self: start; }
+}
+.c4-all { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; margin-top: 8px; border-radius: 24px; background: var(--paper-2); font: 700 15px var(--sans); color: var(--ink); cursor: pointer; }
+.c4-all:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* What you know, readable (20 Oct, Prateek: "not readable, clean nor neat at all") */
+.known-counts { display: flex; gap: 10px; grid-template-columns: none; }
+.known-tile { flex: 0 1 160px; padding: 14px 16px 12px; border-radius: 18px; background: var(--paper-2); }
+.known-tile.solid { background: var(--accent); }
+.known-tile.solid .known-dot { background: var(--ink); }
+.known-counts dd { font-size: 44px; }
+.known-books { display: grid; gap: 16px; margin-top: 22px; align-items: start; }
+.known-book { margin: 0; padding: 18px 18px 10px; border-radius: 22px; background: var(--paper-2); }
+.known-book h2 { gap: 14px; margin-bottom: 6px; color: var(--ink); }
+.known-book h2 img, .known-book .known-blank { width: 52px; height: 52px; border-radius: 14px; background: var(--paper); }
+.known-book-t { display: flex; flex-direction: column; gap: 2px; font: 800 19px/1.2 var(--sans); color: var(--ink); min-width: 0; }
+.known-book-t small { font: 600 14px var(--sans); color: var(--ink-2); }
+.known-book ul { margin: 0 -8px; }
+.known-book li button { padding: 10px 8px; border-radius: 14px; gap: 12px; }
+.known-book li button:hover { background: var(--paper); }
+.known-book li + li { border-top: 1px solid var(--rule); }
+.known-t { max-width: 62ch; }
+.known-t b { font: 700 17px/1.3 var(--sans); }
+.known-t small { font: 500 15px/1.45 var(--sans); }
+@media (min-width: 1024px) {
+  .known { max-width: 1040px; }
+  .known h1 { font-size: 64px; }
+  .known-books { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* A page waiting on the server: Ooh thinking, small and centred */
+.page-loading { display: grid; place-items: center; min-height: 40vh; }
+
+/* Pricing with some colour (20 Oct, Prateek: "text has no color… boxes no highlight, no joy") */
+.once { background: var(--accent); font-family: var(--sans); font-style: normal; }
+.once strong { font-size: 18px; }
+.rules { font-family: var(--sans); font-style: normal; color: var(--ink-2); gap: 14px; }
+.rules li { position: relative; padding-left: 34px; }
+.rules li::before { content: '✓'; position: absolute; left: 0; top: 1px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--ink); font: 800 13px/22px var(--sans); text-align: center; }
+.rules strong { color: var(--voice); }
+.rules em, .rules i { font-style: normal; }
+.locked.paid { display: flex; align-items: center; gap: 12px; background: var(--voice); color: var(--paper); font-weight: 600; }
+.locked.paid strong { color: var(--accent); }
+
+/* Manage your books in today's look (20 Oct desktop pass: it still wore the old print style, serif titles and a
+   "Remove" line between every card) */
+ul.shelf { display: grid; gap: 10px; }
+ul.shelf > li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+ul.shelf .shelf-card { flex: 1 1 0; min-width: 0; grid-template-columns: 8px 1fr; border-radius: 18px; background: var(--paper-2); overflow: hidden; }
+ul.shelf .shelf-card.active { background: var(--leaf-2); }
+ul.shelf .shelf-spine { background: var(--tint); background-image: none; border: 0; }
+ul.shelf .shelf-card.active .shelf-spine { background: var(--accent); }
+ul.shelf .shelf-topic { font: 800 18px/1.25 var(--sans); font-style: normal; letter-spacing: 0; }
+ul.shelf .shelf-bar span { height: 6px; border: 0; border-radius: 3px; background: var(--tint); }
+ul.shelf .shelf-bar span.on { background: var(--accent); }
+ul.shelf .shelf-next { font-weight: 600; color: var(--ink-2); }
+ul.shelf .shelf-remove { flex: none; margin: 0; }
+ul.shelf .shelf-remove:has(.note) { flex: 1 1 100%; }
+/* Text sliding under the bottom bar fades out instead of being cut mid-line (20 Oct desktop pass) */
+.actionbar { box-shadow: 0 -18px 18px -2px var(--paper); }
+@media (min-width: 1024px) { .sheet.pop .hub-menu .btn { font-size: 15px; line-height: 1.3; min-height: 44px; padding: 8px 12px; justify-content: flex-start; } }
+

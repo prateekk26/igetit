@@ -1,3 +1,5 @@
+import Ooh from '../components/Ooh'
+import PageLoading from '../components/PageLoading'
 import { useEffect, useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -49,7 +51,7 @@ export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onB
     onAutoPay?.()
     payNow('Signed in. Opening the payment sheet…')
   }, [autoPay, plans?.signedIn]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (!plans) return <div className="splash">Loading…</div>
+  if (!plans) return <PageLoading />
   const p = plans.pay
   const live = p.live
   const price = p.price[plan]
@@ -162,7 +164,7 @@ export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onB
       {live ? (
         <>
           {p.mode === 'test' && <p className="note" style={{ textAlign: 'center' }}>Test mode: no real money moves.</p>}
-          {p.paidUntil ? <p className="locked">Paid. You're covered until {until(p.paidUntil)}.</p>
+          {p.paidUntil ? <p className="locked paid"><Ooh face="happy" size={32} tone="cream" /><span><strong>Paid.</strong> You're covered until {until(p.paidUntil)}.</span></p>
             : p.kept ? <p className="locked">Your early price is kept: {inr(p.price.month)} a month or {inr(p.price.year)} a year.</p> : null}
           {/* The struck price is always the real next tier, never a made-up "was" price (7 Oct). */}
 
