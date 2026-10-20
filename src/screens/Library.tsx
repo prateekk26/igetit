@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import ActionBar from '../components/ActionBar'
 import SignupNudge from '../components/SignupNudge'
 import { nameOf, shortName } from '../lib/name'
+import { useReveal } from '../lib/motion'
 
 type Row = { total?: number; _id: string; topic: string; status: string; passed: number; current: number; card?: number; started?: boolean; lastAt: number; outcome: string | null; typed?: boolean }
 type Props = { rows: Row[]; signedIn: boolean; isMember?: boolean; freeChapters?: number; activeId?: string; onOpen: (id: string) => void; onContinue?: (id: string) => void; onNew: () => void; onSignIn: () => void; onPlans: () => void; onExplore: () => void; onRemove?: (id: string) => Promise<void> }
@@ -22,6 +23,8 @@ export default function Library({ rows, signedIn, isMember, freeChapters = 2, ac
   // Remove (D36, 9 Oct): two taps, the second names the handbook; never a browser dialog. Copy (agent).
   const [confirming, setConfirming] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
+  const list = useRef<HTMLUListElement>(null)
+  useReveal(list, rows.length)   // 20 Oct motion: the rows rise in one after another
   // Newest first, and the one to continue is the one opened last (8 Oct night: a returning reader's one job is to carry
   // on; the main button says so, by name and chapter, instead of "The Shelf").
   const sorted = [...rows].sort((a, b) => Number(!!b.started) - Number(!!a.started) || b.lastAt - a.lastAt)
@@ -47,9 +50,9 @@ export default function Library({ rows, signedIn, isMember, freeChapters = 2, ac
     <>
       <h1>Your handbooks.</h1>
       <p className="lede">Each one remembers exactly where you stopped.</p>
-      <ul className="shelf">
+      <ul className="shelf" ref={list}>
         {sorted.map((r) => (
-          <li key={r._id}>
+          <li key={r._id} className="rv">
             {/* A book on its side (8 Oct, print shop): cloth spine, paper label, printed rungs. The open one is pressed. */}
             <button type="button" className={`shelf-card${r._id === activeId ? ' active' : ''}`} onClick={() => onOpen(r._id)}>
               <span className="shelf-spine" aria-hidden="true" />

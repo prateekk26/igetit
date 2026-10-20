@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import ActionBar from '../components/ActionBar'
 import { track } from '../lib/track'
 import Ooh, { GoArrow } from '../components/Ooh'
+import { useCountUp } from '../lib/motion'
 
 type Chapter = { n: number; title: string; covers: string; outcome: string; hook?: string; minutes?: number }
 // A month-long handbook (D65, 28 chapters) groups its path into weeks; only the reader's week opens by default.
@@ -69,6 +70,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
   const [justReady, setJustReady] = useState(false)
   useEffect(() => { if (!wasReady.current && chapterReady) setJustReady(true); wasReady.current = chapterReady }, [chapterReady])
   const resuming = nextUp?.kind === 'resume'
+  const doneN = useCountUp(passed.length, 600)   // "3 of 7 done" counts up (20 Oct motion)
   // "Later, if you keep going: …" under "Later peaks:" read "Later peaks: Later, …" (UX review 9 Oct): the model's own
   // opener is dropped.
   const weekOf = (n: number) => plan.weeks?.findIndex((w) => n >= w.from && n <= w.to) ?? -1
@@ -109,7 +111,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
 
       {voiceNote && <p className="note" style={{ marginBottom: 'var(--m)' }}>{voiceNote}</p>}
 
-      <h2 className="c3-h">What's in it {passed.length > 0 && <small>{passed.length} of {total} done</small>}</h2>
+      <h2 className="c3-h">What's in it {passed.length > 0 && <small>{doneN} of {total} done</small>}</h2>
       <ol className="c3-list">
         {plan.chapters.map((c) => {
           const done = passed.includes(c.n)
@@ -181,7 +183,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
           </>
         ) : (
           declined && passed.length > 0 && onOpenChapter ? <button className="btn c-go" onClick={() => onOpenChapter(passed[passed.length - 1])}><span>{`Read chapter ${passed[passed.length - 1]} again`}</span><GoArrow /></button>
-          : <button className={`btn c-go${justReady ? ' ready-pop' : ''}`} onClick={onStart} disabled={!chapterReady}><span>{passed.length >= total ? `Read chapter ${current} again` : needsAccount ? `Start chapter ${current} (free account)` : resuming ? `Continue chapter ${current}` : `Start chapter ${current}`}</span><GoArrow /></button>
+          : <button className={`btn c-go${justReady ? ' ready-pop' : ''}${chapterReady ? ' nudge-go' : ''}`} onClick={onStart} disabled={!chapterReady}><span>{passed.length >= total ? `Read chapter ${current} again` : needsAccount ? `Start chapter ${current} (free account)` : resuming ? `Continue chapter ${current}` : `Start chapter ${current}`}</span><GoArrow /></button>
         )}
         {justReady && <div className="waitbar full" aria-hidden="true"><span /></div>}
       </ActionBar>

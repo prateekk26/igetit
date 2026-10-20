@@ -1,5 +1,5 @@
 import Ooh from '../components/Ooh'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { limitMessage } from '../lib/limits'
 import { track } from '../lib/track'
 import { useQuery } from 'convex/react'
@@ -7,6 +7,7 @@ import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { SECTIONS, byShelfOrder, flagOf, sectionOrder } from '../../convex/shelfSections'
 import { useOnline } from '../lib/online'
+import { useReveal } from '../lib/motion'
 
 // The Shelf (C12, 14 Oct; Prateek: "follow the UI given and use our backend to populate the data"): the board's page, not
 // the wooden shelves of 8 Oct. "‹ Your book" and "Surprise me" on top, "The Shelf", one line, a row of shelf pills, and
@@ -50,6 +51,9 @@ export default function Shelf({ onReady, onShared, onBack, backLabel = 'Your boo
   }, [items, layout, order])
   const [at, setAt] = useState('loved')
   const shown = pills.find((p) => p.key === at) ?? pills[0]
+  // 20 Oct motion: covers rise in as they scroll into view, and again, one after another, when a pill changes the shelf
+  const grid = useRef<HTMLUListElement>(null)
+  useReveal(grid, `${shown?.key}-${shown?.books.length ?? 0}`)
 
   const [note, setNote] = useState<string | null>(null)
   const [opening, setOpening] = useState<string | null>(null)
@@ -85,9 +89,9 @@ export default function Shelf({ onReady, onShared, onBack, backLabel = 'Your boo
         </nav>
       )}
       {!items || !layout ? <p className="note" role="status">{online ? 'Dusting the shelves…' : "No connection. The Shelf opens when you're back online."}</p> : (
-        <ul className="c12-grid" key={shown?.key}>
+        <ul className="c12-grid" key={shown?.key} ref={grid}>
           {(shown?.books ?? []).map((it, k) => (
-            <li key={it.key} style={{ animationDelay: `${Math.min(k, 8) * 60}ms` }}>
+            <li key={it.key} className="rv">
               <button type="button" className={`c12-book plate-${plate(it.key)}`} onClick={() => open(it)} aria-busy={opening === it.key || undefined}
                 aria-label={`${it.topic}.${it.award ? ` ${it.award.title}.` : ''}${mine(it) ? ` ${mine(it)}.` : ''} ${length(it)}`}>
                 <span className="c12-cover">

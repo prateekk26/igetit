@@ -47,7 +47,7 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
               <span className="c4-kicker">Chapter {book.current} of {total}</span>
               <h2>{book.nextTitle ?? book.topic}</h2>
               <span className="c4-meta">{midway ? 'Partway through' : `${book.nextMinutes ?? 5} minutes${book.current > 1 ? ', after two quick questions' : ''}`}</span>
-              <button type="button" className="c4-go" onClick={() => onContinue(book._id)}><span>{midway ? 'Continue' : 'Start'}</span><GoArrow /></button>
+              <button type="button" className="c4-go nudge-go" onClick={() => onContinue(book._id)}><span>{midway ? 'Continue' : 'Start'}</span><GoArrow /></button>
             </div>
             {book.cover && <img className="c4-card-pic" src={book.cover} alt="" />}
           </div>
@@ -67,7 +67,7 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
                     <span className="c4-progress" role="img" aria-label={r.status !== 'ready' ? 'Being written' : done ? `All ${t} chapters done` : `${r.passed} of ${t} chapters done`}>
                       {r.status !== 'ready' ? <small>Being written</small> : (
                         <>
-                          {t <= 10 ? Array.from({ length: t }, (_, k) => <i key={k} className={k < r.passed ? 'on' : undefined} />) : <span className="c4-bar"><i style={{ width: `${(r.passed / t) * 100}%` }} /></span>}
+                          {t <= 10 ? Array.from({ length: t }, (_, k) => <i key={k} className={k < r.passed ? 'on' : undefined} style={k < r.passed ? { ['--k' as any]: k } : undefined} />) : <span className="c4-bar"><i style={{ width: `${(r.passed / t) * 100}%` }} /></span>}
                           <small>{done ? 'Finished' : `${r.passed} of ${t}`}</small>
                         </>
                       )}

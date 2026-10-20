@@ -178,8 +178,8 @@ export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onB
             {payNote && !payError && <p className="note pay-note" role="status">{payNote}</p>}
             {p.paidUntil ? <button className="btn btn-ghost" onClick={onBack}>Back</button>
               : pending ? <button className="btn" disabled={busy} onClick={checkAgain}>Check again</button>
-              : !plans.signedIn ? <><button className="btn" onClick={onSignIn}>Pay {inr(price)} for one {plan}</button><button type="button" className="quiet" onClick={onBack}>I'll decide later</button></>
-              : <><button className="btn" disabled={busy} onClick={() => payNow()}>Pay {inr(price)} for one {plan}</button><button type="button" className="quiet" onClick={onBack}>I'll decide later</button></>}
+              : !plans.signedIn ? <><button className="btn" onClick={onSignIn}>Pay <span key={plan} className="flip-in">{inr(price)} for one {plan}</span></button><button type="button" className="quiet" onClick={onBack}>I'll decide later</button></>
+              : <><button className="btn" disabled={busy} onClick={() => payNow()}>Pay <span key={plan} className="flip-in">{inr(price)} for one {plan}</span></button><button type="button" className="quiet" onClick={onBack}>I'll decide later</button></>}
           </ActionBar>
           {!plans.signedIn && <p className="note" style={{ textAlign: 'center' }}>Tapping Pay asks for your email first (a free account, so what you pay for stays with you on any phone), then the payment opens.</p>}
         </>
