@@ -1396,3 +1396,15 @@ html.snap-page main > h1:first-of-type, html.snap-page main .sub:first-child { s
   .plan-card[aria-checked="true"] { transform: none; }
   .rv-wait { opacity: 1 !important; transform: none !important; }
 }
+
+/* The closing ask moves like the top one (20 Oct, D152): Ooh drops in and watches, the chips pop in, the example types.
+   On a phone Ooh sits above the question; on a laptop in the empty right half. */
+@media (max-width: 1023px) {
+  .c-final { display: flex; flex-direction: column; }
+  .c-final-ooh { display: block; order: -1; margin: 0 0 10px; }
+  .c-final-ooh .end-ooh { width: 84px; height: 84px; }
+}
+.end-ooh.looking .ooh-eyes { animation: none !important; transform: translate(var(--lx, 0px), var(--ly, 0px)); transition: transform 180ms ease-out; }
+.c-final.armed:not(.in) .c1-chips button, .c-final.armed:not(.in) .end-ooh { opacity: 0; animation: none; }
+.c-final.in .end-ooh { animation: ooh-land 760ms cubic-bezier(0.3, 0.7, 0.3, 1) 80ms both; }
+@media (prefers-reduced-motion: reduce) { .c-final .end-ooh { animation: none !important; } .end-ooh.looking .ooh-eyes { transform: none; transition: none; } }

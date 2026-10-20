@@ -35,6 +35,27 @@ const wrapped = () => { try { return window.matchMedia('(min-width: 600px)').mat
 // The box's examples, typed and erased in turn (3). Copy (agent).
 const EXAMPLES = ['why the Moon changes shape', 'asking for a raise', 'how compound interest works', 'why we put things off', 'making a perfect dosa', 'how vaccines train the body']
 
+// (3) Types and erases the examples into a box's placeholder until stopped; written to the input directly, no re-render.
+// The returned stop leaves the whole current example showing.
+function typeLoop(get: () => HTMLInputElement | null, at: { current: number }) {
+  let alive = true
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+  const show = (t: string) => { const el = get(); if (alive && el) el.placeholder = 'e.g. ' + t }
+  ;(async () => {
+    show(EXAMPLES[at.current])
+    await sleep(2600)
+    while (alive) {
+      const was = EXAMPLES[at.current]
+      for (let k = was.length; k >= 0 && alive; k--) { show(was.slice(0, k)); await sleep(26) }
+      at.current = (at.current + 1) % EXAMPLES.length
+      const next = EXAMPLES[at.current]
+      for (let k = 1; k <= next.length && alive; k++) { show(next.slice(0, k)); await sleep(62) }
+      await sleep(2400)
+    }
+  })()
+  return () => { alive = false; const el = get(); if (el && el.placeholder) el.placeholder = 'e.g. ' + EXAMPLES[at.current] }
+}
+
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
 export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance, account, onSignOut, onMember, memberPrice }: Props) {
@@ -62,6 +83,22 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     io.observe(el)
     return () => io.disconnect()
   }, [])
+  // The closing ask (20 Oct, Prateek: "what are u wondering on bottom of screen is still static"): it moves as the top
+  // one does, once it is on screen. Ooh drops in and watches, the same chips pop in, the example types itself, and a
+  // tapped chip flies into this box.
+  const finalRef = useRef<HTMLElement>(null)
+  const finalInput = useRef<HTMLInputElement>(null)
+  const [finalIn, setFinalIn] = useState(false)
+  const [finalBusy, setFinalBusy] = useState(false)
+  const [finalFace, setFinalFace] = useState<'curious' | 'again'>('curious')
+  useEffect(() => {
+    const el = finalRef.current
+    if (!el || still() || !('IntersectionObserver' in window)) return
+    el.classList.add('armed')
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { el.classList.add('in'); setFinalIn(true); io.disconnect() } }, { threshold: 0.3 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
   // Switching the demo's chapter (20 Oct, Prateek: "slide in slide out… user can feel new topic coming in"): the open one
   // slides out toward where the reader is heading, the new one slides in from the other side. Straight swap under reduce motion.
   const [demoOut, setDemoOut] = useState<'l' | 'r' | null>(null)
@@ -80,49 +117,45 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   // after 2.5 s with nothing to look at, its own idle glance comes back. Written straight to the drawing, no re-render.
   const stage = useRef<HTMLDivElement>(null)
   const [heroFace, setHeroFace] = useState<'curious' | 'again'>('curious')
-  const lookTimer = useRef(0)
-  const lookAt = (x: number, y: number) => {
-    const svg = stage.current?.querySelector('.c1-ooh') as SVGSVGElement | null
+  const lookTimers = useRef(new Map<Element, number>())
+  const heroOoh = () => stage.current?.querySelector('.c1-ooh') as SVGSVGElement | null
+  const endOoh = () => finalRef.current?.querySelector('.end-ooh') as SVGSVGElement | null
+  const lookAt = (x: number, y: number, svg: SVGSVGElement | null = heroOoh()) => {
     if (!svg || still()) return
     const r = svg.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height * 0.45
     const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 260)
     svg.style.setProperty('--lx', `${((dx / d) * 3.2 * k).toFixed(2)}px`)
     svg.style.setProperty('--ly', `${((dy / d) * 2.6 * k).toFixed(2)}px`)
     svg.classList.add('looking')
-    window.clearTimeout(lookTimer.current)
-    lookTimer.current = window.setTimeout(() => svg.classList.remove('looking'), 2500)
+    window.clearTimeout(lookTimers.current.get(svg))
+    lookTimers.current.set(svg, window.setTimeout(() => svg.classList.remove('looking'), 2500))
   }
-  const lookAtEl = (el: Element | null | undefined) => { if (!el) return; const r = el.getBoundingClientRect(); lookAt(r.left + r.width / 2, r.top + r.height / 2) }
+  const lookAtEl = (el: Element | null | undefined) => { if (!el) return; const r = el.getBoundingClientRect(); lookAt(r.left + r.width / 2, r.top + r.height / 2, finalRef.current?.contains(el) ? endOoh() : heroOoh()) }
   useEffect(() => {
     if (!mouse() || still()) return
     let raf = 0
-    const on = (e: PointerEvent) => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; if (window.scrollY < window.innerHeight) lookAt(e.clientX, e.clientY) }) }
+    const on = (e: PointerEvent) => { if (raf) return; raf = requestAnimationFrame(() => {
+      raf = 0
+      if (window.scrollY < window.innerHeight) { lookAt(e.clientX, e.clientY); return }
+      const end = endOoh(), r = finalRef.current?.getBoundingClientRect()
+      if (end && r && r.top < window.innerHeight && r.bottom > 0) lookAt(e.clientX, e.clientY, end)
+    }) }
     window.addEventListener('pointermove', on, { passive: true })
-    return () => { window.removeEventListener('pointermove', on); cancelAnimationFrame(raf); window.clearTimeout(lookTimer.current) }
+    return () => { window.removeEventListener('pointermove', on); cancelAnimationFrame(raf); lookTimers.current.forEach((t) => window.clearTimeout(t)) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // (3) The example in the box types and erases itself until the box is used; written to the placeholder directly.
   const exAt = useRef(0)
   const [boxBusy, setBoxBusy] = useState(false)   // focused, or holding the reader's own words
   useEffect(() => {
-    const el = heroInput.current
-    if (!el || still() || boxBusy) return
-    let alive = true
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-    const show = (t: string) => { if (alive && heroInput.current) heroInput.current.placeholder = 'e.g. ' + t }
-    ;(async () => {
-      show(EXAMPLES[exAt.current])
-      await sleep(2600)
-      while (alive) {
-        const was = EXAMPLES[exAt.current]
-        for (let k = was.length; k >= 0 && alive; k--) { show(was.slice(0, k)); await sleep(26) }
-        exAt.current = (exAt.current + 1) % EXAMPLES.length
-        const next = EXAMPLES[exAt.current]
-        for (let k = 1; k <= next.length && alive; k++) { show(next.slice(0, k)); await sleep(62) }
-        await sleep(2400)
-      }
-    })()
-    return () => { alive = false; if (heroInput.current && heroInput.current.placeholder) heroInput.current.placeholder = 'e.g. ' + EXAMPLES[exAt.current] }
+    if (!heroInput.current || still() || boxBusy) return
+    return typeLoop(() => heroInput.current, exAt)
   }, [boxBusy])
+  // the closing box types its own examples, starting three along, once it is on screen
+  const endAt = useRef(3)
+  useEffect(() => {
+    if (!finalIn || !finalInput.current || still() || finalBusy) return
+    return typeLoop(() => finalInput.current, endAt)
+  }, [finalIn, finalBusy])
 
   // The four chips: the owner's pins (up to 4), then free ready topics at random, drawn once per visit (14 Oct, Prateek: "keep
   // rotating them to discover the click rates on various topics until we find the 3/4 best ones").
@@ -181,8 +214,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     return () => { window.clearTimeout(t); window.clearTimeout(t2) }
   }, [chips.length > 0]) // eslint-disable-line react-hooks/exhaustive-deps
   // (4) A tapped chip flies into the box and Ooh nods; then the book opens as before. Straight on under reduce motion.
-  const fly = (btn: HTMLElement | null) => new Promise<void>((done) => {
-    const box = heroInput.current
+  const fly = (btn: HTMLElement | null, box: HTMLInputElement | null) => new Promise<void>((done) => {
     if (!btn || !box || still() || !btn.animate) return done()
     const a = btn.getBoundingClientRect(), b = box.getBoundingClientRect()
     const ghost = document.createElement('span')
@@ -191,7 +223,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     Object.assign(ghost.style, { left: `${a.left}px`, top: `${a.top}px`, height: `${a.height}px` })
     document.body.appendChild(ghost)
     const dx = b.left + 18 - a.left, dy = b.top + (b.height - a.height) / 2 - a.top
-    lookAtEl(box); setHeroFace('again')
+    lookAtEl(box)
     const anim = ghost.animate([
       { transform: 'none', opacity: 1 },
       { transform: `translate(${dx * 0.6}px, ${dy * 0.6 - 28}px) scale(1.06)`, opacity: 1, offset: 0.55 },
@@ -223,15 +255,21 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     setTimeout(() => heroInput.current?.focus({ preventScroll: true }), 400)
   }
   // A ready topic starts straight away: no typing, and it opens instantly (it's already written).
-  const pick = async (t: string, via: 'chip' | 'demo', from?: HTMLElement) => {
+  const pick = async (t: string, via: 'chip' | 'demo', from?: HTMLElement, where: 'hero' | 'final' = 'hero') => {
     track('submit', { via, topic: t })
     setError(null); setBusy(true); setPickedRow(t)
     // the box's typing example stops and clears, so the chip lands in an empty box
-    setBoxBusy(true); if (heroInput.current) heroInput.current.placeholder = ''
-    if (via === 'chip') await fly(from ?? null)
+    const input = where === 'final' ? finalInput.current : heroInput.current
+    if (where === 'final') setFinalBusy(true); else setBoxBusy(true)
+    if (input) input.placeholder = ''
+    if (via === 'chip') { (where === 'final' ? setFinalFace : setHeroFace)('again'); await fly(from ?? null, input) }
     setTopic(t)
     try { await onCreate(t, 'new', voice, via === 'demo' ? 2 : undefined) }
-    catch { setError("Couldn't start it just now. Try once more in a minute."); setBusy(false); setPickedRow(null); setTopic(''); setBoxBusy(false); if (heroInput.current) heroInput.current.placeholder = 'e.g. ' + EXAMPLES[exAt.current]; toBox() }
+    catch {
+      setError("Couldn't start it just now. Try once more in a minute."); setBusy(false); setPickedRow(null); setTopic('')
+      if (where === 'final') { setFinalBusy(false); if (input) input.placeholder = 'e.g. ' + EXAMPLES[endAt.current]; input?.focus() }
+      else { setBoxBusy(false); if (input) input.placeholder = 'e.g. ' + EXAMPLES[exAt.current]; toBox() }
+    }
   }
   const go = async () => {
     setError(null)
@@ -248,11 +286,11 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const box = (where: 'hero' | 'final') => (
     <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
-      <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : undefined} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type'); if (where === 'hero') lookAtEl(e.target) }} onFocus={(e) => { track('box_focus', undefined, 'box_focus'); if (where === 'hero') { setBoxBusy(true); hold.current = true; lookAtEl(e.target) } }} onBlur={(e) => { if (where === 'hero') { setBoxBusy(!!e.target.value); hold.current = false } }}
+      <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : finalInput} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type'); lookAtEl(e.target) }} onFocus={(e) => { track('box_focus', undefined, 'box_focus'); (where === 'hero' ? setBoxBusy : setFinalBusy)(true); hold.current = true; lookAtEl(e.target) }} onBlur={(e) => { (where === 'hero' ? setBoxBusy : setFinalBusy)(!!e.target.value); hold.current = false }}
         placeholder="e.g. why the Moon changes shape" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
-      {where === 'hero' && chips.length > 0 && (
-        <div className="c1-chips" role="group" aria-label="Or open one that's ready" ref={chipRow} onPointerEnter={() => { hold.current = true }} onPointerLeave={() => { hold.current = document.activeElement === heroInput.current }}>
-          {chips.map((t, i) => <button key={t} type="button" data-topic={t} className={[pickedRow === t ? 'is-opening' : '', outAt === i ? 'chip-out' : ''].filter(Boolean).join(' ') || undefined} style={{ animationDelay: swapped.has(t) ? '0ms' : `${900 + i * 80}ms` }} disabled={busy} onPointerEnter={(e) => lookAtEl(e.currentTarget)} onFocus={(e) => lookAtEl(e.currentTarget)} onClick={(e) => pick(t, 'chip', e.currentTarget)}>{pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}</button>)}
+      {chips.length > 0 && (
+        <div className="c1-chips" role="group" aria-label="Or open one that's ready" ref={where === 'hero' ? chipRow : undefined} onPointerEnter={() => { hold.current = true }} onPointerLeave={() => { hold.current = document.activeElement === heroInput.current }}>
+          {chips.map((t, i) => <button key={t} type="button" data-topic={t} className={[pickedRow === t ? 'is-opening' : '', outAt === i ? 'chip-out' : ''].filter(Boolean).join(' ') || undefined} style={{ animationDelay: swapped.has(t) ? '0ms' : `${(where === 'hero' ? 900 : 350) + i * 80}ms` }} disabled={busy} onPointerEnter={(e) => lookAtEl(e.currentTarget)} onFocus={(e) => lookAtEl(e.currentTarget)} onClick={(e) => pick(t, 'chip', e.currentTarget, where)}>{pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}</button>)}
         </div>
       )}
       <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>
@@ -328,14 +366,15 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
       </section>
 
       {/* 4. The ask again. */}
-      <section className="lp-final c-final">
+      <section className="lp-final c-final" ref={finalRef}>
         <div className="c-final-main">
           <h2>So, what have you been wondering about?</h2>
           {box('final')}
           {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or open one from the Shelf →</button>}
         </div>
-        {/* The page closes as it opened, with Ooh, here looking at the box (20 Oct; a laptop's empty right half only) */}
-        <div className="c-final-ooh" aria-hidden="true"><Ooh face="curious" size={220} /></div>
+        {/* The page closes as it opened, with Ooh: above the ask on a phone, in the empty right half on a laptop. It drops in
+            once the part is on screen and watches the mouse, the box and the chips, as the top one does. */}
+        <div className="c-final-ooh" aria-hidden="true"><Ooh face={finalFace} size={220} idle className="end-ooh" /></div>
       </section>
 
       <footer className="lp-foot c-foot">
