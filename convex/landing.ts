@@ -56,7 +56,7 @@ export const content = query({
     // three ready books with a cover under each homepage box, opening straight into chapter 1. The owner's pins first, then
     // the books whose chapter 1 readers finish most. Chapter 1's minutes: the plan's average a chapter, else 5.
     const ranked = rows.filter((r) => r.cover).sort((a, b) => Number(!!b.pick) - Number(!!a.pick) || b.passes - a.passes || b.starts - a.starts)
-    const picks = [];
+    const picks: { topic: string; name: string; cover: string | null; minutes: number }[] = [];
     for (const r of ranked) {
       const name = CHIP[r.title] ?? r.title
       if (picks.length >= 3) break
