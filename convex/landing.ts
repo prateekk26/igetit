@@ -57,7 +57,12 @@ export const content = query({
     // the books whose chapter 1 readers finish most. Chapter 1's minutes: the plan's average a chapter, else 5.
     const ranked = rows.filter((r) => r.cover).sort((a, b) => Number(!!b.pick) - Number(!!a.pick) || b.passes - a.passes || b.starts - a.starts)
     const picks = [];
-    for (const r of ranked.slice(0, 3)) picks.push({ topic: r.title, name: CHIP[r.title] ?? r.title, cover: await url(r.cover), minutes: r.chapters && r.minutes ? Math.max(3, Math.round(r.minutes / r.chapters)) : 5 });
+    for (const r of ranked) {
+      const name = CHIP[r.title] ?? r.title
+      if (picks.length >= 3) break
+      if (picks.some((p) => p.name.toLowerCase() === name.toLowerCase())) continue   // two books, one short name (Public speaking)
+      picks.push({ topic: r.title, name, cover: await url(r.cover), minutes: r.chapters && r.minutes ? Math.max(3, Math.round(r.minutes / r.chapters)) : 5 });
+    }
 
     const demos = [];
     // If a pick is missing (taken off, or a deployment without it), ready free handbooks fill in, so the proof never vanishes.
