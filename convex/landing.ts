@@ -54,12 +54,14 @@ export const content = query({
 
     // "Try one now" (20 Oct, Prateek: "something that takes them to first chapter of our premade books - 2-3 top picks"):
     // three ready books with a cover under each homepage box, opening straight into chapter 1. The owner's pins first, then
-    // the books whose chapter 1 readers finish most. Chapter 1's minutes: the plan's average a chapter, else 5.
-    const ranked = rows.filter((r) => r.cover).sort((a, b) => Number(!!b.pick) - Number(!!a.pick) || b.passes - a.passes || b.starts - a.starts)
+    // the books whose chapter 1 readers finish most. Chapter 1's minutes: the plan's average a chapter, else 5. 21 Oct
+    // (Prateek: "keep the chips like earlier - make them in ticker - like continuous 5-6 topics on move"): six, as chips
+    // that slide past, free books before the rest (no daily limit, so a tap never meets a wall).
+    const ranked = rows.filter((r) => r.cover).sort((a, b) => Number(!!b.pick) - Number(!!a.pick) || Number(isFreeRow(b)) - Number(isFreeRow(a)) || b.passes - a.passes || b.starts - a.starts)
     const picks: { topic: string; name: string; cover: string | null; minutes: number }[] = [];
     for (const r of ranked) {
       const name = CHIP[r.title] ?? r.title
-      if (picks.length >= 3) break
+      if (picks.length >= 6) break
       if (picks.some((p) => p.name.toLowerCase() === name.toLowerCase())) continue   // two books, one short name (Public speaking)
       picks.push({ topic: r.title, name, cover: await url(r.cover), minutes: r.chapters && r.minutes ? Math.max(3, Math.round(r.minutes / r.chapters)) : 5 });
     }

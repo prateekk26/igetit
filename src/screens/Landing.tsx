@@ -31,7 +31,6 @@ type DemoBook = { topic: string; label: string; title: string; frames: Frame[]; 
 // reduce motion; the mouse-following eyes need a mouse; rotating chips need the wrapped chip rows (600 px and up).
 const still = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false } }
 const mouse = () => { try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches } catch { return false } }
-const wrapped = () => { try { return window.matchMedia('(min-width: 600px)').matches } catch { return false } }
 // The box's examples, typed and erased in turn (3). Copy (agent).
 const EXAMPLES = ['why the Moon changes shape', 'asking for a raise', 'how compound interest works', 'why we put things off', 'making a perfect dosa', 'how vaccines train the body']
 
@@ -111,6 +110,27 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     setDemoOut(dir)
     window.setTimeout(() => { setDemoAt(k); setDemoIn(dir); setDemoOut(null) }, 200)
   }
+  // 21 Oct (Prateek: "even if user does not click after few seconds move to another chip and show that chapter"): once the
+  // part is on screen the next chapter comes in every 7 s, a bar filling under the lit chip, until the reader taps
+  // anything in it or puts the mouse on the page. Nothing turns by itself under reduce motion.
+  const demoRef = useRef<HTMLElement>(null)
+  const [demoAuto, setDemoAuto] = useState(() => !still())
+  const [demoSeen, setDemoSeen] = useState(false)
+  const demoCount = c?.demos?.length ?? 0
+  useEffect(() => {
+    const el = demoRef.current
+    if (!el || !demoAuto || !('IntersectionObserver' in window)) return
+    const io = new IntersectionObserver((es) => setDemoSeen(es.some((e) => e.isIntersecting)), { threshold: 0.5 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [demoAuto, demoCount > 0]) // eslint-disable-line react-hooks/exhaustive-deps
+  const demoTurning = demoAuto && demoSeen && demoCount > 1
+  useEffect(() => {
+    if (!demoTurning) return
+    const t = window.setTimeout(() => switchDemo((demoAt + 1) % demoCount), 7000)
+    return () => window.clearTimeout(t)
+  }, [demoTurning, demoAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  const stopDemo = () => { if (demoAuto) setDemoAuto(false) }
   const [scrolled, setScrolled] = useState(false)
   const heroInput = useRef<HTMLInputElement>(null)
   useSnapPage('var(--home-bar-h, 60px)')   // its parts settle under the fixed bar (20 Oct)
@@ -163,15 +183,16 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const [chips, setChips] = useState<string[]>([])
   useEffect(() => {
     if (!c || chips.length) return
-    // "Try one now" (20 Oct): the server's three top picks, as cover cards that open chapter 1; the old random chips only
-    // where a deployment has no picks yet.
+    // 21 Oct (Prateek: "keep the chips like earlier - make them in ticker - like continuous 5-6 topics on move"): the
+    // server's six top picks as chips that slide past and open chapter 1; random ready topics only where a deployment
+    // has no picks yet.
     const picks = (c as any).picks as Pick[] | undefined
     if (picks?.length) { setChips(picks.map((p) => p.topic)); return }
     const pinned = c.pinned.slice(0, 4)
     // Free handbooks first (14 Oct, Prateek: "start with the handbooks that are free and without sign up in the chips
     // first"): no daily limit, so a tap never meets a wall before chapter 3; the rest of the Shelf only tops it up.
     const left = c.shelf.filter((s) => !pinned.includes(s.topic))
-    setChips([...pinned, ...shuffle(left.filter((s) => s.free).map((s) => s.topic)), ...shuffle(left.filter((s) => !s.free).map((s) => s.topic))].slice(0, 4))
+    setChips([...pinned, ...shuffle(left.filter((s) => s.free).map((s) => s.topic)), ...shuffle(left.filter((s) => !s.free).map((s) => s.topic))].slice(0, 6))
   }, [c, chips.length])
   // A chip counts as shown only once it is on screen (the row slides sideways, as the board draws it), so a chip off the
   // edge never drags its tap rate down.
@@ -180,44 +201,12 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     const row = chipRow.current
     if (!row || !chips.length || !('IntersectionObserver' in window)) return
     const io = new IntersectionObserver((es) => es.forEach((e) => { const t = (e.target as HTMLElement).dataset.topic; if (e.isIntersecting && t) track('chips', { t1: t }, 'chip-seen:' + t) }), { threshold: 0.9 })
-    row.querySelectorAll('button').forEach((b) => io.observe(b))
+    row.querySelectorAll('button:not([aria-hidden])').forEach((b) => io.observe(b))
     return () => io.disconnect()
   }, [chips])
-  // (1) The chips arrive one after another once Ooh has landed. Where they wrap (600 px and up) one chip that isn't a pin
-  // shrinks out every 5 s and another ready topic grows in, unless the reader is at the chips or the box. On a phone the
-  // row gives one small nudge so it reads as scrollable.
-  const [outAt, setOutAt] = useState<number | null>(null)
-  const [swapped, setSwapped] = useState<Set<string>>(() => new Set())
-  const hold = useRef(false)
-  const chipsNow = useRef(chips); chipsNow.current = chips
-  const busyNow = useRef(busy); busyNow.current = busy
-  useEffect(() => {
-    if (!c || !chips.length || still() || !wrapped() || (c as any).picks?.length) return   // the top picks stay put
-    const pool = [...c.shelf.filter((x) => x.free), ...c.shelf.filter((x) => !x.free)].map((x) => x.topic)
-    let turn = 0, t2 = 0
-    const t = window.setInterval(() => {
-      const cur = chipsNow.current
-      if (hold.current || busyNow.current || document.hidden) return
-      const slots = cur.map((x, i) => (c.pinned.includes(x) ? -1 : i)).filter((i) => i >= 0)
-      const next = shuffle(pool.filter((p) => !cur.includes(p)))[0]
-      if (!slots.length || !next) return
-      const at = slots[turn++ % slots.length]
-      setOutAt(at)
-      t2 = window.setTimeout(() => { setChips((cs) => cs.map((x, i) => (i === at ? next : x))); setSwapped((sw) => new Set(sw).add(next)); setOutAt(null) }, 230)
-    }, 5000)
-    return () => { window.clearInterval(t); window.clearTimeout(t2) }
-  }, [c, chips.length > 0]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    const row = chipRow.current
-    if (!row || !chips.length || still() || wrapped()) return
-    let t2 = 0
-    const t = window.setTimeout(() => {
-      if (row.scrollWidth <= row.clientWidth + 4 || row.scrollLeft > 0) return
-      row.scrollTo({ left: 56, behavior: 'smooth' })
-      t2 = window.setTimeout(() => row.scrollTo({ left: 0, behavior: 'smooth' }), 650)
-    }, 1900)
-    return () => { window.clearTimeout(t); window.clearTimeout(t2) }
-  }, [chips.length > 0]) // eslint-disable-line react-hooks/exhaustive-deps
+  // (1) The chips arrive one after another once Ooh has landed, then slide past in a slow loop (21 Oct), held while the
+  // mouse or a finger is on them or a book is opening. Under reduce motion they sit still in a row that scrolls.
+  const ticker = chips.length >= 4 && !still()
   // (4) A tapped chip flies into the box and Ooh nods; then the book opens as before. Straight on under reduce motion.
   const fly = (btn: HTMLElement | null, box: HTMLInputElement | null) => new Promise<void>((done) => {
     if (!btn || !box || still() || !btn.animate) return done()
@@ -262,7 +251,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     setTimeout(() => heroInput.current?.focus({ preventScroll: true }), 400)
   }
   // A ready topic starts straight away: no typing, and it opens instantly (it's already written).
-  const pick = async (t: string, via: 'chip' | 'demo', from?: HTMLElement, where: 'hero' | 'final' = 'hero') => {
+  const pick = async (t: string, via: 'chip' | 'demo' | 'nudge', from?: HTMLElement, where: 'hero' | 'final' = 'hero') => {
     track('submit', { via, topic: t })
     setError(null); setBusy(true); setPickedRow(t)
     // the box's typing example stops and clears, so the chip lands in an empty box
@@ -291,21 +280,28 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const typedLine = typedBoxText(allowance)
 
   const pickOf = (t: string) => ((c as any)?.picks as Pick[] | undefined)?.find((p) => p.topic === t)
+  const chipName = (t: string) => pickOf(t)?.name ?? c?.chipNames?.[t] ?? t
+  const nudge = ((c as any)?.picks as Pick[] | undefined)?.[0]
   const box = (where: 'hero' | 'final') => (
     <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
-      <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : finalInput} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type'); lookAtEl(e.target) }} onFocus={(e) => { track('box_focus', undefined, 'box_focus'); (where === 'hero' ? setBoxBusy : setFinalBusy)(true); hold.current = true; lookAtEl(e.target) }} onBlur={(e) => { (where === 'hero' ? setBoxBusy : setFinalBusy)(!!e.target.value); hold.current = false }}
+      <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : finalInput} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type'); lookAtEl(e.target) }} onFocus={(e) => { track('box_focus', undefined, 'box_focus'); (where === 'hero' ? setBoxBusy : setFinalBusy)(true); lookAtEl(e.target) }} onBlur={(e) => { (where === 'hero' ? setBoxBusy : setFinalBusy)(!!e.target.value) }}
         placeholder="e.g. why the Moon changes shape" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
-      {chips.length > 0 && pickOf(chips[0]) && <p className="c1-try">Try one now · free, no sign-up</p>}
       {chips.length > 0 && (
-        <div className={`c1-chips${pickOf(chips[0]) ? ' picks' : ''}`} role="group" aria-label="Or open one that's ready" ref={where === 'hero' ? chipRow : undefined} onPointerEnter={() => { hold.current = true }} onPointerLeave={() => { hold.current = document.activeElement === heroInput.current }}>
-          {chips.map((t, i) => <button key={t} type="button" data-topic={t} className={[pickedRow === t ? 'is-opening' : '', outAt === i ? 'chip-out' : ''].filter(Boolean).join(' ') || undefined} style={{ animationDelay: swapped.has(t) ? '0ms' : `${(where === 'hero' ? 900 : 350) + i * 80}ms` }} disabled={busy} onPointerEnter={(e) => lookAtEl(e.currentTarget)} onFocus={(e) => lookAtEl(e.currentTarget)} data-name={pickOf(t)?.name ?? c?.chipNames?.[t] ?? t} onClick={(e) => pick(t, 'chip', e.currentTarget, where)}>
-            {pickOf(t) ? <>{pickOf(t)!.cover && <img src={pickOf(t)!.cover!} alt="" />}<span className="c1-pick-t"><b>{pickedRow === t ? 'Opening…' : pickOf(t)!.name}</b><small>Chapter 1 · {pickOf(t)!.minutes} min</small></span></>
-              : pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}
-          </button>)}
+        <div className={`c1-chips${ticker ? ' ticker' : ''}`} role="group" aria-label="Or open one that's ready" ref={where === 'hero' ? chipRow : undefined}>
+          <div className="c1-tick" style={{ '--n': chips.length } as React.CSSProperties}>
+            {(ticker ? [0, 1] : [0]).map((copy) => chips.map((t, i) => <button key={`${copy}:${t}`} type="button" data-topic={copy ? undefined : t} aria-hidden={copy ? true : undefined} tabIndex={copy ? -1 : undefined} className={pickedRow === t ? 'is-opening' : undefined} style={{ animationDelay: `${(where === 'hero' ? 900 : 350) + Math.min(i, 5) * 80}ms` }} disabled={busy} onPointerEnter={(e) => lookAtEl(e.currentTarget)} onFocus={(e) => lookAtEl(e.currentTarget)} data-name={chipName(t)} onClick={(e) => pick(t, 'chip', e.currentTarget, where)}>
+              {pickedRow === t ? 'Opening…' : chipName(t)}
+            </button>))}
+          </div>
         </div>
       )}
-      <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>
+      {/* The closing box's button, while the box is empty (21 Oct, Prateek: "instead of show me the way - something nudge in
+          casual fun way - give it a go with public speaking and it will open chapter 1"): the top pick, straight into its
+          chapter 1. Typing turns it back into the box's own button. Copy (agent). */}
+      {where === 'final' && nudge && !topic.trim()
+        ? <button type="button" className="c1-go nudge-go c1-nudge" disabled={busy} onClick={() => pick(nudge.topic, 'nudge', undefined, 'final')}><span>{pickedRow === nudge.topic ? 'Opening…' : `Give ${nudge.name} a go`}</span><GoArrow /></button>
+        : <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>}
       {error && <p className="lp-error" role="alert">{error}</p>}
       {where === 'hero' && slow && pickedRow && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
     </form>
@@ -351,17 +347,17 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
 
       {/* 2. The proof: real chapter 1s, the way readers get them. */}
       {demo && (
-        <section className="lp-demo c-demo">
+        <section className="lp-demo c-demo" ref={demoRef} onPointerDown={stopDemo} onKeyDown={stopDemo}>
           <div className="c-demo-copy">
             <h2>Don't take our word for it. Take a page.</h2>
             <p className="c-lede">These are real first chapters, exactly as readers get them. Pick one and tap through. In five minutes you'll know something most people don't.</p>
             {demos.length > 1 && (
-              <div className="c-demo-pick" role="group" aria-label="Pick a chapter">
+              <div className={`c-demo-pick${demoTurning ? ' turning' : ''}`} role="group" aria-label="Pick a chapter">
                 {demos.map((d, k) => <button key={d.topic} type="button" aria-pressed={k === demoAt} onClick={() => { switchDemo(k); track('demo_tap', { topic: d.topic }) }}>{d.label}</button>)}
               </div>
             )}
           </div>
-          <div key={demo.topic} className={`demo-swap${demoOut ? ` out-${demoOut}` : demoIn ? ` in-${demoIn}` : ''}`}>
+          <div key={demo.topic} onPointerEnter={(e) => { if (e.pointerType === 'mouse') stopDemo() }} className={`demo-swap${demoOut ? ` out-${demoOut}` : demoIn ? ` in-${demoIn}` : ''}`}>
             <Demo book={demo} onOpen={() => pick(demo.topic, 'demo')} busy={busy} freeText={freeText} />
           </div>
         </section>
@@ -382,7 +378,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
         <div className="c-final-main">
           <h2>So, what have you been wondering about?</h2>
           {box('final')}
-          {onExplore && <button type="button" className="c-more" onClick={openShelf}>Or open one from the Shelf →</button>}
+          {onExplore && <button type="button" className="c-more" onClick={openShelf}>Check out our bookshelf →</button>}
         </div>
         {/* The page closes as it opened, with Ooh: above the ask on a phone, in the empty right half on a laptop. It drops in
             once the part is on screen and watches the mouse, the box and the chips, as the top one does. */}

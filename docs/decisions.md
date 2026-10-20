@@ -11,6 +11,11 @@ One entry per decision: what, why, what it replaced, and when to look at it agai
 
 How to add: at the end of a session, append under today's date. A decision Prateek made says "(Prateek)"; one the agent made in his stead says "(agent, authorised)". Never rewrite an old entry; add a new one that supersedes it.
 
+## 2026-10-21
+
+### Decisions
+- **D156. Chips on the move, things that turn by themselves (Prateek: the D153 cover cards "look so bad on mobile and desktop - keep the chips like earlier - make them in ticker"; the wait story should "auto scroll to show next story"; the demo should "move to another chip" if nobody taps; the closing button should "nudge in casual fun way - give it a go with public speaking").** Supersedes D153's cover cards and the 14 Oct chip rotation. The server sends six picks (pins, then free books, then most passes); both homepage boxes show them as text chips sliding past in a loop (two copies end to end, about 4.5 s a chip), held under the mouse, a finger or the focus, and while a book opens. The "Take a page" demo moves to its next chapter every 7 s once on screen (a marigold line fills under the lit chip) until any tap in it or the mouse on the page. The waiting story turns each page after its reading time (0.28 s a word, 6 to 16 s) and brings the next story after the last; a touch, swipe or key hands it to the reader, and its own turning never counts as the reader engaging (which would hold the wait screen). The closing box's button, while the box is empty, reads "Give {top pick} a go" and opens its chapter 1; typing turns it back into "Show me the way". "Or open one from the Shelf" became "Check out our bookshelf". Nothing turns by itself under reduce motion. (Prateek; details agent.) Look again: chip tap rate and demo_tap once a week of real visitors has passed (docs/measure/2026-10-21-drop-offs.md has the before numbers).
+
 ## 2026-10-20
 
 ### Decisions

@@ -5,6 +5,15 @@ What each day taught us, not what shipped (that's PROGRESS.md). Every build day 
 Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-of-sprint write-up. A message that starts with "learned:" lands under "Noted during the day" at the bottom; fold those into the day before the session ends.
 
 
+## Wed 21 Oct, the night (day 20; things that move on their own)
+
+### Product/Tech
+- Thought: cover cards would pull harder than text chips because a picture sells the book. Learned: on a phone three cards took a whole screen under the box and read as a shop, and Prateek called them bad on both sizes within a day; six moving chips took one 44 px row. Now: under the box, the lightest thing that says "tap me"; pictures belong on the page the tap opens.
+- Thought: a carousel that turns itself just needs a timer. Learned: our own smooth scroll fired the scroll handler mid-slide, which would have counted every automatic turn as the reader engaging and held the wait screen open past chapter 1 being ready. Now: anything that moves on its own marks its own motion (a 900 ms "ours" window) so it never reads as the person.
+
+### GTM
+- Learned: of 57 real visitors in the week to 21 Oct, 33 left within 15 s and 23 of the 43 who never started a book never scrolled (docs/measure/2026-10-21-drop-offs.md). Now: whatever the first screen offers has to work without a scroll and without a decision; that's why the chips move and the demo turns.
+
 ## Tue 20 Oct, the day (day 19; the wait that fills)
 
 ### Product/Tech

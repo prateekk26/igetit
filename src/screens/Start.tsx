@@ -85,7 +85,12 @@ export default function Start({ onBack, initialTopic = '', status, question, int
   const writing = status === 'writing'
   const levelRef = useRef<HTMLDivElement>(null)
   const [storySeed, setStorySeed] = useState(() => Math.floor(Math.random() * 1000))
-  const story = useQuery(api.landing.waitStory, writing ? { seed: storySeed, exclude: (topic.trim() || initialTopic) || undefined } : 'skip') as WaitStory | null | undefined
+  const fresh = useQuery(api.landing.waitStory, writing ? { seed: storySeed, exclude: (topic.trim() || initialTopic) || undefined } : 'skip') as WaitStory | null | undefined
+  // The story on screen stays while the next one loads, so turning to it never blanks the screen (21 Oct).
+  const held = useRef<{ story: WaitStory; seed: number } | null>(null)
+  if (fresh) held.current = { story: fresh, seed: storySeed }
+  else if (fresh === null || !writing) held.current = null
+  const story = held.current?.story ?? null
   const [added, setAdded] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   // Smooth only when the phone allows motion (UX review 9 Oct: these two scrolls ignored "reduce motion").
@@ -175,7 +180,7 @@ export default function Start({ onBack, initialTopic = '', status, question, int
         {story && (
           <section className="wait-story" aria-label="A story while you wait">
             <p className="wait-story-kicker">While you wait, a story from another handbook</p>
-            <StoryCarousel key={`${story.key}:${story.title ?? ''}:${storySeed}`} story={story} onEngaged={onEngaged} />
+            <StoryCarousel key={`${story.key}:${story.title ?? ''}:${held.current?.seed}`} story={story} onEngaged={onEngaged} onDone={() => setStorySeed((x) => x + 7)} />
             <p className="note wait-story-from">From <strong>{story.topic}</strong>{story.chapter ? `, ${story.chapter}` : ''}.</p>
             <div className="wait-story-actions">
               {added === story.topic ? <span className="wait-story-added">Added to Your handbooks.</span>
@@ -402,21 +407,39 @@ type WaitStory = { topic: string; key: string; title: string | null; frames: str
 // The story as pages (D29, 9 Oct, Prateek): one frame at a time, swiped or stepped with the arrows, dots underneath. The
 // picture sits on the first frame and the source line on the last. Native scroll-snap does the swiping, so a slow phone
 // has nothing to animate; under reduced motion the arrows jump instead of sliding. A one-frame story (today's) is one page.
-function StoryCarousel({ story, onEngaged }: { story: WaitStory; onEngaged?: () => void }) {
+// 21 Oct (Prateek: "dont only wait for user to click next story… auto scroll to show next story from another handbook"):
+// each page turns by itself after its reading time (a line fills underneath), and after the last page the next story
+// comes in. A touch, a swipe or a key hands it to the reader for this story. Nothing turns by itself under reduced motion.
+function StoryCarousel({ story, onEngaged, onDone }: { story: WaitStory; onEngaged?: () => void; onDone?: () => void }) {
   const frames = story.frames.length ? story.frames : [story.text]
   const [i, setI] = useState(0)
   const [picReady, setPicReady] = useState(false)
   const trackRef = useRef<HTMLDivElement>(null)
   const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const [auto, setAuto] = useState(!reduced && !!onDone)
+  const sliding = useRef(0)   // until then, scrolling is ours, not the reader's
+  const turn = (k: number) => {
+    const el = trackRef.current; if (!el) return
+    sliding.current = Date.now() + 900
+    el.scrollTo({ left: k * el.clientWidth, behavior: reduced ? 'auto' : 'smooth' })
+    setI(k)
+  }
   const go = (n: number) => {
     const k = Math.max(0, Math.min(frames.length - 1, n))
-    const el = trackRef.current; if (!el) return
-    el.scrollTo({ left: k * el.clientWidth, behavior: reduced ? 'auto' : 'smooth' })
-    setI(k); if (k > 0) onEngaged?.()
+    turn(k); if (k > 0) onEngaged?.()
   }
-  const onScroll = () => { const el = trackRef.current; if (!el) return; const k = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (k !== i) { setI(k); if (k > 0) onEngaged?.() } }
+  // reading time: about 0.28 s a word plus a breath, between 6 and 16 s a page
+  const words = (frames[i] ?? '').split(/\s+/).length + (i === 0 && story.title ? 6 : 0)
+  const dwell = Math.max(6000, Math.min(16000, 2500 + words * 280))
+  useEffect(() => {
+    if (!auto) return
+    const t = window.setTimeout(() => { if (i < frames.length - 1) turn(i + 1); else onDone?.() }, dwell)
+    return () => window.clearTimeout(t)
+  }, [auto, i, dwell]) // eslint-disable-line react-hooks/exhaustive-deps
+  const mine = () => { if (auto) setAuto(false) }
+  const onScroll = () => { const el = trackRef.current; if (!el || Date.now() < sliding.current) return; const k = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (k !== i) { setI(k); if (k > 0) onEngaged?.() } }
   return (
-    <div className="wait-carousel">
+    <div className="wait-carousel" onPointerDown={mine} onKeyDown={mine} onWheel={mine}>
       <div className="wait-track" ref={trackRef} onScroll={onScroll} tabIndex={0} aria-roledescription="carousel" aria-label={`${story.title ?? story.topic}: ${frames.length} page${frames.length === 1 ? '' : 's'}`}
         onKeyDown={(e) => { if (e.key === 'ArrowRight') { e.preventDefault(); go(i + 1) } if (e.key === 'ArrowLeft') { e.preventDefault(); go(i - 1) } }}>
         {frames.map((f, k) => (
@@ -429,6 +452,7 @@ function StoryCarousel({ story, onEngaged }: { story: WaitStory; onEngaged?: () 
           </article>
         ))}
       </div>
+      {auto && <div className="wait-timer" aria-hidden="true"><span key={i} style={{ animationDuration: `${dwell}ms` }} /></div>}
       {frames.length > 1 && (
         <div className="wait-nav">
           <button type="button" className="wait-arrow" onClick={() => go(i - 1)} disabled={i === 0} aria-label="Previous page">‹</button>
