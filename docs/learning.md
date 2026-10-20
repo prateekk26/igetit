@@ -89,6 +89,15 @@ Day 1 is Fri 2 Oct (kickoff); Sat 17 Oct is submission.
 - **Post opener:** "We moved to a shiny new domain. Our payment provider quietly refused every rupee for six days."
 
 
+## Tue 20 Oct (day 19)
+
+### A session's lessons, written six days after the session
+- **Realised:** 19 Oct (day 18), when Prateek asked "Anything to do here?" and lessons.md had no 13 Oct section.
+- **Could have known:** 13 Oct (day 12), at the end of the session. The rule (AGENTS.md §2) says lessons go in before a session ends; the session ended on its report to Prateek, and the rule never came up.
+- **What it cost:** the lessons from D94 to D96 (8 of them, 2 with real numbers: 0 of 536 words using a member's note, 203 handbooks asking chapter 1's quiz again) were missing from the file on submission day, 17 Oct. Another session's 13 Oct note sat unfiled at the bottom for 6 days.
+- **Now:** the lessons go in before the final report, as the last step of the work, not something done after it.
+- **Post opener:** "My AI coder followed every rule I wrote, except the one about writing down what it learned."
+
 ## Tue 13 Oct (day 12)
 
 ### Our posts talked about the build instead of what a reader gets
