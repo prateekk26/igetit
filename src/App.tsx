@@ -617,6 +617,7 @@ export default function App() {
           outcomeLine={ch?.outcomeLine ?? plan?.chapters?.[doneN - 1]?.outcome ?? ''}
           nextTitle={plan?.chapters?.[doneN]?.title}
           nextHook={plan?.chapters?.[doneN]?.hook}
+          nextMinutes={plan?.chapters?.[doneN]?.minutes}
           sources={plan?.sources}
           signedIn={isAuthenticated}
           tomorrowAt={progress?.tomorrowAt}

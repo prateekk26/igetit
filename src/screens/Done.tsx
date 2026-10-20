@@ -22,6 +22,7 @@ type Props = {
   nextTitle?: string
   nextHook?: string
   nextPicture?: string   // the next chapter's first picture, for the Up next card (7 Oct)
+  nextMinutes?: number   // the next chapter's reading minutes, on the Up next card (20 Oct)
   sources?: { who: string; what: string; why?: string }[]
   signedIn: boolean
   tomorrowAt?: string
@@ -67,7 +68,7 @@ function pretty(t: string) {
 }
 
 // The rung lights. Sign-in is asked only here, after the night is done.
-export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture: _nextPicture, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats: _stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false, reread = false, nextLocked = false }: Props) {
+export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, nextMinutes, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats: _stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false, reread = false, nextLocked = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
   const [stay, setStay] = useState(false)
   const last = n >= total
@@ -90,7 +91,7 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
   // 9 Oct: it dropped the reader on the handbook page to wait).
   const nextBtn = (label: string, ghost = false) => nextWriting && !nextReady && !nextFailed
     ? <button className="btn" aria-disabled="true" aria-busy="true" onClick={() => setWant(true)}>{want ? `Opening chapter ${n + 1} as soon as it's written…` : `Writing chapter ${n + 1}… about a minute`}</button>
-    : <button className={ghost ? 'btn btn-ghost' : 'btn c-go'} onClick={onNext}><span>{nextFailed ? `Chapter ${n + 1} didn't write. Try again` : label}</span>{!ghost && <GoArrow />}</button>
+    : <button className={ghost ? 'btn btn-ghost' : `btn c-go${nextReady && !nextFailed ? ' nudge-go keep-glow' : ''}`} onClick={() => { track('next_tap', { n, via: 'button' }); onNext?.() }}><span>{nextFailed ? `Chapter ${n + 1} didn't write. Try again` : label}</span>{!ghost && <GoArrow />}</button>
   return (
     <>
       <Confetti fire />
@@ -153,8 +154,27 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
           <button type="button" className="quiet" onClick={() => { setAuto(false); setAutoState(false); track('autoplay', { v: 'off' }) }}>Stop</button>
         </p>
       )}
+      {/* Keep the groove (20 Oct, Prateek: "after chapter 1 users don't move to chapter 2 … keep the groove on with a little
+          nudge"; 18 of 43 opened chapter 2): the next chapter as a card worth tapping, its picture, title, teaser and minutes,
+          under a row of dots with this chapter lit and the next one pulsing. The whole card opens it, as the bar's button
+          does. Copy (agent). */}
       {!last && nextTitle && !wall && (
-        <p className="c9-next" aria-label={`Up next: chapter ${n + 1}`}>Next · chapter {n + 1}: {nextTitle}{!nextReady && !nextFailed && !quick && onNext ? ' · being written for you now, about a minute' : ''}</p>
+        <section className="c9-up" aria-label={`Up next: chapter ${n + 1}`}>
+          {total > 1 && total <= 10 && (
+            <p className="c9-path" aria-hidden="true">
+              {Array.from({ length: total }, (_, k) => <i key={k} className={new Set([...passed, n]).has(k + 1) ? 'on' : k + 1 === n + 1 ? 'next' : undefined} style={{ ['--k' as any]: k }} />)}
+            </p>
+          )}
+          <button type="button" className="c9-up-card" disabled={!onNext || (!nextReady && !nextFailed)} onClick={() => { track('next_tap', { n, via: 'card' }); onNext?.() }}>
+            {nextPicture && <img src={nextPicture} alt="" />}
+            <span className="c9-up-t">
+              <small>Up next · chapter {n + 1}{nextMinutes ? ` · ${nextMinutes} min` : ''}</small>
+              <b>{nextTitle}</b>
+              {nextHook && <span>{nextHook}</span>}
+              {!nextReady && !nextFailed && onNext && <span className="c9-up-wait">Being written for you now, about a minute</span>}
+            </span>
+          </button>
+        </section>
       )}
       {last && <p className="lede" style={{ marginTop: 'var(--l)' }}>{left > 0 ? `That's the last chapter. ${left === 1 ? 'One earlier chapter is' : `${left} earlier chapters are`} still yours to read, on the handbook page.` : quick ? "That's all of it. Quick and done." : total === 7 ? "That's the whole handbook. Seven chapters, done." : `That's the whole handbook. ${total} chapters, done.`}</p>}
       {last && learnMore}
