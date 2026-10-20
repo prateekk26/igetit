@@ -299,7 +299,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
       {/* The closing box's button, while the box is empty (21 Oct, Prateek: "instead of show me the way - something nudge in
           casual fun way - give it a go with public speaking and it will open chapter 1"): the top pick, straight into its
           chapter 1. Typing turns it back into the box's own button. Copy (agent). */}
-      {where === 'final' && nudge && !topic.trim()
+      {where === 'final' && nudge && (!topic.trim() || pickedRow === nudge.topic)
         ? <button type="button" className="c1-go nudge-go c1-nudge" disabled={busy} onClick={() => pick(nudge.topic, 'nudge', undefined, 'final')}><span>{pickedRow === nudge.topic ? 'Opening…' : `Give ${nudge.name} a go`}</span><GoArrow /></button>
         : <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>}
       {error && <p className="lp-error" role="alert">{error}</p>}
