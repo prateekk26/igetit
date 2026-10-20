@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { vt } from './lib/vt'
 import { useReadyPing } from './lib/readyPing'
 import { BOOK_MS, CHAPTER_MS } from './components/WaitBar'
 import AuthButtons from './components/AuthButtons'
@@ -807,6 +808,8 @@ function LinkOpening({ book }: { book: { key: string; topic: string; cover: stri
 }
 
 // bare: the screen draws its own top bar, as its C board does (the Shelf, C12).
+// Tabs slide in their order, left to right (20 Oct, D155); the marigold dot glides to the new tab.
+const TAB_ORDER = ['tonight', 'known', 'shelf']
 function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { children: React.ReactNode; onSignOut?: () => Promise<void> | void; rail?: React.ReactNode; back?: { label: string; onClick: () => void }; hideShelf?: boolean; tab?: 'tonight' | 'known' | 'shelf'; bare?: boolean }) {
   // The member mark (7 Oct): paying should show, on every screen.
   const member = useQuery(api.membership.status, { deviceToken: deviceToken() })?.member
@@ -859,7 +862,7 @@ function Shell({ children, onSignOut, rail, back, hideShelf, tab, bare }: { chil
       {tab && (
         <nav className="tabbar" aria-label="Main">
           {([['tonight', 'Tonight', goTonight], ['known', 'What you know', goKnown], ['shelf', 'Shelf', goShelf]] as const).map(([k, label, go]) => (
-            <button key={k} type="button" aria-current={tab === k ? 'page' : undefined} onClick={() => { if (tab !== k) go?.() }}><span className="tabbar-dot" aria-hidden="true" />{label}</button>
+            <button key={k} type="button" aria-current={tab === k ? 'page' : undefined} onClick={() => { if (tab !== k && go) vt(go, TAB_ORDER.indexOf(k) > TAB_ORDER.indexOf(tab) ? 'tab-fwd' : 'tab-back') }}><span className="tabbar-dot" aria-hidden="true" />{label}</button>
           ))}
         </nav>
       )}

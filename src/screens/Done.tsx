@@ -11,6 +11,7 @@ import { subscribe } from '../lib/push'
 import HomeScreen from '../components/HomeScreen'
 import type { Id } from '../../convex/_generated/dataModel'
 import Ooh, { GoArrow } from '../components/Ooh'
+import { useCountUp } from '../lib/motion'
 
 type Props = {
   onReplay?: () => void   // C9's "Play again": read this chapter again
@@ -70,6 +71,10 @@ function pretty(t: string) {
 // The rung lights. Sign-in is asked only here, after the night is done.
 export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed, outcomeLine, nextTitle, nextHook, nextPicture, nextMinutes, sources: _sources, signedIn, tomorrowAt, onKeep, onPickTime, onContinue, onPricing, stats: _stats, nextReady, onNext, handbookId, deviceToken, onRate, whatsNext, learnMore, freeChapters = 2, priceLine, onShelf, quick = false, isMember = false, nextWriting = false, starred = false, reread = false, nextLocked = false }: Props) {
   const [rated, setRated] = useState<string | null>(null)
+  // Chapter 1, the first time (20 Oct, D155): the big moment. Ooh jumps and spins after landing, dot 1 stamps on and
+  // "1 of N done" counts up; later chapters keep the smaller celebration.
+  const firstTime = n === 1 && !reread && total > 1
+  const doneCount = useCountUp(new Set([...passed, n]).size, 600, 1500)
   const [stay, setStay] = useState(false)
   const last = n >= total
   // The wall (Prateek, 8 Oct night, Shaktimaan's advice): a visitor's free chapters are read, so the next chapter opens
@@ -97,7 +102,7 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
       <Confetti fire />
       {/* C9 (14 Oct, the C board "Chapter done"): Ooh lands on its "i" on a marigold band, then the topic, the line, and
           what was added to what they know. The rung bar stays under it, small. Copy (agent). */}
-      <section className="c9-stage">
+      <section className={`c9-stage${firstTime ? ' first' : ''}`}>
         <div className="c9-band">
           {onReplay && <button type="button" className="c9-band-btn" onClick={onReplay}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7" /><path d="M4 4v4h4" /></svg>Play again</button>}
           <button type="button" className="c9-band-btn c9-close" onClick={onContinue} aria-label="Back to the handbook"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
@@ -119,12 +124,11 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
           under a row of dots with this chapter lit and the next one pulsing. The whole card opens it, as the bar's button
           does. Copy (agent). */}
       {!last && nextTitle && !wall && (
-        <section className="c9-up" aria-label={`Up next: chapter ${n + 1}`}>
-          {total > 1 && total <= 10 && (
-            <p className="c9-path" aria-hidden="true">
-              {Array.from({ length: total }, (_, k) => <i key={k} className={new Set([...passed, n]).has(k + 1) ? 'on' : k + 1 === n + 1 ? 'next' : undefined} style={{ ['--k' as any]: k }} />)}
-            </p>
-          )}
+        <section className={`c9-up${firstTime ? ' first' : ''}`} aria-label={`Up next: chapter ${n + 1}`}>
+          <p className="c9-path">
+            {total <= 10 && Array.from({ length: total }, (_, k) => <i key={k} aria-hidden="true" className={new Set([...passed, n]).has(k + 1) ? 'on' : k + 1 === n + 1 ? 'next' : undefined} style={{ ['--k' as any]: k }} />)}
+            <small>{doneCount} of {total} done</small>
+          </p>
           <button type="button" className="c9-up-card" disabled={!onNext || (!nextReady && !nextFailed)} onClick={() => { track('next_tap', { n, via: 'card' }); onNext?.() }}>
             {nextPicture && <img src={nextPicture} alt="" />}
             <span className="c9-up-t">

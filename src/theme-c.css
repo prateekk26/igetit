@@ -1448,3 +1448,58 @@ html.snap-page main > h1:first-of-type, html.snap-page main .sub:first-child { s
 .keep-glow { animation: keep-glow 4s ease-out 5s infinite; }
 @keyframes keep-glow { 0% { box-shadow: 0 0 0 0 rgba(242, 169, 59, 0.6); } 40%, 100% { box-shadow: 0 0 0 16px rgba(242, 169, 59, 0); } }
 @media (prefers-reduced-motion: reduce) { .c9-up, .c9-path i.on, .c9-path i.next, .keep-glow { animation: none !important; } }
+
+/* ---------- Page motion, 20 Oct (D155). All off under reduce motion (lib/vt.ts skips the transitions too). ---------- */
+/* 7. Every main button squishes a little when pressed and springs back */
+.btn, .c4-go, .c1-go, .story-finish, .plan-card, .c12-book, .c3-row, .known-book button, .c4-books button { transition: transform 160ms cubic-bezier(0.3, 0.7, 0.3, 1.5); }
+.btn:active:not(:disabled), .c4-go:active, .c1-go:active:not(:disabled), .story-finish:active:not(:disabled) { transform: scale(0.96); }
+.c12-book:active, .c4-books button:active, .known-book button:active, button.c3-row:active { transform: scale(0.98); }
+/* 8. Menus and sheets spring up with a small overshoot */
+.sheet { animation: sheet-up 380ms cubic-bezier(0.25, 1.25, 0.45, 1) both; }
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@media (min-width: 1024px) { .sheet:not(.pop) { animation-name: sheet-up-l; } @keyframes sheet-up-l { from { transform: translate(-50%, 110%); } to { transform: translate(-50%, 0); } } }
+/* 5. Finish: Ooh hops off the page as the button squishes */
+.story-end-ooh.jump .ooh { animation: ooh-jump 520ms cubic-bezier(0.3, 0.7, 0.3, 1.3) both; }
+@keyframes ooh-jump { 0% { transform: none; } 30% { transform: translateY(-22px) rotate(-8deg) scale(1.08); } 60% { transform: translateY(2px) scale(1.1, 0.9); } 100% { transform: none; } }
+/* 4. The handbook page arrives: the picture eases in from closer, then the words, then the rows (Plan.tsx sets the delays) */
+.c3-page.arrive .c3-pic { animation: pic-zoom 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes pic-zoom { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
+.c3-page.arrive .c3 > * { animation: c1-rise 420ms ease-out both; }
+.c3-page.arrive .c3 > :nth-child(2) { animation-delay: 80ms; } .c3-page.arrive .c3 > :nth-child(3) { animation-delay: 160ms; } .c3-page.arrive .c3 > :nth-child(n+4) { animation-delay: 220ms; }
+.c3-page.arrive .c3-h { animation: c1-rise 420ms ease-out 280ms both; }
+/* 3. Tabs slide in their order; the bar and the top stay put while the page moves, and the dot glides */
+html[data-vt^="tab"] .tabbar { view-transition-name: tabbar; }
+html[data-vt^="tab"] .hub-top { view-transition-name: hubtop; }
+html[data-vt^="tab"] .tabbar [aria-current="page"] .tabbar-dot { view-transition-name: tabdot; }
+::view-transition-group(tabdot) { animation-duration: 340ms; animation-timing-function: cubic-bezier(0.3, 0.7, 0.3, 1.2); }
+html[data-vt="tab-fwd"]::view-transition-old(root) { animation: vt-out-l 220ms ease-in both; }
+html[data-vt="tab-fwd"]::view-transition-new(root) { animation: vt-in-r 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+html[data-vt="tab-back"]::view-transition-old(root) { animation: vt-out-r 220ms ease-in both; }
+html[data-vt="tab-back"]::view-transition-new(root) { animation: vt-in-l 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes vt-out-l { to { opacity: 0; transform: translateX(-40px); } }
+@keyframes vt-out-r { to { opacity: 0; transform: translateX(40px); } }
+@keyframes vt-in-r { from { opacity: 0; transform: translateX(48px); } }
+@keyframes vt-in-l { from { opacity: 0; transform: translateX(-48px); } }
+/* 1. A book's cover grows into the picture at the top of its page */
+html[data-vt="book"] .c3-pic { view-transition-name: book-pic; animation: none; }
+.c3-page.grew .c3-pic { animation: none !important; }
+::view-transition-group(book-pic) { animation-duration: 420ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+::view-transition-old(book-pic), ::view-transition-new(book-pic) { height: 100%; object-fit: cover; }
+/* 2. A chapter opens out of its row (or Tonight's card) */
+html[data-vt="chap"] .story-frame { view-transition-name: chap; }
+.story-frame.vt-in { animation: none; }
+::view-transition-group(chap) { animation-duration: 440ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+::view-transition-old(chap) { animation: vt-fade-out 200ms ease-out both; }
+@keyframes vt-fade-out { to { opacity: 0; } }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 260ms; }
+@media (prefers-reduced-motion: reduce) {
+  .btn, .c4-go, .c1-go, .story-finish, .plan-card, .c12-book, .c3-row, .known-book button, .c4-books button { transition: none; }
+  .sheet, .story-end-ooh.jump .ooh, .c3-page.arrive .c3-pic, .c3-page.arrive .c3 > *, .c3-page.arrive .c3-h { animation: none !important; }
+}
+/* 6. Chapter 1, the first time: Ooh jumps and spins once it has landed, dot 1 stamps on, the count runs up */
+.c9-path { align-items: center; }
+.c9-path small { margin-left: 6px; font: 700 14px var(--sans); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.c9-stage.first .c9-ooh { animation-name: c9-land, ooh-spin; animation-duration: 1100ms, 900ms; animation-delay: 0s, 1250ms; animation-timing-function: ease-out, cubic-bezier(0.3, 0.7, 0.3, 1.2); animation-fill-mode: both, none; }
+@keyframes ooh-spin { 0% { transform: none; } 40% { transform: translateY(-46px) rotateY(180deg); } 72% { transform: translateY(0) rotateY(360deg) scale(1.1, 0.9); } 100% { transform: rotateY(360deg); } }   /* a coin-flip spin: Ooh turns on its own axis, whatever its transform-origin */
+.c9-up.first .c9-path i.on { animation: stamp 560ms cubic-bezier(0.3, 0.7, 0.3, 1.3) 1.55s both; }
+@media (prefers-reduced-motion: reduce) { .c9-stage.first .c9-ooh, .c9-up.first .c9-path i.on { animation: none !important; } }

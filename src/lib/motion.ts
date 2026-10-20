@@ -28,20 +28,20 @@ export function useReveal(box: RefObject<HTMLElement | null>, key?: unknown) {
 }
 
 // A number that counts up from 0 to its value over `ms`, once per mount (and again when the value changes).
-export function useCountUp(to: number, ms = 700) {
+export function useCountUp(to: number, ms = 700, delay = 0) {
   const [n, setN] = useState(() => (still() ? to : 0))
   const from = useRef(0)
   useEffect(() => {
     if (still() || to === from.current) { setN(to); from.current = to; return }
-    const a = from.current, t0 = performance.now()
+    const a = from.current, t0 = performance.now() + delay
     let raf = 0
     const step = (t: number) => {
-      const p = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - p, 3)
+      const p = Math.max(0, Math.min(1, (t - t0) / ms)), e = 1 - Math.pow(1 - p, 3)
       setN(Math.round(a + (to - a) * e))
       if (p < 1) raf = requestAnimationFrame(step); else from.current = to
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [to, ms])
+  }, [to, ms, delay])
   return n
 }

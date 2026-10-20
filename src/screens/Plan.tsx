@@ -3,6 +3,7 @@ import ActionBar from '../components/ActionBar'
 import { track } from '../lib/track'
 import Ooh, { GoArrow } from '../components/Ooh'
 import { useCountUp } from '../lib/motion'
+import { nameFor, vt } from '../lib/vt'
 
 type Chapter = { n: number; title: string; covers: string; outcome: string; hook?: string; minutes?: number }
 // A month-long handbook (D65, 28 chapters) groups its path into weeks; only the reader's week opens by default.
@@ -71,6 +72,16 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
   useEffect(() => { if (!wasReady.current && chapterReady) setJustReady(true); wasReady.current = chapterReady }, [chapterReady])
   const resuming = nextUp?.kind === 'resume'
   const doneN = useCountUp(passed.length, 600)   // "3 of 7 done" counts up (20 Oct motion)
+  // The page arrives (20 Oct, D155): the picture eases in from a little closer, then the title, Ooh's line and the rows one
+  // after another. Once a visit per book, so coming back to it is instant.
+  const seenPlanKey = `igetit.planSeen.${bookId ?? topic}`
+  const [arrive] = useState(() => { try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches && !sessionStorage.getItem(seenPlanKey) } catch { return false } })
+  useEffect(() => { try { sessionStorage.setItem(seenPlanKey, '1') } catch { /* a convenience only */ } }, [seenPlanKey])
+  // Opened by a cover growing into the picture (D155): the picture is already there, so its own fade-in is skipped.
+  const [grew] = useState(() => document.documentElement.dataset.vt === 'book')
+  // A chapter opens out of its row: the row (or, from the bar's button, the next chapter's row) grows into the chapter.
+  const openFrom = (el: Element | null | undefined, go: () => void) => { nameFor(el, 'chap'); vt(go, 'chap') }
+  const startHere = () => openFrom(document.querySelector('.c3-row.now'), onStart)
   // "Later, if you keep going: …" under "Later peaks:" read "Later peaks: Later, …" (UX review 9 Oct): the model's own
   // opener is dropped.
   const weekOf = (n: number) => plan.weeks?.findIndex((w) => n >= w.from && n <= w.to) ?? -1
@@ -95,7 +106,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
         <span className="c3-meta">{total} chapter{total === 1 ? '' : 's'}{totalMin ? ` · about ${totalMin} min` : ''}</span>
       </header>
       {passed.length >= total && whatsNext}
-      <div className="c3-page">
+      <div className={`c3-page${arrive ? ' arrive' : ''}${grew ? ' grew' : ''}`}>
       {coverPicture && <img className="c3-pic" src={coverPicture} alt="" />}
       <div className="c3-side-col">
       <section className="c3">
@@ -139,9 +150,9 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
           // Every row answers a tap (Prateek, 9 Oct: "the chapters in the path don't seem clickable"): finished and skipped
           // chapters open, the next one starts, chapters ahead show a preview; they open one at a time.
           return [head,
-            <li key={c.n} style={arriving ? { ['--rise-delay' as any]: `${(c.n - 1) * 0.25}s` } : undefined}>
-              {(done || skipped) && onOpenChapter ? <button type="button" className={cls} onClick={() => onOpenChapter(c.n)}>{inner}</button>
-                : now && chapterReady ? <button type="button" className={cls} onClick={onStart}>{inner}</button>
+            <li key={c.n} style={arriving ? { ['--rise-delay' as any]: `${(c.n - 1) * 0.25}s` } : arrive ? { ['--rise-delay' as any]: `${0.35 + Math.min(c.n - 1, 8) * 0.06}s` } : undefined}>
+              {(done || skipped) && onOpenChapter ? <button type="button" className={cls} onClick={(e) => { const el = e.currentTarget; openFrom(el, () => onOpenChapter(c.n)) }}>{inner}</button>
+                : now && chapterReady ? <button type="button" className={cls} onClick={(e) => openFrom(e.currentTarget, onStart)}>{inner}</button>
                 : ahead && onTapChapter ? <button type="button" className={cls} onClick={() => onTapChapter(c.n)} aria-label={`Chapter ${c.n}: ${c.title}. Opens after chapter ${c.n - 1}. Preview`}>{inner}</button>
                 : <div className={cls}>{inner}</div>}
             </li>]
@@ -183,7 +194,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
           </>
         ) : (
           declined && passed.length > 0 && onOpenChapter ? <button className="btn c-go" onClick={() => onOpenChapter(passed[passed.length - 1])}><span>{`Read chapter ${passed[passed.length - 1]} again`}</span><GoArrow /></button>
-          : <button className={`btn c-go${justReady ? ' ready-pop' : ''}${chapterReady ? ' nudge-go' : ''}`} onClick={onStart} disabled={!chapterReady}><span>{passed.length >= total ? `Read chapter ${current} again` : needsAccount ? `Start chapter ${current} (free account)` : resuming ? `Continue chapter ${current}` : `Start chapter ${current}`}</span><GoArrow /></button>
+          : <button className={`btn c-go${justReady ? ' ready-pop' : ''}${chapterReady ? ' nudge-go' : ''}`} onClick={startHere} disabled={!chapterReady}><span>{passed.length >= total ? `Read chapter ${current} again` : needsAccount ? `Start chapter ${current} (free account)` : resuming ? `Continue chapter ${current}` : `Start chapter ${current}`}</span><GoArrow /></button>
         )}
         {justReady && <div className="waitbar full" aria-hidden="true"><span /></div>}
       </ActionBar>

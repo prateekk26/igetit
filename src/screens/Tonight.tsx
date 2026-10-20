@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Ooh, { GoArrow } from '../components/Ooh'
 import { nameOf } from '../lib/name'
+import { nameFor, vt } from '../lib/vt'
 
 // Tonight (C4, 14 Oct; Prateek: "follow the UI given and use our backend to populate the data"): the home of a reader
 // coming back. "Tonight" and the date, Ooh saying what's next, tonight's chapter of the book they read last on a marigold
@@ -47,7 +48,7 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
               <span className="c4-kicker">Chapter {book.current} of {total}</span>
               <h2>{book.nextTitle ?? book.topic}</h2>
               <span className="c4-meta">{midway ? 'Partway through' : `${book.nextMinutes ?? 5} minutes${book.current > 1 ? ', after two quick questions' : ''}`}</span>
-              <button type="button" className="c4-go nudge-go" onClick={() => onContinue(book._id)}><span>{midway ? 'Continue' : 'Start'}</span><GoArrow /></button>
+              <button type="button" className="c4-go nudge-go" onClick={(e) => { nameFor(e.currentTarget.closest('.c4-card'), 'chap'); vt(() => onContinue(book._id), 'chap') }}><span>{midway ? 'Continue' : 'Start'}</span><GoArrow /></button>
             </div>
             {book.cover && <img className="c4-card-pic" src={book.cover} alt="" />}
           </div>
@@ -60,7 +61,7 @@ export default function Tonight({ rows, onContinue, onOpen, onManage, onNew }: P
             const t = r.total ?? 7, done = r.passed >= t, on = r._id === book?._id
             return (
               <li key={r._id} className={on ? 'c4-on' : undefined}>
-                <button type="button" onClick={() => onOpen(r._id)}>
+                <button type="button" onClick={(e) => { nameFor(e.currentTarget.querySelector('img'), 'book-pic'); vt(() => onOpen(r._id), 'book') }}>
                   {r.cover ? <img src={r.cover} alt="" /> : <span className="c4-blank" aria-hidden="true">{nameOf(r.topic).slice(0, 1)}</span>}
                   <span className="c4-book-t">
                     <b>{nameOf(r.topic)}{on && <span className="c4-on-tag">Tonight</span>}</b>

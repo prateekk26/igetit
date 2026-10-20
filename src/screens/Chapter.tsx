@@ -213,6 +213,8 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   const [sure, setSure] = useState<'sure' | 'notsure' | null>(null)
   const [autoAnswered, setAutoAnswered] = useState(false)   // auto-play filled this answer in: no praise for it
   const dialogRef = useRef<HTMLDivElement>(null)
+  // Opened out of a row on the handbook page (D155): the row grew into the chapter, so the book-opening swing is skipped.
+  const [grewIn] = useState(() => document.documentElement.dataset.vt === 'chap')
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
     dialogRef.current?.focus({ preventScroll: true })
@@ -263,6 +265,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
 
   const finish = async () => {
     setFinishing(true); setError(null)
+    dialogRef.current?.querySelector('.story-end-ooh')?.classList.add('jump')   // Ooh hops as the button squishes (20 Oct, D155)
     const tries = [...firstTries.current.values()]
     const stats = { minutes: Math.max(1, Math.round((Date.now() - openedAt.current) / 60000)), right: tries.filter(Boolean).length, total: tries.length, reread: wasPassed }
     try {
@@ -524,7 +527,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
         if (e.shiftKey && (active === first || !dialogRef.current.contains(active))) { e.preventDefault(); last.focus() }
         else if (!e.shiftKey && (active === last || !dialogRef.current.contains(active))) { e.preventDefault(); first.focus() }
       }}>
-      <div className={`story-frame tone-${frame.tone}`} onClick={onTap} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className={`story-frame tone-${frame.tone}${grewIn ? ' vt-in' : ''}`} onClick={onTap} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="story-bars" role="progressbar" aria-label="Cards in this chapter" aria-valuemin={1} aria-valuemax={frames.length} aria-valuenow={i + 1}>
           {frames.map((_, k) => <span key={k} className={k < i ? 'on' : k === i ? 'now' : ''} />)}
         </div>

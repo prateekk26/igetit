@@ -15,6 +15,8 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 
 - Thought: `tsc -p tsconfig.app.json` is the build's type check. Learned: the build runs `tsc -b`, which also checks convex/ with stricter settings; a Convex push passed, the site build failed, and prod ran new functions on the old page for a few minutes. Now: `npx tsc -b` before every deploy.
 
+- Thought: an entrance animation and a page-to-page morph can share an element. Learned: turning the entrance off with a rule that only applies during the transition makes it play the moment the transition ends (the picture blinked in again after growing into place). Now: a screen reached by a morph remembers it in its own state and skips its entrance for good.
+
 - Thought: checking motion needs a real book each time (₹15 to ₹30 on dev). Learned: a throwaway preview page that mounts the wait screen with made-up props plays every stage in 12 s for nothing, and a ready book covers the rest. Now: real books only for what touches the server.
 
 ### GTM
