@@ -52,6 +52,13 @@ export const content = query({
     // other spots at random from the shelf to learn which topics get tapped (14 Oct).
     const pinned = rows.filter((r) => r.pick).sort((a, b) => b.passes * 10 + b.starts - (a.passes * 10 + a.starts)).slice(0, 4).map((r) => r.title);
 
+    // "Try one now" (20 Oct, Prateek: "something that takes them to first chapter of our premade books - 2-3 top picks"):
+    // three ready books with a cover under each homepage box, opening straight into chapter 1. The owner's pins first, then
+    // the books whose chapter 1 readers finish most. Chapter 1's minutes: the plan's average a chapter, else 5.
+    const ranked = rows.filter((r) => r.cover).sort((a, b) => Number(!!b.pick) - Number(!!a.pick) || b.passes - a.passes || b.starts - a.starts)
+    const picks = [];
+    for (const r of ranked.slice(0, 3)) picks.push({ topic: r.title, name: CHIP[r.title] ?? r.title, cover: await url(r.cover), minutes: r.chapters && r.minutes ? Math.max(3, Math.round(r.minutes / r.chapters)) : 5 });
+
     const demos = [];
     // If a pick is missing (taken off, or a deployment without it), ready free handbooks fill in, so the proof never vanishes.
     const fill = rows.filter((r) => isFreeRow(r) && !DEMOS.some((d) => keyOf(d.title) === keyOf(r.title))).sort((a, b) => b.passes - a.passes).map((r) => ({ title: r.title, label: r.title }));
@@ -74,6 +81,7 @@ export const content = query({
     return {
       demos,
       pinned,
+      picks,
       chipNames: Object.fromEntries(rows.map((r) => [r.title, CHIP[r.title] ?? r.title])),
       shelf: shelf.sort((x, y) => rank(x.topic) - rank(y.topic) || Number(!x.cover) - Number(!y.cover)),
     };

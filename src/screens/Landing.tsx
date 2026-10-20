@@ -56,6 +56,7 @@ function typeLoop(get: () => HTMLInputElement | null, at: { current: number }) {
   return () => { alive = false; const el = get(); if (el && el.placeholder) el.placeholder = 'e.g. ' + EXAMPLES[at.current] }
 }
 
+type Pick = { topic: string; name: string; cover: string | null; minutes: number }
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
 export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance, account, onSignOut, onMember, memberPrice }: Props) {
@@ -162,6 +163,10 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const [chips, setChips] = useState<string[]>([])
   useEffect(() => {
     if (!c || chips.length) return
+    // "Try one now" (20 Oct): the server's three top picks, as cover cards that open chapter 1; the old random chips only
+    // where a deployment has no picks yet.
+    const picks = (c as any).picks as Pick[] | undefined
+    if (picks?.length) { setChips(picks.map((p) => p.topic)); return }
     const pinned = c.pinned.slice(0, 4)
     // Free handbooks first (14 Oct, Prateek: "start with the handbooks that are free and without sign up in the chips
     // first"): no daily limit, so a tap never meets a wall before chapter 3; the rest of the Shelf only tops it up.
@@ -187,7 +192,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const chipsNow = useRef(chips); chipsNow.current = chips
   const busyNow = useRef(busy); busyNow.current = busy
   useEffect(() => {
-    if (!c || !chips.length || still() || !wrapped()) return
+    if (!c || !chips.length || still() || !wrapped() || (c as any).picks?.length) return   // the top picks stay put
     const pool = [...c.shelf.filter((x) => x.free), ...c.shelf.filter((x) => !x.free)].map((x) => x.topic)
     let turn = 0, t2 = 0
     const t = window.setInterval(() => {
@@ -219,10 +224,12 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     const a = btn.getBoundingClientRect(), b = box.getBoundingClientRect()
     const ghost = document.createElement('span')
     ghost.className = 'c1-chip-ghost'
-    ghost.textContent = btn.textContent
+    ghost.textContent = btn.dataset.name ?? btn.textContent
     Object.assign(ghost.style, { left: `${a.left}px`, top: `${a.top}px`, height: `${a.height}px` })
     document.body.appendChild(ghost)
-    const dx = b.left + 18 - a.left, dy = b.top + (b.height - a.height) / 2 - a.top
+    const h = Math.min(a.height, 48)
+    ghost.style.height = `${h}px`
+    const dx = b.left + 18 - a.left, dy = b.top + (b.height - h) / 2 - a.top
     lookAtEl(box)
     const anim = ghost.animate([
       { transform: 'none', opacity: 1 },
@@ -283,14 +290,19 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const typedUsed = !!allowance && !allowance.member && allowance.used >= allowance.limit
   const typedLine = typedBoxText(allowance)
 
+  const pickOf = (t: string) => ((c as any)?.picks as Pick[] | undefined)?.find((p) => p.topic === t)
   const box = (where: 'hero' | 'final') => (
     <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
       <input id={`lp-topic-${where}`} className="c1-input" ref={where === 'hero' ? heroInput : finalInput} value={topic} onChange={(e) => { setTopic(e.target.value); track('box_type', undefined, 'box_type'); lookAtEl(e.target) }} onFocus={(e) => { track('box_focus', undefined, 'box_focus'); (where === 'hero' ? setBoxBusy : setFinalBusy)(true); hold.current = true; lookAtEl(e.target) }} onBlur={(e) => { (where === 'hero' ? setBoxBusy : setFinalBusy)(!!e.target.value); hold.current = false }}
         placeholder="e.g. why the Moon changes shape" autoComplete="off" enterKeyHint="go" disabled={busy} maxLength={200} />
+      {chips.length > 0 && pickOf(chips[0]) && <p className="c1-try">Try one now · free, no sign-up</p>}
       {chips.length > 0 && (
-        <div className="c1-chips" role="group" aria-label="Or open one that's ready" ref={where === 'hero' ? chipRow : undefined} onPointerEnter={() => { hold.current = true }} onPointerLeave={() => { hold.current = document.activeElement === heroInput.current }}>
-          {chips.map((t, i) => <button key={t} type="button" data-topic={t} className={[pickedRow === t ? 'is-opening' : '', outAt === i ? 'chip-out' : ''].filter(Boolean).join(' ') || undefined} style={{ animationDelay: swapped.has(t) ? '0ms' : `${(where === 'hero' ? 900 : 350) + i * 80}ms` }} disabled={busy} onPointerEnter={(e) => lookAtEl(e.currentTarget)} onFocus={(e) => lookAtEl(e.currentTarget)} onClick={(e) => pick(t, 'chip', e.currentTarget, where)}>{pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}</button>)}
+        <div className={`c1-chips${pickOf(chips[0]) ? ' picks' : ''}`} role="group" aria-label="Or open one that's ready" ref={where === 'hero' ? chipRow : undefined} onPointerEnter={() => { hold.current = true }} onPointerLeave={() => { hold.current = document.activeElement === heroInput.current }}>
+          {chips.map((t, i) => <button key={t} type="button" data-topic={t} className={[pickedRow === t ? 'is-opening' : '', outAt === i ? 'chip-out' : ''].filter(Boolean).join(' ') || undefined} style={{ animationDelay: swapped.has(t) ? '0ms' : `${(where === 'hero' ? 900 : 350) + i * 80}ms` }} disabled={busy} onPointerEnter={(e) => lookAtEl(e.currentTarget)} onFocus={(e) => lookAtEl(e.currentTarget)} data-name={pickOf(t)?.name ?? c?.chipNames?.[t] ?? t} onClick={(e) => pick(t, 'chip', e.currentTarget, where)}>
+            {pickOf(t) ? <>{pickOf(t)!.cover && <img src={pickOf(t)!.cover!} alt="" />}<span className="c1-pick-t"><b>{pickedRow === t ? 'Opening…' : pickOf(t)!.name}</b><small>Chapter 1 · {pickOf(t)!.minutes} min</small></span></>
+              : pickedRow === t ? 'Opening…' : c?.chipNames?.[t] ?? t}
+          </button>)}
         </div>
       )}
       <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>
