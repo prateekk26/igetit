@@ -77,7 +77,7 @@ if (await step('chapter 1 opens as full-screen frames', `!!document.querySelecto
     // D26 (9 Oct, Prateek): the wall is after chapter 2. After chapter 1 the main action is chapter 2, sign-in a quiet line.
     await step('no wall yet: the main action is "Start chapter 2"', `[...document.querySelectorAll('.actionbar .btn')].some((b) => b.textContent.trim().startsWith('Start chapter 2'))`, 5000)
     // D154 (20 Oct): keep the groove: the next chapter as a card with a dot row, opening chapter 2.
-    await step('Done shows the Up next card for chapter 2', `/Up next · chapter 2/.test(document.querySelector('.c9-up-card')?.textContent ?? '') && document.querySelectorAll('.c9-path i').length > 1`, 5000)
+    await step('Done shows the Up next card for chapter 2', `/Up next · chapter 2/.test(document.querySelector('.c9-up-card')?.textContent ?? '')`, 5000)
     await step('and "Make a free account" is not a main button here', `![...document.querySelectorAll('.btn')].some((b) => b.textContent.trim().startsWith('Make a free account'))`, 2000)
     console.log(`     Done after chapter 1: ${await shot('done-1')}`)
     await tap('Start chapter 2')

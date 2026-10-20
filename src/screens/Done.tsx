@@ -114,6 +114,28 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
           <ul className="c9-known"><li><span className="c9-dot" aria-hidden="true" />{outcomeLine}</li></ul>
         </>
       )}
+      {/* Keep the groove (20 Oct, Prateek: "after chapter 1 users don't move to chapter 2 … keep the groove on with a little
+          nudge"; 18 of 43 opened chapter 2): the next chapter as a card worth tapping, its picture, title, teaser and minutes,
+          under a row of dots with this chapter lit and the next one pulsing. The whole card opens it, as the bar's button
+          does. Copy (agent). */}
+      {!last && nextTitle && !wall && (
+        <section className="c9-up" aria-label={`Up next: chapter ${n + 1}`}>
+          {total > 1 && total <= 10 && (
+            <p className="c9-path" aria-hidden="true">
+              {Array.from({ length: total }, (_, k) => <i key={k} className={new Set([...passed, n]).has(k + 1) ? 'on' : k + 1 === n + 1 ? 'next' : undefined} style={{ ['--k' as any]: k }} />)}
+            </p>
+          )}
+          <button type="button" className="c9-up-card" disabled={!onNext || (!nextReady && !nextFailed)} onClick={() => { track('next_tap', { n, via: 'card' }); onNext?.() }}>
+            {nextPicture && <img src={nextPicture} alt="" />}
+            <span className="c9-up-t">
+              <small>Up next · chapter {n + 1}{nextMinutes ? ` · ${nextMinutes} min` : ''}</small>
+              <b>{nextTitle}</b>
+              {nextHook && <span>{nextHook}</span>}
+              {!nextReady && !nextFailed && onNext && <span className="c9-up-wait">Being written for you now, about a minute</span>}
+            </span>
+          </button>
+        </section>
+      )}
       {/* The wall, as one printed block right under the outcome: what chapter N+1 is, that it is free with an account, what the
           account costs them (an email and a code), and what they keep either way. The only button is the one in the action
           bar, within thumb reach; this card explains it. Copy (agent). */}
@@ -153,28 +175,6 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
           <span>{nextReady ? `Auto-play: chapter ${n + 1} starts in a moment.` : `Auto-play: chapter ${n + 1} starts as soon as it's written.`}</span>
           <button type="button" className="quiet" onClick={() => { setAuto(false); setAutoState(false); track('autoplay', { v: 'off' }) }}>Stop</button>
         </p>
-      )}
-      {/* Keep the groove (20 Oct, Prateek: "after chapter 1 users don't move to chapter 2 … keep the groove on with a little
-          nudge"; 18 of 43 opened chapter 2): the next chapter as a card worth tapping, its picture, title, teaser and minutes,
-          under a row of dots with this chapter lit and the next one pulsing. The whole card opens it, as the bar's button
-          does. Copy (agent). */}
-      {!last && nextTitle && !wall && (
-        <section className="c9-up" aria-label={`Up next: chapter ${n + 1}`}>
-          {total > 1 && total <= 10 && (
-            <p className="c9-path" aria-hidden="true">
-              {Array.from({ length: total }, (_, k) => <i key={k} className={new Set([...passed, n]).has(k + 1) ? 'on' : k + 1 === n + 1 ? 'next' : undefined} style={{ ['--k' as any]: k }} />)}
-            </p>
-          )}
-          <button type="button" className="c9-up-card" disabled={!onNext || (!nextReady && !nextFailed)} onClick={() => { track('next_tap', { n, via: 'card' }); onNext?.() }}>
-            {nextPicture && <img src={nextPicture} alt="" />}
-            <span className="c9-up-t">
-              <small>Up next · chapter {n + 1}{nextMinutes ? ` · ${nextMinutes} min` : ''}</small>
-              <b>{nextTitle}</b>
-              {nextHook && <span>{nextHook}</span>}
-              {!nextReady && !nextFailed && onNext && <span className="c9-up-wait">Being written for you now, about a minute</span>}
-            </span>
-          </button>
-        </section>
       )}
       {last && <p className="lede" style={{ marginTop: 'var(--l)' }}>{left > 0 ? `That's the last chapter. ${left === 1 ? 'One earlier chapter is' : `${left} earlier chapters are`} still yours to read, on the handbook page.` : quick ? "That's all of it. Quick and done." : total === 7 ? "That's the whole handbook. Seven chapters, done." : `That's the whole handbook. ${total} chapters, done.`}</p>}
       {last && learnMore}
