@@ -9,6 +9,7 @@ Feeds the 9:30 X draft (scripts/x-nightly.sh reads yesterday's day) and the end-
 
 ### Product/Tech
 - Thought: cover cards would pull harder than text chips because a picture sells the book. Learned: on a phone three cards took a whole screen under the box and read as a shop, and Prateek called them bad on both sizes within a day; six moving chips took one 44 px row. Now: under the box, the lightest thing that says "tap me"; pictures belong on the page the tap opens.
+- Thought: "snap scroll" means CSS scroll-snap-type mandatory. Learned: in the headless phone a slow 380 px drag sprang back to the top every time (0, 0, 0 across 6 swipes), and a part taller than the screen let swipes rest anywhere inside it. Now: on a page people read slowly, steer by direction after the scroll rests (next part the way they were going), and keep every stop shorter than a screen.
 - Thought: a carousel that turns itself just needs a timer. Learned: our own smooth scroll fired the scroll handler mid-slide, which would have counted every automatic turn as the reader engaging and held the wait screen open past chapter 1 being ready. Now: anything that moves on its own marks its own motion (a 900 ms "ours" window) so it never reads as the person.
 
 ### GTM

@@ -131,9 +131,40 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     return () => window.clearTimeout(t)
   }, [demoTurning, demoAt]) // eslint-disable-line react-hooks/exhaustive-deps
   const stopDemo = () => { if (demoAuto) setDemoAuto(false) }
+  // The peek (21 Oct, Prateek: "go ahead fix it"; 33 of 57 real visitors left within 15 s, most without scrolling): 3 s
+  // in, the top of the demo's real page rises from the bottom edge of the first screen with a marigold "Read a real
+  // page ↓" tab, and a tap takes the reader to it. Only where it fits under the button and Ooh's line; gone for good
+  // once the page scrolls, and while the box is in use or a book is opening.
+  const [peek, setPeek] = useState<{ h: number; left: number; width: number } | null>(null)
+  const [peekGone, setPeekGone] = useState(false)
+  const demoReady = !!c?.demos?.length
+  useEffect(() => {
+    if (!demoReady || peekGone) return
+    const t = window.setTimeout(() => {
+      const go = document.querySelector('.c1 .c1-go'), says = document.querySelector('.c1 .c1-says') as HTMLElement | null, main = document.querySelector('.c1 .c1-main')
+      if (!go || !main || window.scrollY > 8) return
+      const natural = go.getBoundingClientRect().bottom + (says ? parseFloat(getComputedStyle(says).marginTop) + says.offsetHeight : 0) + 18
+      const h = Math.min(96, Math.floor(window.innerHeight - natural))
+      if (h < 64) return
+      const r = main.getBoundingClientRect()
+      setPeek({ h, left: Math.round(r.left), width: Math.round(Math.min(r.width, 440)) })
+      track('peek', undefined, 'peek')
+    }, 3000)
+    // a phone's address bar sliding away is a resize too; only a new width (turned sideways) moves the layout under it
+    const w0 = window.innerWidth
+    const off = () => { if (Math.abs(window.innerWidth - w0) > 40) setPeekGone(true) }
+    window.addEventListener('resize', off)
+    return () => { window.clearTimeout(t); window.removeEventListener('resize', off) }
+  }, [demoReady, peekGone])
+  const toDemo = () => {
+    track('peek_tap', undefined, 'peek_tap')
+    setPeekGone(true)
+    const el = document.querySelector(window.innerWidth < 1024 ? '.lp-demo .c-demo-page' : '.lp-demo')
+    el?.scrollIntoView({ behavior: still() ? 'auto' : 'smooth', block: 'start' })
+  }
   const [scrolled, setScrolled] = useState(false)
   const heroInput = useRef<HTMLInputElement>(null)
-  useSnapPage('var(--home-bar-h, 60px)')   // its parts settle under the fixed bar (20 Oct)
+  useSnapPage('var(--home-bar-h, 60px)', { stops: '.lp > section, .lp-demo .c-demo-copy, .lp-demo .c-demo-page' })   // its parts settle under the fixed bar (20 Oct); every swipe lands on one (21 Oct)
   // (2) Ooh watches: its eyes follow the mouse, look at the box while typing and at a chip under the finger or mouse;
   // after 2.5 s with nothing to look at, its own idle glance comes back. Written straight to the drawing, no re-render.
   const stage = useRef<HTMLDivElement>(null)
@@ -240,7 +271,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
       track('section', { section: name }, 'section:' + name)
     })
     let t = 0
-    const onScroll = () => { setScrolled(window.scrollY > 24); if (!t) t = window.setTimeout(() => { t = 0; check() }, 250) }
+    const onScroll = () => { setScrolled(window.scrollY > 24); if (window.scrollY > 60) setPeekGone(true); if (!t) t = window.setTimeout(() => { t = 0; check() }, 250) }
     check()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => { window.removeEventListener('scroll', onScroll); window.clearTimeout(t) }
@@ -325,7 +356,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
       </header>
 
       {/* 1. The ask (C1). Ooh is the dot of a tall "i" on the marigold stage; from 1024 the stage is the left half. */}
-      <section className="lp-hero c1">
+      <section className={`lp-hero c1${peek && !peekGone ? ' peeking' : ''}`} style={peek ? { '--peek': `${peek.h}px` } as React.CSSProperties : undefined}>
         <div className="c1-stage" aria-hidden="true" ref={stage}>
           <span className="c1-stem" />
           <Ooh face={heroFace} tone="cream" className="c1-ooh" size={132} idle />
@@ -344,6 +375,19 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
           {typedUsed && onMember && <button type="button" className="c1-member" onClick={onMember}>Become a member{memberPrice ? ` · ₹${memberPrice.toLocaleString('en-IN')} a month` : ''}</button>}
         </div>
       </section>
+
+      {peek && demo && (
+        <button type="button" className={`c-peek${!peekGone && !boxBusy && !pickedRow ? ' up' : ''}`} style={{ left: peek.left, width: peek.width, '--peek': `${peek.h}px` } as React.CSSProperties} onClick={toDemo} tabIndex={peekGone ? -1 : undefined} aria-hidden={peekGone || undefined}>
+          <span className="c-peek-bob">
+            <span className="c-peek-tab">Read a real page <span aria-hidden="true">↓</span></span>
+            <span className="c-peek-page"><span className="c-peek-in">
+              <b className="c-peek-title">{demo.title}</b>
+              <span className="c-peek-label">{demo.topic} · Chapter 1</span>
+              {(demo.frames[0] as { picture?: string | null })?.picture && <img src={(demo.frames[0] as { picture: string }).picture} alt="" />}
+            </span></span>
+          </span>
+        </button>
+      )}
 
       {/* 2. The proof: real chapter 1s, the way readers get them. */}
       {demo && (
