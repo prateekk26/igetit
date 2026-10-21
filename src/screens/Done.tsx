@@ -171,7 +171,9 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
           )}
         </div>
       )}
-      {handbookId && deviceToken && <TeachBack handbookId={handbookId} n={n} deviceToken={deviceToken} />}
+      {/* 21 Oct (Prateek: "give go to chapter 2 button … keep the flow going"): once Ooh has answered what they said back,
+          chapter n+1 is one tap away right under the answer, not only in the bar. */}
+      {handbookId && deviceToken && <TeachBack handbookId={handbookId} n={n} deviceToken={deviceToken} after={!last && !wall && onNext && nextReady && !nextFailed ? <button type="button" className="btn c-go nudge-go c9-say-next" onClick={() => { track('next_tap', { n, via: 'sayback' }); onNext() }}><span>{quick ? 'Keep going' : `On to chapter ${n + 1}`}</span><GoArrow /></button> : undefined} />}
       {/* Up next (7 Oct, Prateek): the next chapter as a card worth tapping, with its own button. Behind the wall the card above says it instead. */}
       {/* Up next (7 Oct, Prateek; C9 14 Oct): one line over the main button says what's next; the button is in the bar. */}
       {carries && (
@@ -213,7 +215,7 @@ export default function Done({ onReplay, nextFailed, total = 7, topic, n, passed
           <>
             {/* D26 (9 Oct, Prateek): the wall moved to after chapter 2; before it the main action is the next chapter, sign-in a quiet line. */}
             {nextBtn(`Start chapter ${n + 1}`)}
-            <button type="button" className="quiet" onClick={onKeep}>Want it on every device? Make a free account</button>
+            <button type="button" className="quiet" onClick={onKeep}>Wanna keep your own bookshelf? It's free</button>
           </>
         ) : !signedIn && !stay ? (
           <>
@@ -264,7 +266,7 @@ function Reminder({ n, tomorrowAt, onPickTime, handbookId, deviceToken }: { n: n
   if (!open) {
     return (
       <section className="remind">
-        <p className="note" style={{ marginTop: 'var(--l)' }}><button type="button" className="quiet" style={{ padding: 0 }} onClick={() => setOpen(true)}>Want a nudge for chapter {n + 1}? Pick a time</button></p>
+        <p className="note" style={{ marginTop: 'var(--l)' }}><button type="button" className="quiet" style={{ padding: 0 }} onClick={() => setOpen(true)}>Don't forget to come back for chapter {n + 1}. Let's pick a time →</button></p>
       </section>
     )
   }

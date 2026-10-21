@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -6,7 +6,8 @@ import { limitMessage } from '../lib/limits'
 
 // Teach it back (optional): explain the chapter's idea in your own words, get a short reply.
 // Never required; the rung never waits on it. Copy is (agent) until Prateek rewrites it.
-export default function TeachBack({ handbookId, n, deviceToken }: { handbookId: Id<'handbooks'>; n: number; deviceToken: string }) {
+// `after`: what comes next (the next chapter's button), shown under Ooh's answer once there is one (21 Oct).
+export default function TeachBack({ handbookId, n, deviceToken, after }: { handbookId: Id<'handbooks'>; n: number; deviceToken: string; after?: ReactNode }) {
   const open = true   // C9 (14 Oct): "Say it back (optional)" is a box on the page, not a button that opens one
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -17,7 +18,7 @@ export default function TeachBack({ handbookId, n, deviceToken }: { handbookId: 
   const check = async () => { setError(null); try { await send({ handbookId, chapter: n, text, deviceToken }) } catch (e: any) { setError(limitMessage(e) ?? (String(e?.message ?? e).includes('busy') ? 'A few too many in a row. Try again in a bit.' : "Couldn't check that just now. Try again in a minute.")) } }
   return (
     <section className="teach c9-say" aria-label="Say it back">
-      <label htmlFor="teach-text" className="c9-label">Say it back (optional)</label>
+      <label htmlFor="teach-text" className="c9-label">Wanna say it back? We're all ears.</label>
       <form className="ask-row c9-say-row" onSubmit={(e) => { e.preventDefault(); if (!thinking && text.trim().length >= 10) check() }}>
         <input id="teach-text" className="input" maxLength={600} value={text} onChange={(e) => setText(e.target.value)} disabled={thinking} placeholder="Tell a friend today's idea in a line" enterKeyHint="send" />
         <button type="submit" className="ask-send" disabled={thinking || text.trim().length < 10} aria-label={thinking ? 'Reading it' : 'Check what I wrote'}>
@@ -34,6 +35,7 @@ export default function TeachBack({ handbookId, n, deviceToken }: { handbookId: 
           {reply.tip && <p>{reply.tip}</p>}
         </div>
       )}
+      {reply?.status === 'ready' && after}
     </section>
   )
 }

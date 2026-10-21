@@ -20,7 +20,7 @@ import { useSnapPage } from '../lib/snap'
 
 type Level = 'new' | 'some'
 type Voice = 'friend' | 'straight' | 'stories'
-type Props = { onCreate: (topic: string, level: Level, voice: Voice, chapter?: number) => Promise<void>; onExplore?: () => void; onBooks?: () => void; freeChapters?: number; allowance?: TypedAllowance | null; account?: AuthLinks; onSignOut?: (() => void) | null; onMember?: () => void; memberPrice?: number }
+type Props = { onCreate: (topic: string, level: Level, voice: Voice, chapter?: number) => Promise<void>; onExplore?: () => void; onBooks?: () => void; freeChapters?: number; allowance?: TypedAllowance | null; account?: AuthLinks; onSignOut?: (() => void) | null; onMember?: () => void; memberPrice?: number; onSignUp?: () => void; myTopic?: string }
 
 type Frame =
   | { kind: 'picture' | 'teach' | 'example' | 'mistake' | 'try'; title?: string; text: string; picture: string | null }
@@ -56,9 +56,11 @@ function typeLoop(get: () => HTMLInputElement | null, at: { current: number }) {
 }
 
 type Pick = { topic: string; name: string; cover: string | null; minutes: number }
+const DEMO_MS = 4500   // the demo's next chapter comes in after this long
+const ROLL_MS = 2600   // the closing button's next book rolls in after this long
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
-export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance, account, onSignOut, onMember, memberPrice }: Props) {
+export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance, account, onSignOut, onMember, onSignUp, myTopic }: Props) {
   const freeText = freeChaptersText(freeChapters)   // D26: chapters 1 and 2 need no account; the number is the server's
   const c = useQuery(api.landing.content, {})
   const [topic, setTopic] = useState('')
@@ -111,8 +113,9 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
     window.setTimeout(() => { setDemoAt(k); setDemoIn(dir); setDemoOut(null) }, 200)
   }
   // 21 Oct (Prateek: "even if user does not click after few seconds move to another chip and show that chapter"): once the
-  // part is on screen the next chapter comes in every 7 s, a bar filling under the lit chip, until the reader taps
-  // anything in it or puts the mouse on the page. Nothing turns by itself under reduce motion.
+  // part is on screen the next chapter comes in every DEMO_MS (7 s, then 4.5 s from 21 Oct evening, Prateek: "too long,
+  // move it a little faster as user might not stay on this section for long"), a bar filling under the lit chip, until
+  // the reader taps anything in it or puts the mouse on the page. Nothing turns by itself under reduce motion.
   const demoRef = useRef<HTMLElement>(null)
   const [demoAuto, setDemoAuto] = useState(() => !still())
   const [demoSeen, setDemoSeen] = useState(false)
@@ -127,7 +130,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
   const demoTurning = demoAuto && demoSeen && demoCount > 1
   useEffect(() => {
     if (!demoTurning) return
-    const t = window.setTimeout(() => switchDemo((demoAt + 1) % demoCount), 7000)
+    const t = window.setTimeout(() => switchDemo((demoAt + 1) % demoCount), DEMO_MS)
     return () => window.clearTimeout(t)
   }, [demoTurning, demoAt]) // eslint-disable-line react-hooks/exhaustive-deps
   const stopDemo = () => { if (demoAuto) setDemoAuto(false) }
@@ -312,7 +315,27 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
 
   const pickOf = (t: string) => ((c as any)?.picks as Pick[] | undefined)?.find((p) => p.topic === t)
   const chipName = (t: string) => pickOf(t)?.name ?? c?.chipNames?.[t] ?? t
-  const nudge = ((c as any)?.picks as Pick[] | undefined)?.[0]
+  // The closing button's books (21 Oct evening, Prateek: "put it in carousel of slide animation like diff premade books
+  // from diff genres keep coming - so diff topics appeal to diff users"): the six top picks, then the Shelf's other free
+  // books in a random order, drawn once per visit. One rolls in every ROLL_MS once the part is on screen, held while the
+  // mouse is on the button, the box is in use or a book is opening; a tap opens the one showing at chapter 1.
+  const [roll, setRoll] = useState<{ topic: string; name: string }[]>([])
+  useEffect(() => {
+    if (!c || roll.length) return
+    const ps = (((c as any).picks ?? []) as Pick[]).map((p) => ({ topic: p.topic, name: p.name }))
+    const seen = new Set(ps.map((p) => p.topic))
+    const more = shuffle(c.shelf.filter((s) => s.free && !seen.has(s.topic))).map((s) => ({ topic: s.topic, name: chipName(s.topic) }))
+    // a long name ("World War II, 1939 to 1945") ran into the button's arrow on a phone: short names only
+    setRoll([...ps, ...more].filter((x) => x.name.length <= 22).slice(0, 10))
+  }, [c, roll.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [rollAt, setRollAt] = useState(0)
+  const [rollHold, setRollHold] = useState(false)
+  useEffect(() => {
+    if (!finalIn || finalBusy || busy || rollHold || roll.length < 2) return
+    const t = window.setTimeout(() => setRollAt((k) => (k + 1) % roll.length), ROLL_MS)
+    return () => window.clearTimeout(t)
+  }, [finalIn, finalBusy, busy, rollHold, roll.length, rollAt])
+  const nudge = roll[rollAt % Math.max(1, roll.length)]
   const box = (where: 'hero' | 'final') => (
     <form className={`lp-form lp-form-${where} c1-form`} onSubmit={(e) => { e.preventDefault(); go() }}>
       <label htmlFor={`lp-topic-${where}`} className="lp-visually-hidden">What have you been wondering about?</label>
@@ -331,7 +354,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
           casual fun way - give it a go with public speaking and it will open chapter 1"): the top pick, straight into its
           chapter 1. Typing turns it back into the box's own button. Copy (agent). */}
       {where === 'final' && nudge && (!topic.trim() || pickedRow === nudge.topic)
-        ? <button type="button" className="c1-go nudge-go c1-nudge" disabled={busy} onClick={() => pick(nudge.topic, 'nudge', undefined, 'final')}><span>{pickedRow === nudge.topic ? 'Opening…' : `Give ${nudge.name} a go`}</span><GoArrow /></button>
+        ? <button type="button" className="c1-go nudge-go c1-nudge" disabled={busy} aria-label={`Give ${nudge.name} a go`} onPointerEnter={(e) => { if (e.pointerType === 'mouse') setRollHold(true) }} onPointerLeave={() => setRollHold(false)} onClick={() => pick(nudge.topic, 'nudge', undefined, 'final')}><span className="c1-nudge-t">{pickedRow === nudge.topic ? 'Opening…' : <>Give <span className="nudge-roll"><span key={nudge.topic} className="nudge-name">{nudge.name}</span></span> a go</>}</span><GoArrow /></button>
         : <button type="submit" className="c1-go" disabled={busy}><span>{busy && !pickedRow ? 'Finding your way…' : 'Show me the way'}</span><GoArrow /></button>}
       {error && <p className="lp-error" role="alert">{error}</p>}
       {where === 'hero' && slow && pickedRow && <p className="lp-fine" role="status">Slow connection. Still opening; it keeps trying.</p>}
@@ -349,8 +372,8 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
         <a className="lp-mark" href="/" aria-label="I Get It, home" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><Wordmark /></a>
         <span className="home-bar-links">
           {/* 15 Oct: a reader with books lands here after a break; their books are one tap away. Copy (agent). */}
-          {onBooks && <button type="button" className="c1-shelf" onClick={onBooks}>Your books</button>}
-          {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}>The Shelf</button>}
+          {onBooks && <button type="button" className="c1-shelf" onClick={onBooks}><span className="bar-long">Your books</span><span className="bar-short">Books</span></button>}
+          {onExplore && <button type="button" className="c1-shelf" onClick={openShelf}><span className="bar-long">The Shelf</span><span className="bar-short">Shelf</span></button>}
           <AuthButtons links={account} onSignOut={onSignOut} />
         </span>
       </header>
@@ -371,8 +394,11 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
               after chapter 2, and the typed-topic rule on Start another topic. Only a phone that has used its free typed
               topic hears it here, before it types again. */}
           {typedUsed && <p className="lp-fine c1-fine">{typedLine}</p>}
-          {/* 18 Oct (Prateek): from the typed-book limit, one tap to paying (sign-in first if needed). Copy (agent). */}
-          {typedUsed && onMember && <button type="button" className="c1-member" onClick={onMember}>Become a member{memberPrice ? ` · ₹${memberPrice.toLocaleString('en-IN')} a month` : ''}</button>}
+          {/* 21 Oct (Prateek: "we show become a member 199 at very start, just friction … show personalised touch, free sign
+              up"): a visitor whose typed book is used gets the free account for that book, by its name, straight to the
+              sign-up page; a signed-in reader gets a quiet link to what members get, no price on the first screen. Copy (agent). */}
+          {typedUsed && onSignUp && <button type="button" className="c1-member" onClick={onSignUp}>{myTopic ? `Keep “${myTopic}” on your own shelf` : 'Start your own bookshelf'}<small>Free</small></button>}
+          {typedUsed && !onSignUp && onMember && <button type="button" className="c-more" onClick={onMember}>See what members get →</button>}
         </div>
       </section>
 
@@ -396,7 +422,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
             <h2>Don't take our word for it. Take a page.</h2>
             <p className="c-lede">These are real first chapters, exactly as readers get them. Pick one and tap through. In five minutes you'll know something most people don't.</p>
             {demos.length > 1 && (
-              <div className={`c-demo-pick${demoTurning ? ' turning' : ''}`} role="group" aria-label="Pick a chapter">
+              <div className={`c-demo-pick${demoTurning ? ' turning' : ''}`} style={{ '--turn': `${DEMO_MS}ms` } as React.CSSProperties} role="group" aria-label="Pick a chapter">
                 {demos.map((d, k) => <button key={d.topic} type="button" aria-pressed={k === demoAt} onClick={() => { switchDemo(k); track('demo_tap', { topic: d.topic }) }}>{d.label}</button>)}
               </div>
             )}
@@ -429,9 +455,11 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
         <div className="c-final-ooh" aria-hidden="true"><Ooh face={finalFace} size={220} idle className="end-ooh" /></div>
       </section>
 
+      {/* 21 Oct evening (Prateek: "reduce spacing or more links in one line - little neater"): one line about us, then every
+          link in one row. */}
       <footer className="lp-foot c-foot">
-        <p>I Get It is built in public for the GrowthX Build Sprint, October 2026. <a href="/stats">See the live numbers</a> · <a href="/pricing">Pricing</a></p>
-        <p><PolicyLinks /></p>
+        <p>Built in public for the GrowthX Build Sprint, October 2026.</p>
+        <p className="c-foot-links"><a href="/stats">Stats</a><a href="/pricing">Pricing</a><PolicyLinks /></p>
       </footer>
     </div>
   )

@@ -204,7 +204,7 @@ async function publicChapter(ctx: QueryCtx, ch: Doc<"chapters">, open = true, ti
   return { n: ch.n, status: ch.status, writingSince: ch.status === "writing" ? (ch.writingSince ?? ch.createdAt) : undefined, title: ch.title, outcomeLine: ch.outcomeLine, cards: publicCards(ch.cards ? withTier(ch.cards as any[], (ch as any).quizTiers, tier) : undefined), tier, recapReteach, error: ch.error, svg: (ch as any).svg, stale: ch.stale ?? false, variants, vote: ch.vote, pictures, credits, alts, picturesPending: ch.status === "ready" && !Object.keys(pictures).length && ch.picturesStatus !== "failed" && ch.picturesStatus !== "skipped" && !!ch.cards };
 }
 
-// Money, health and legal topics carry a fixed line on every chapter: "Study aid, verify before you act."
+// Money, health and legal topics carry a fixed line on every chapter: "Study aid, verify before you act." (shown as "A study aid, not advice." in small grey type since 21 Oct, D158)
 // (Shaktimaan, 6 Oct: covers the slips no checker catches.) New plans are tagged by Opus; older ones by keywords.
 const CAUTION_WORDS: [string, RegExp][] = [
   ["money", /\b(stock|share market|invest|trading|trader|options?|futures|f&o|nifty|sensex|crypto|bitcoin|forex|mutual fund|sip\b|tax|loan|mortgage|insurance|personal finance|finance|financial|balance sheet|retire|wealth|money)/i],

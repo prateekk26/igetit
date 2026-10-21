@@ -38,6 +38,7 @@ type Props = {
   onPricing?: () => void
   onMember?: () => void   // 18 Oct: the typed-book limit's button goes straight to paying
   memberPrice?: number
+  memberWas?: number   // the next tier's price, struck through beside this one
   // 8 Oct (UX review #4): on "Start another topic", ready topics open at once and Explore is one tap away.
   onPickReady?: (topic: string) => Promise<void>
   // D29 (9 Oct): the handbook got ready while a story was being read: say so above the story, never pull the story away.
@@ -58,7 +59,7 @@ type Props = {
 }
 
 // The first screen, and the empty state of the whole product (DESIGN.md section 4, Start).
-export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, onLevelCheck, typedLevel = 'new', suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onMember, memberPrice, onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal, planChapters, planQuick, allowance, replacingName}: Props) {
+export default function Start({ onBack, initialTopic = '', status, question, intents, onChooseIntent, onLevelCheck, typedLevel = 'new', suggested, onTakeSuggested, onCreate, onAnswer, onRetry, examples, below, onAddOther, pushback, suggestions = [], onMember, memberPrice, memberWas, onPricing, onPickReady, onExplore, readyToOpen, onOpenReady, onEngaged, phase, chapterOneReady, startedAt, goal, planChapters, planQuick, allowance, replacingName}: Props) {
   const declined = status === 'declined'
   // Ready handbook names, to tell a ready suggestion (free) from one that would be written for this reader.
   const keyOf = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
@@ -380,7 +381,7 @@ export default function Start({ onBack, initialTopic = '', status, question, int
         <p className="error">{localError ?? "Couldn't write it just now. Your line is still here; try once more in a minute, or pick one of tonight's ready handbooks."}</p>
       )}
       {/* 18 Oct (Prateek): one tap from the limit to paying; the plans stay one tap away. Copy (agent). */}
-      {memberLimit && onMember && <button type="button" className="btn" style={{ marginTop: 8 }} onClick={onMember}>Become a member{memberPrice ? ` · ₹${memberPrice.toLocaleString('en-IN')} a month` : ''}</button>}
+      {memberLimit && onMember && <button type="button" className="btn" style={{ marginTop: 8 }} onClick={onMember}>Become a member{memberPrice ? <> · {memberWas ? <s className="was">₹{memberWas.toLocaleString('en-IN')}</s> : null}₹{memberPrice.toLocaleString('en-IN')} a month</> : ''}</button>}
       {memberLimit && onPricing && <button type="button" className="quiet" style={{ marginTop: 8 }} onClick={onPricing}>See what members get</button>}
 
       {below && !writing && below(pick)}

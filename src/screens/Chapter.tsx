@@ -652,7 +652,7 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
             <>
               {frame.cover && <h1 className="story-title">{title}</h1>}
               {/* On the first frame of the chapter, whatever card it is (UX review 9 Oct: it showed only on a picture card). */}
-              {i === firstChapterFrame && caution && <p className="story-caution">Study aid, verify before you act.</p>}
+              {i === firstChapterFrame && caution && <p className="story-caution">A study aid, not advice.</p>}
               {/* C6 (the board, 15 Oct): each page opens on its idea as a headline, then its picture, then the words. A story,
                   a mistake or a dare keeps its small label over the headline. With Ask open (C8) the picture steps aside. */}
               {!frame.cover && frame.part === 0 && KICKER[c.type] && <p className="story-kicker">{KICKER[c.type]}</p>}
@@ -692,13 +692,13 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
         <div className="story-tools no-tap">
           <div className="story-tools-left">
             {c.type !== 'exercise' && <span className="story-left">{pagesLeft === 0 ? 'Last page' : `${pagesLeft} ${pagesLeft === 1 ? 'page' : 'pages'} left`}</span>}
-            {c.type !== 'exercise' && !auto && <button type="button" className="story-read" aria-pressed={speaking} onClick={readAloud}>
+            {c.type !== 'exercise' && !auto && <button type="button" className="story-read" aria-pressed={speaking} aria-label={speaking ? 'Stop reading' : 'Read it to me'} onClick={readAloud}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" /><path d="M16.5 8.5a5 5 0 0 1 0 7" /></svg>
-              {speaking ? 'Stop reading' : 'Read it to me'}</button>}
+              {speaking ? 'Stop' : 'Listen'}</button>}
             {c.type !== 'exercise' && <button type="button" className="story-auto" aria-pressed={auto} onClick={toggleAuto}>
               {auto ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" /><rect x="14" y="5" width="4" height="14" rx="1.5" /></svg>
                 : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" /></svg>}
-              {auto ? 'Auto-play on' : 'Auto-play'}</button>}
+              {auto ? <><span className="long">Auto-play on</span><span className="short">Auto on</span></> : <><span className="long">Auto-play</span><span className="short">Auto</span></>}</button>}
           </div>
           {/* A real button (UX review #17, 8 Oct): the move and do-it frames are full of things to tap, so "next" needs a target of its own; keyboard and screen readers get one too. */}
           {/* While an answer shows, its own button is the one way on (C7); a check shows no tools until it's passed. */}

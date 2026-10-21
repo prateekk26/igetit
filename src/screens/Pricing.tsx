@@ -123,13 +123,13 @@ export default function Pricing({ notice, plans, onLock, onOrder, onConfirm, onB
           {live && !p.paidUntil && (
             <div className="plan-cards" role="radiogroup" aria-label="Pay for">
               <button type="button" role="radio" aria-checked={plan === 'month'} className="plan-card" onClick={() => setPlan('month')}>
-                <span className="plan-card-name">Monthly</span>
-                <span className="plan-card-price">{inr(p.price.month)}</span>
+                <span className="plan-card-name">Monthly{later && <em className="plan-card-tag">Early bird</em>}</span>
+                <span className="plan-card-price">{later && <s className="was" aria-label={`was ${inr(later.month)}`}>{inr(later.month)}</s>}{inr(p.price.month)}</span>
                 <span className="plan-card-note">30 days, paid once</span>
               </button>
               <button type="button" role="radio" aria-checked={plan === 'year'} className="plan-card" onClick={() => setPlan('year')}>
-                <span className="plan-card-name">Yearly</span>
-                <span className="plan-card-price">{inr(p.price.year)}</span>
+                <span className="plan-card-name">Yearly{later && <em className="plan-card-tag">Early bird</em>}</span>
+                <span className="plan-card-price">{later && later.year > p.price.year && <s className="was" aria-label={`was ${inr(later.year)}`}>{inr(later.year)}</s>}{inr(p.price.year)}</span>
                 <span className="plan-card-note">365 days, saves {inr(saving)}</span>
               </button>
             </div>

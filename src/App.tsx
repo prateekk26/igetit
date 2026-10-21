@@ -21,7 +21,7 @@ import WhatsNext from './components/WhatsNext'
 import LearnMore from './components/LearnMore'
 import SignupNudge from './components/SignupNudge'
 import { ShelfButton } from './components/ShelfStrip'
-import { nameOf, isId } from './lib/name'
+import { nameOf, isId, shortName } from './lib/name'
 import { deferred, preloadWhenIdle } from './lib/deferred'
 import { Wordmark } from './components/Ooh'
 import Known from './screens/Known'
@@ -177,6 +177,10 @@ export default function App() {
   const signIn = (back: View, heading: string | null = null) => { setSigninHeading(heading); setAfterSignIn(back); setView('signin') }
   const signInFrom = (back: View) => signIn(back)
   const signUpFrom = (back: View) => signIn(back, 'Make your free account.')
+  // 21 Oct (Prateek: "we show become a member 199 at very start, just friction … show personalised touch, free sign up"):
+  // a visitor whose free typed book is used is offered the free account for that book, by its name; it lands on their books.
+  const myTyped = lib?.handbooks?.find((h) => h.typed)
+  const signUpForShelf = () => { track('signup_nudge', { via: 'landing' }); signIn('library', myTyped ? `Keep “${shortName(nameOf(myTyped.topic), 32)}” on your own bookshelf.` : 'Make your free account.') }
   // Pricing goes back to where it was opened from, never always to the handbook page (UX review 9 Oct).
   const [pricingFrom, setPricingFrom] = useState<View>('auto')
   const goPricing = () => { if (view !== 'pricing') setPricingFrom(view); setView('pricing') }
@@ -192,6 +196,10 @@ export default function App() {
     if (isAuthenticated) setPayAfterSignIn(true); else signInToPay()
   }
   const memberPrice: number | undefined = (plansData as any)?.pay?.price?.month
+  // 21 Oct (Prateek: "in whole pricing - lets do strikethrough"): the struck price is the real next tier's, what this
+  // price becomes once the early spots are gone; never a made-up "was" price (7 Oct rule).
+  const nextTier = (plansData as any)?.tiers?.find((t: any) => t.tier === (plansData as any)?.pay?.tier + 1)
+  const memberWas: number | undefined = nextTier && memberPrice && nextTier.month > memberPrice ? nextTier.month : undefined
   const [payAfterSignIn, setPayAfterSignIn] = useState(false)
   // A chapter ahead on the path opens a short preview (Prateek, 9 Oct: "the chapters in the path don't seem clickable").
   const [previewN, setPreviewN] = useState<number | null>(null)
@@ -369,9 +377,9 @@ export default function App() {
   }
 
   // A first-time visitor's pick stays on the landing page, with the card lifted, until its handbook is ready (8 Oct night).
-  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 32) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   // The front page for a reader who already has books (15 Oct): the same page as a first visit, plus "Your books".
-  if (view === 'home') return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
+  if (view === 'home') return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 32) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
   const libRows = lib?.handbooks ?? []
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   // C4 Tonight is the home of a reader with books (14 Oct); the old list, with remove and the sign-in nudge, is Manage.
@@ -448,7 +456,7 @@ export default function App() {
     )
   }
   if (!hb && view !== 'start-again' && libRows.length === 0 && lib !== undefined) {
-    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={() => becomeMember()} memberPrice={memberPrice} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 32) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   }
 
   // No handbook yet, or the person wants a different line: the first screen.
@@ -475,6 +483,7 @@ export default function App() {
           onPricing={goPricing}
           onMember={() => becomeMember()}
           memberPrice={memberPrice}
+          memberWas={memberWas}
           onPickReady={view === 'start-again' ? openTopic : undefined}
           onExplore={goExplore}
           key={hb?._id ?? 'new'}
@@ -593,7 +602,7 @@ export default function App() {
       <Shell back={{ label: 'Back', onClick: () => { if (afterSignIn === 'pricing') setPayAfterSignIn(false); setView(afterSignIn) } }}>
         {/* "Want it on every device?" after a free chapter is not the wall: the next chapter is free either way, so the
             heading must not say it needs an account (UX review 9 Oct, #5). Copy (agent). */}
-        <SignIn reason={signinReason} heading={afterSignIn === 'pricing' ? 'Sign in or sign up, then pay.' : signinHeading ? signinHeading : afterSignIn === 'done' && lockedN && lockedN <= freeChapters ? 'Keep your place on every device.' : signinReason && lockedN ? `Chapter ${lockedN} is free with an account.` : undefined} backLabel={afterSignIn === 'done' ? 'Not now, back to the handbook' : undefined} onDone={async () => afterSignedIn(() => {
+        <SignIn reason={signinReason} heading={afterSignIn === 'pricing' ? 'Sign in or sign up, then pay.' : signinHeading ? signinHeading : afterSignIn === 'done' && lockedN && lockedN <= freeChapters ? 'Keep your own bookshelf, on any phone.' : signinReason && lockedN ? `Chapter ${lockedN} is free with an account.` : undefined} backLabel={afterSignIn === 'done' ? 'Not now, back to the handbook' : undefined} onDone={async () => afterSignedIn(() => {
           setSigninReason(null)
           // From the wall after a chapter (8 Oct night): straight on to the next chapter, which the account now opens
           // (only once the handbook is attached to the account; see afterSignedIn).

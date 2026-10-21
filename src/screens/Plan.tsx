@@ -117,7 +117,7 @@ export default function Plan({ total = 7, onOpenChapter, nextTopics, topic, forW
         {!plan.pushback && plan.framing && <p className="c3-says"><Ooh size={28} /><span>{plan.framing}</span></p>}
         {/* A new book, first open (20 Oct): Ooh hops once, then idles; otherwise it glances as before */}
         <p className="c3-says"><Ooh face={first ? 'happy' : 'curious'} size={28} idle /><span>{plan.outcome7}{tail}</span></p>
-        {caution && <p className="roadmap-caution c3-caution">Study aid, verify before you act.</p>}
+        {caution && <p className="roadmap-caution c3-caution">A study aid, not advice.</p>}
       </section>
 
       {voiceNote && <p className="note" style={{ marginBottom: 'var(--m)' }}>{voiceNote}</p>}
