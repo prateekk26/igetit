@@ -87,7 +87,7 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
     const fresh = codesReady === false
     if (inNow) return <div className="signin-in" role="status"><Ooh face="wink" size={96} /><p>You're in.</p></div>
     return (
-      <>
+      <div className="ph-no-capture" style={{ display: 'contents' }}>
         {reason && <p className="why-here">{reason}</p>}
         <h1>{fresh ? 'Keep reading, free.' : flow === 'signUp' ? 'Make an account with a password.' : 'Sign in with a password.'}</h1>
         {fresh && <p className="free-banner"><strong>Free.</strong> Just an email and a password. No card, no spam, ever.</p>}
@@ -116,13 +116,13 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
           <button className="btn" onClick={withPassword} disabled={busy} aria-disabled={!pwOk || undefined}>{busy ? 'Signing you in…' : flow === 'signUp' ? 'Create my account' : 'Sign me in'}</button>
           <button type="button" className="quiet" onClick={onBack}>{backLabel}</button>
         </ActionBar>
-      </>
+      </div>
     )
   }
 
   if (inNow) return <div className="signin-in" role="status"><Ooh face="wink" size={96} /><p>You're in.</p></div>
   return (
-    <>
+    <div className="ph-no-capture" style={{ display: 'contents' }}>
       {reason && <p className="why-here">{reason}</p>}
       <h1>{heading ?? 'Keep reading, free.'}</h1>
       {!heading && <p className="free-banner"><strong>Free.</strong> Just your email. No card, no spam, ever.</p>}
@@ -162,6 +162,6 @@ export default function SignIn({ onDone, onBack, reason, heading, backLabel = 'N
       </ActionBar>
       {/* Accounts made before 7 Oct have a password; a new person never needs this line, so it reads as an answer, not a choice. */}
       <p className="note" style={{ textAlign: 'center' }}><button type="button" className="quiet" style={{ padding: 0 }} onClick={() => { setMode('password'); setFlow('signIn'); setError(null) }}>I already have a password</button></p>
-    </>
+    </div>
   )
 }
