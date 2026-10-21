@@ -74,6 +74,9 @@ type Props = {
 
 const NO_STARS = 'igi.noStars'
 const starsOff = () => { try { return localStorage.getItem(NO_STARS) === '1' } catch { return false } }
+// Set once this phone has heard a page read aloud (21 Oct): only then are the next pages voiced ahead.
+const LISTENS = 'igi-listens'
+const listensOn = () => { try { return localStorage.getItem(LISTENS) === '1' } catch { return false } }
 
 // Only http(s) links from the known hosts reach the page; anything else is dropped.
 function safeUrl(u: string): string {
@@ -396,21 +399,27 @@ export default function Chapter({ total = 7, topic, n, title, cards, recall, pas
   // clips a day and 5 a minute across the app (convex/voice.ts), so plays keep the other half of Gemini's 100 a day.
   // 19 Oct (I2-22): this page first, the next four once it is ready. Asked all at once, the five were made side by side and
   // the page being read took about 10 s instead of 3 to 7 (dev, Git book, chapter 1).
+  // 21 Oct (Prateek: "if user plays … then i create next 2"): prod's play report for 72 hours had 72 clips made, 2 played
+  // (both the page on screen) and 0 of 49 made ahead. So a reader who hasn't played yet gets only the page on screen voiced,
+  // and the first tap still starts at once; from the first play on (this phone, any chapter), the next two as well.
+  const [auto, setAutoState] = useState(autoOn)
+  const [listens, setListens] = useState(listensOn)
+  const heard = () => { if (listens) return; setListens(true); try { localStorage.setItem(LISTENS, '1') } catch {} }
   useEffect(() => {
     if (after) return
-    Promise.all(audioFor(partsOf(frames[i]), true, 0)).finally(() => { for (let k = 1; k < 5; k++) audioFor(partsOf(frames[i + k]), true, k) })
-  }, [i, frames, after]) // eslint-disable-line react-hooks/exhaustive-deps
+    const ahead = listens || auto ? 2 : 0
+    Promise.all(audioFor(partsOf(frames[i]), true, 0)).finally(() => { for (let k = 1; k <= ahead; k++) audioFor(partsOf(frames[i + k]), true, k) })
+  }, [i, frames, after, listens, auto]) // eslint-disable-line react-hooks/exhaustive-deps
   // Plays a page's parts in order; false if any part had no audio (the caller falls back), or it was stopped.
   const playParts = async (parts: string[], stopped: () => boolean) => {
     const files = audioFor(parts)
     for (const f of files) {
       const url = await f; if (stopped()) return true
       const key = url ? keyByUrl.current.get(url) : undefined
-      if (!url || !(await playUrl(url, () => { if (key) voicePlayed({ key }).catch(() => {}) }))) return false
+      if (!url || !(await playUrl(url, () => { heard(); if (key) voicePlayed({ key }).catch(() => {}) }))) return false
     }
     return true
   }
-  const [auto, setAutoState] = useState(autoOn)
   const toggleAuto = () => { const on = !auto; setAuto(on); setAutoState(on); track('autoplay', { v: on ? 'on' : 'off' }); if (!on) { stopAudio(); setSpeaking(false) } }
   // Auto-play (Prateek: "auto scroll (quizes auto answered) … It should span chapters"): each page is read, then turns;
   // a question is read, waits a beat, fills in the right answer (stored as auto), reads why, and turns. The last page
