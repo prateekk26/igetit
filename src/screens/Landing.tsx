@@ -57,7 +57,7 @@ function typeLoop(get: () => HTMLInputElement | null, at: { current: number }) {
 
 type Pick = { topic: string; name: string; cover: string | null; minutes: number }
 const DEMO_MS = 4500   // the demo's next chapter comes in after this long
-const ROLL_MS = 2600   // the closing button's next book rolls in after this long
+const ROLL_MS = 3200   // the closing button's next book rolls in after this long
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
 
 export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2, allowance, account, onSignOut, onMember, onSignUp, myTopic }: Props) {
@@ -397,7 +397,7 @@ export default function Landing({ onCreate, onExplore, onBooks, freeChapters = 2
           {/* 21 Oct (Prateek: "we show become a member 199 at very start, just friction … show personalised touch, free sign
               up"): a visitor whose typed book is used gets the free account for that book, by its name, straight to the
               sign-up page; a signed-in reader gets a quiet link to what members get, no price on the first screen. Copy (agent). */}
-          {typedUsed && onSignUp && <button type="button" className="c1-member" onClick={onSignUp}>{myTopic ? `Keep “${myTopic}” on your own shelf` : 'Start your own bookshelf'}<small>Free</small></button>}
+          {typedUsed && onSignUp && <button type="button" className="c1-member" onClick={onSignUp}><span>{myTopic ? `Keep your ${myTopic} book` : 'Start your own bookshelf'}</span><small>Join for free</small></button>}
           {typedUsed && !onSignUp && onMember && <button type="button" className="c-more" onClick={onMember}>See what members get →</button>}
         </div>
       </section>

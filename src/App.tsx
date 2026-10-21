@@ -377,9 +377,9 @@ export default function App() {
   }
 
   // A first-time visitor's pick stays on the landing page, with the card lifted, until its handbook is ready (8 Oct night).
-  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 32) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+  if ((hold === 'landing' || (freshDevice && !pinned && view === 'auto')) && !deepLink && (data === undefined || holdable))    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 22) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   // The front page for a reader who already has books (15 Oct): the same page as a first visit, plus "Your books".
-  if (view === 'home') return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 32) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
+  if (view === 'home') return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 22) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={goExplore} onCreate={startFromLanding} onBooks={(lib?.handbooks?.length ?? 0) > 0 ? () => { setView('library'); window.scrollTo({ top: 0 }) } : undefined} />
   const libRows = lib?.handbooks ?? []
   // Your handbooks stays up while a tapped handbook loads (no splash), like the Shelf.
   // C4 Tonight is the home of a reader with books (14 Oct); the old list, with remove and the sign-in nudge, is Manage.
@@ -456,7 +456,7 @@ export default function App() {
     )
   }
   if (!hb && view !== 'start-again' && libRows.length === 0 && lib !== undefined) {
-    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 32) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
+    return <Landing freeChapters={freeChapters} account={hold === 'landing' ? null : authLinks} onSignOut={authSignOut} onMember={goPricing} onSignUp={isAuthenticated ? undefined : signUpForShelf} myTopic={myTyped ? shortName(nameOf(myTyped.topic), 22) : undefined} allowance={ms ? { member: !!ms.member, used: ms.typed.used, limit: ms.typed.limit, superAdmin: !!ms.superAdmin } : null} onExplore={() => setView('explore')} onCreate={startFromLanding} />
   }
 
   // No handbook yet, or the person wants a different line: the first screen.
